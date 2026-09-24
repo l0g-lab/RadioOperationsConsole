@@ -1,0 +1,17 @@
+name: CI
+
+# Runs the test suite (frontend + backend) on every pull request and every
+# push to main — independent of releases, which only happen on a version tag
+# (see release.yml). This is what gives day-to-day merges fast feedback, so
+# problems surface long before anyone gets around to cutting a release.
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    uses: ./.github/workflows/reusable-test.yml

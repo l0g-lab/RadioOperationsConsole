@@ -1,0 +1,214 @@
+specification:
+  title: Radio Operations Console
+  version: 0.1.0-foundation
+  status: draft
+  normative_language: RFC_2119_style
+  paths_relative_to: repository_root
+
+product_constraints:
+  platforms:
+    - windows
+    - linux
+  offline_first: true
+  initial_collaboration_mode: single_workstation
+  activity_focus: one_focused_multiple_open
+  initial_aprs_mode: receive_only
+  team_chat_integrations: prohibited
+  agent_vendor_specific_instructions: prohibited
+
+reading_order:
+  - README.md
+  - docs/00-product-vision.md
+  - docs/01-product-principles.md
+  - docs/02-scope-and-release-boundaries.md
+  - docs/03-personas-and-operating-context.md
+  - docs/04-domain-language.md
+  - docs/05-event-and-template-model.md
+  - docs/06-application-shell-and-navigation.md
+  - docs/07-time-audit-and-record-history.md
+  - docs/decisions/ADR-001-desktop-platform.md
+  - docs/decisions/ADR-002-offline-first-storage.md
+  - docs/features/weekly-net-operations.md
+  - docs/features/qrz-callsign-enrichment.md
+  - docs/features/checkin-location-map.md
+  - docs/features/nws-alerts.md
+  - docs/features/weather-radar-display.md
+  - docs/features/skywarn-incidents-and-reports.md
+  - docs/features/aprs-is-live-feed.md
+  - docs/features/location-resolution.md
+  - docs/features/mile-marker-lookup.md
+  - docs/features/offline-callsign-directory.md
+  - docs/features/activity-templates.md
+  - docs/features/database-backup-restore.md
+  - docs/features/display-preferences.md
+  - docs/features/activity-lifecycle-and-wrap-up.md
+  - docs/features/ics-form-exports.md
+  - docs/features/activity-exports.md
+  - docs/agent/BUILD_PROTOCOL.md
+
+# Every normative requirement ID uses one of these prefixes. When drafting a
+# new document, pick a prefix not already listed here and add it below in
+# the same change, so IDs never collide across documents.
+id_prefixes:
+  VISION: docs/00-product-vision.md
+  PRINCIPLE: docs/01-product-principles.md
+  SCOPE: docs/02-scope-and-release-boundaries.md
+  SCOPE-NG: docs/02-scope-and-release-boundaries.md
+  PERSONA: docs/03-personas-and-operating-context.md
+  DOMAIN: docs/04-domain-language.md
+  EVENT: docs/05-event-and-template-model.md
+  TEMPLATE: docs/05-event-and-template-model.md
+  UX: docs/06-application-shell-and-navigation.md
+  UX-CI: docs/06-application-shell-and-navigation.md
+  UX-MAP: docs/06-application-shell-and-navigation.md
+  UX-OPS: docs/06-application-shell-and-navigation.md
+  TIME: docs/07-time-audit-and-record-history.md
+  AUDIT: docs/07-time-audit-and-record-history.md
+  STORAGE: docs/decisions/ADR-002-offline-first-storage.md
+  NETOPS: docs/features/weekly-net-operations.md
+  QRZ: docs/features/qrz-callsign-enrichment.md
+  CIMAP: docs/features/checkin-location-map.md
+  NWSA: docs/features/nws-alerts.md
+  RADAR: docs/features/weather-radar-display.md
+  SPOT: docs/features/skywarn-incidents-and-reports.md
+  APRSIS: docs/features/aprs-is-live-feed.md
+  LOCRES: docs/features/location-resolution.md
+  MILE: docs/features/mile-marker-lookup.md
+  CALLDIR: docs/features/offline-callsign-directory.md
+  ACTTPL: docs/features/activity-templates.md
+  BACKUP: docs/features/database-backup-restore.md
+  PREF: docs/features/display-preferences.md
+  LIFE: docs/features/activity-lifecycle-and-wrap-up.md
+  ICSF: docs/features/ics-form-exports.md
+  EXPORT: docs/features/activity-exports.md
+
+documents:
+  - id: VISION
+    path: docs/00-product-vision.md
+    status: draft
+  - id: PRINCIPLES
+    path: docs/01-product-principles.md
+    status: draft
+    depends_on: [VISION]
+  - id: SCOPE
+    path: docs/02-scope-and-release-boundaries.md
+    status: draft
+    depends_on: [VISION, PRINCIPLES]
+  - id: PERSONAS
+    path: docs/03-personas-and-operating-context.md
+    status: draft
+    depends_on: [SCOPE]
+  - id: DOMAIN
+    path: docs/04-domain-language.md
+    status: draft
+    depends_on: [SCOPE, PERSONAS]
+  - id: EVENTS
+    path: docs/05-event-and-template-model.md
+    status: draft
+    depends_on: [DOMAIN]
+  - id: UX
+    path: docs/06-application-shell-and-navigation.md
+    status: draft
+    depends_on: [EVENTS, PERSONAS]
+  - id: TIME_AUDIT
+    path: docs/07-time-audit-and-record-history.md
+    status: draft
+    depends_on: [DOMAIN, EVENTS]
+  - id: ADR_PLATFORM
+    path: docs/decisions/ADR-001-desktop-platform.md
+    status: proposed
+  - id: ADR_STORAGE
+    path: docs/decisions/ADR-002-offline-first-storage.md
+    status: proposed
+  - id: FEATURE_WEEKLY_NET
+    path: docs/features/weekly-net-operations.md
+    status: draft
+    depends_on: [EVENTS, UX, SCOPE]
+  - id: FEATURE_QRZ
+    path: docs/features/qrz-callsign-enrichment.md
+    status: draft
+    depends_on: [UX, SCOPE, DOMAIN, ADR_STORAGE]
+  - id: FEATURE_CIMAP
+    path: docs/features/checkin-location-map.md
+    status: draft
+    depends_on: [UX, SCOPE, DOMAIN, FEATURE_QRZ, FEATURE_WEEKLY_NET]
+  - id: FEATURE_NWSA
+    path: docs/features/nws-alerts.md
+    status: draft
+    depends_on: [SCOPE, PERSONAS, FEATURE_CIMAP, ADR_STORAGE]
+  - id: FEATURE_RADAR
+    path: docs/features/weather-radar-display.md
+    status: draft
+    depends_on: [SCOPE, FEATURE_CIMAP, FEATURE_NWSA, PRINCIPLES]
+  - id: FEATURE_SPOT
+    path: docs/features/skywarn-incidents-and-reports.md
+    status: draft
+    depends_on: [SCOPE, DOMAIN, UX, TIME_AUDIT, FEATURE_WEEKLY_NET, FEATURE_CIMAP]
+  - id: FEATURE_APRSIS
+    path: docs/features/aprs-is-live-feed.md
+    status: draft
+    depends_on: [SCOPE, FEATURE_CIMAP, FEATURE_WEEKLY_NET]
+  - id: FEATURE_LOCRES
+    path: docs/features/location-resolution.md
+    status: draft
+    depends_on: [SCOPE, FEATURE_CIMAP, FEATURE_QRZ]
+  - id: FEATURE_MILE
+    path: docs/features/mile-marker-lookup.md
+    status: draft
+    depends_on: [SCOPE, FEATURE_LOCRES]
+  - id: FEATURE_CALLDIR
+    path: docs/features/offline-callsign-directory.md
+    status: draft
+    depends_on: [SCOPE, FEATURE_QRZ, FEATURE_LOCRES]
+  - id: FEATURE_ACTTPL
+    path: docs/features/activity-templates.md
+    status: draft
+    depends_on: [EVENTS, UX, FEATURE_WEEKLY_NET, FEATURE_LOCRES]
+  - id: FEATURE_BACKUP
+    path: docs/features/database-backup-restore.md
+    status: draft
+    depends_on: [ADR_STORAGE, TIME_AUDIT, UX]
+  - id: FEATURE_PREF
+    path: docs/features/display-preferences.md
+    status: draft
+    depends_on: [UX, FEATURE_LOCRES]
+  - id: FEATURE_LIFE
+    path: docs/features/activity-lifecycle-and-wrap-up.md
+    status: draft
+    depends_on: [EVENTS, TIME_AUDIT, UX, FEATURE_WEEKLY_NET]
+  - id: FEATURE_ICSF
+    path: docs/features/ics-form-exports.md
+    status: draft
+    depends_on: [SCOPE, FEATURE_WEEKLY_NET, FEATURE_SPOT, FEATURE_LIFE]
+  - id: FEATURE_EXPORT
+    path: docs/features/activity-exports.md
+    status: draft
+    depends_on: [SCOPE, FEATURE_WEEKLY_NET, FEATURE_SPOT, FEATURE_LIFE, FEATURE_ICSF]
+  - id: BUILD_PROTOCOL
+    path: docs/agent/BUILD_PROTOCOL.md
+    status: draft
+    depends_on: [VISION, SCOPE, TIME_AUDIT]
+
+# Feature-specific procedure and interaction detail (as opposed to the
+# cross-activity model in docs/05 and docs/06) lives under docs/features/,
+# one file per feature, named <slug>.md matching the slug below. A feature
+# moves from `planned_feature_specs` into `documents` (with an id, path, and
+# depends_on) as soon as it has a drafted spec, per BUILD_PROTOCOL.
+planned_feature_specs:
+  # map-geocoding-and-radar has been superseded: geocoding infrastructure
+  # is covered by checkin-location-map.md, radar display by
+  # weather-radar-display.md, and the remaining report/incident
+  # location-picker (UX-MAP-001-005) is covered by
+  # skywarn-incidents-and-reports.md, now drafted (Spotter Reports only;
+  # Incidents remains a future increment within that same document).
+  - set-exercise-control
+  - ares-races-activation
+  # reports-ics-and-winlink is partially built: check-in roster export as
+  # CSV/JSON/Winlink ICS-213 form data exists (weekly-net-operations.md,
+  # NETOPS-046-048, src/export.ts). This slug remains planned for the
+  # part not yet covered. Spotter reports now export as CSV, JSON, and a
+  # text report (skywarn-incidents-and-reports.md, SPOT-050-054); still
+  # planned are incidents exports, any ICS form beyond ICS-213 and ICS-309
+  # (ics-form-exports.md: 309 for check-ins and 213 for spotter reports, both
+  # as Winlink import data and printable), and agency-specific report formats.
+  - reports-ics-and-winlink

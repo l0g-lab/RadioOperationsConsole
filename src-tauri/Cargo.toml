@@ -1,0 +1,27 @@
+[package]
+name = "radio_ops_console"
+version = "1.0.0"
+edition = "2021"
+authors = ["l0g-lab"]
+license = "GPL-3.0-or-later"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rusqlite = { version = "0.31", features = ["bundled", "backup"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+quick-xml = "0.36"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+flate2 = "1"
+tokio = { version = "1", features = ["net", "io-util", "sync", "time", "macros"] }
+
+[profile.release]
+opt-level = 3

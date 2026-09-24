@@ -1,0 +1,95 @@
+# Feature: Activity Exports
+
+## Status
+
+Draft — implemented.
+
+## Purpose
+
+An activity's records are useful outside the application: for a served agency,
+a report, another system, or an archive. Every way of getting them out should
+be in one predictable place, complete, and unambiguous about time.
+
+## Relationship to other documents
+
+- Collects the exports defined in [weekly-net-operations.md](weekly-net-operations.md)
+  (`NETOPS-046`, `NETOPS-048`), [skywarn-incidents-and-reports.md](skywarn-incidents-and-reports.md)
+  (`SPOT-050`–`055`), [activity-lifecycle-and-wrap-up.md](activity-lifecycle-and-wrap-up.md)
+  (`LIFE-033`), and the forms in [ics-form-exports.md](ics-form-exports.md).
+- Serves the output capability in
+  [02-scope-and-release-boundaries.md](../02-scope-and-release-boundaries.md).
+- Whole-database backup is separate ([database-backup-restore.md](database-backup-restore.md)):
+  a backup protects everything in the application; an export describes one activity.
+
+## One home
+
+- **EXPORT-001:** The application MUST have an **Exports** tab that offers every
+  export for the activity focused in the header, and the tab MUST make clear which
+  activity that is and its state.
+- **EXPORT-002:** No other tab MUST carry its own export menu. The Check-ins and
+  Spotter Reports tabs MAY offer a link to the Exports tab, and per-record actions
+  (for example the ICS 213 for one spotter report) MAY remain where the record is.
+- **EXPORT-003:** The end-of-net step MUST offer the same list, from the same
+  component, so the two cannot differ (`LIFE-033`).
+- **EXPORT-004:** Exports MUST be available for a closed activity (`LIFE-010`)
+  and MUST NOT change any record.
+- **EXPORT-005:** Every export MUST run offline and be written where the operator
+  chooses (`NETOPS-048`), and MUST report where it was saved or why it failed.
+- **EXPORT-006:** Each export MUST show how many records it covers. When there
+  are none, the export MUST NOT produce an empty file; it MUST look unavailable
+  and, when the operator clicks it, MUST say why nothing was exported (for example
+  "there are no check-ins yet"). A disabled control that gives no reason is not
+  enough.
+
+## What can be exported
+
+- **EXPORT-010:** Check-ins as CSV and JSON, holding everything the roster shows:
+  call sign, name, location, grid square, address, coordinates and location label,
+  traffic and whether it was handled, and the check-in time.
+- **EXPORT-011:** Spotter reports as CSV, JSON, and a readable text report.
+- **EXPORT-012:** *(Retired.)* There is no separate activity log; what happened
+  during an activity is recorded on its check-ins, traffic, spotter reports, and
+  closing notes, and in its history.
+- **EXPORT-013:** The full history as CSV: every start, close, correction, removal,
+  restore, and traffic-handled mark, for the activity and for its
+  check-ins and spotter reports, each with the operator (`AUDIT-001`).
+- **EXPORT-014:** The activity summary as text, using the sections its type
+  emphasises (`LIFE-054`).
+- **EXPORT-015:** A single JSON package holding the activity, its summary,
+  check-ins, spotter reports, and history, marked with a format name and
+  version so it can be recognised and read later.
+- **EXPORT-016:** The ICS 309 (from the check-ins) and ICS 213 (from spotter
+  reports, all or one) as Winlink import data and as printable forms
+  ([ics-form-exports.md](ics-form-exports.md)).
+
+## Time
+
+- **EXPORT-020:** Every time in a CSV, JSON, or text export MUST be given both as
+  local time and as UTC (`TIME-002`, `TIME-003`). A time recorded without a zone
+  (a spotter report's observed time) MUST be read as local time for the UTC value.
+- **EXPORT-021:** UTC times MUST be written in a fixed, sortable form
+  (`YYYY-MM-DDTHH:MM:SSZ`).
+
+## Acceptance examples
+
+```gherkin
+Scenario: Everything in one place
+  Given a focused activity with check-ins and reports
+  When the operator opens the Exports tab
+  Then each kind of record is listed with its count and formats
+
+Scenario: Nothing to export
+  Given an activity with no check-ins
+  When the operator clicks the ICS 309 option
+  Then a message says the form is built from check-ins and there are none yet
+
+Scenario: Exporting after the net ends
+  Given a closed activity
+  When the operator saves the check-in CSV
+  Then the file is written and nothing about the activity changes
+
+Scenario: Unambiguous times
+  Given a spotter report observed at 19:07 local time
+  When the reports are exported as CSV
+  Then the row has both the local time and the UTC time
+```

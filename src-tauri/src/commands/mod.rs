@@ -1,0 +1,135 @@
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
+use std::sync::Mutex;
+
+use crate::repo::Repository;
+
+mod activities;
+mod aprs;
+mod backup;
+mod audit;
+mod checkins;
+mod callsigns;
+mod datapacks;
+mod geocode;
+mod operators;
+mod qrz;
+mod settings;
+mod spotter_reports;
+mod weather;
+
+pub use activities::*;
+pub use aprs::*;
+pub use backup::*;
+pub use audit::*;
+pub use checkins::*;
+pub use callsigns::*;
+pub use datapacks::*;
+pub use geocode::*;
+pub use operators::*;
+pub use qrz::*;
+pub use settings::*;
+pub use spotter_reports::*;
+pub use weather::*;
+
+/// Stable error sentinels the frontend matches on to decide whether to show
+/// any status at all (QRZ-003, QRZ-030). Any other Err string is a real,
+/// user-actionable problem (bad credentials, missing subscription, etc.).
+pub const ERR_OFFLINE: &str = "offline";
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct AppSettings {
+    #[serde(default)]
+    pub nws_api_key: String,
+    #[serde(default)]
+    pub qrz_username: String,
+    #[serde(default)]
+    pub qrz_password: String,
+    #[serde(default)]
+    pub weather_area_query: String,
+    #[serde(default)]
+    pub weather_area_label: String,
+    #[serde(default)]
+    pub weather_area_lat: Option<f64>,
+    #[serde(default)]
+    pub weather_area_lon: Option<f64>,
+    #[serde(default)]
+    pub weather_area_resolved_at: Option<String>,
+}
+
+pub struct AppState {
+    pub repo: Mutex<Repository>,
+    pub settings: Mutex<AppSettings>,
+    pub settings_path: PathBuf,
+    pub qrz_session: Mutex<Option<String>>,
+    pub aprs_is_stream: Mutex<Option<crate::aprs_is::AprsIsStreamHandle>>,
+    /// Where downloaded offline data packs live (see `datapacks.rs`).
+    pub datapacks_dir: PathBuf,
+    /// Loaded route packs (flag: true = a downloaded copy, false = bundled).
+    pub route_packs: Mutex<Vec<(crate::routes::RoutePack, bool)>>,
+    /// The offline call-sign directory, loaded on first use (it's tens of MB
+    /// once unpacked, so it isn't read at startup).
+    pub callsign_db: Mutex<Option<std::sync::Arc<crate::callsigns::CallDb>>>,
+    /// Guards against two overlapping downloads of the same big file.
+    pub callsign_update_running: std::sync::atomic::AtomicBool,
+}
+
+impl AppState {
+    pub fn new(repo: Repository, settings_path: PathBuf, datapacks_dir: PathBuf) -> Self {
+        let settings = if settings_path.exists() {
+            fs::read_to_string(&settings_path)
+                .ok()
+                .and_then(|s| serde_json::from_str::<AppSettings>(&s).ok())
+                .unwrap_or_default()
+        } else {
+            AppSettings::default()
+        };
+        Self {
+            repo: Mutex::new(repo),
+            settings: Mutex::new(settings),
+            settings_path,
+            qrz_session: Mutex::new(None),
+            aprs_is_stream: Mutex::new(None),
+            route_packs: Mutex::new(crate::datapacks::load_all(&datapacks_dir)),
+            datapacks_dir,
+            callsign_db: Mutex::new(None),
+            callsign_update_running: std::sync::atomic::AtomicBool::new(false),
+        }
+    }
+}
+
+/// Writes settings to disk and updates the in-memory copy together, so the
+/// two never drift — used by both the explicit Settings-tab save and the
+/// area/location "set" commands that persist a resolved value as they go.
+pub(super) fn persist_settings(state: &AppState, settings: &AppSettings) -> Result<(), String> {
+    let serialized = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
+    fs::write(&state.settings_path, serialized).map_err(|e| e.to_string())?;
+    *state.settings.lock().unwrap() = settings.clone();
+    Ok(())
+}
+
+const CLOSED_MESSAGE: &str = "This activity is closed. Reopen it to add or change records.";
+
+/// Refuses ordinary changes to a closed activity until it is reopened (AUDIT-004).
+pub(super) fn ensure_open(repo: &crate::repo::Repository, activity_id: &str) -> Result<(), String> {
+    if repo.is_activity_closed(activity_id) {
+        Err(CLOSED_MESSAGE.to_string())
+    } else {
+        Ok(())
+    }
+}
+
+pub(super) fn ensure_checkin_open(repo: &crate::repo::Repository, checkin_id: &str) -> Result<(), String> {
+    match repo.activity_id_of_checkin(checkin_id) {
+        Some(a) => ensure_open(repo, &a),
+        None => Ok(()),
+    }
+}
+
+pub(super) fn ensure_report_open(repo: &crate::repo::Repository, report_id: &str) -> Result<(), String> {
+    match repo.activity_id_of_spotter_report(report_id) {
+        Some(a) => ensure_open(repo, &a),
+        None => Ok(()),
+    }
+}

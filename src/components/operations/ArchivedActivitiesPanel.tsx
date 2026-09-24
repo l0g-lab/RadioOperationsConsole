@@ -1,0 +1,70 @@
+import { useEffect, useState } from "react";
+import * as api from "../../api";
+import type { Activity } from "../../types";
+
+interface Props {
+  activities: Activity[];
+  selectedOperatorId: string | null;
+  onActivitiesChanged: () => void;
+}
+
+export default function ArchivedActivitiesPanel({
+  activities,
+  selectedOperatorId,
+  onActivitiesChanged,
+}: Props) {
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedActivities, setArchivedActivities] = useState<Activity[]>([]);
+
+  async function refreshArchived() {
+    const list = await api.listArchivedActivities().catch(() => []);
+    setArchivedActivities(list);
+  }
+
+  async function toggleShowArchived() {
+    const next = !showArchived;
+    setShowArchived(next);
+    if (next) await refreshArchived();
+  }
+
+  // Keeps this list in sync when an activity is archived elsewhere (the
+  // Selected Activity panel) while this one is already open, without the
+  // two panels needing to talk to each other directly.
+  useEffect(() => {
+    if (showArchived) refreshArchived();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activities]);
+
+  async function handleRestoreActivity(id: string) {
+    await api.restoreActivity(id, selectedOperatorId);
+    onActivitiesChanged();
+    await refreshArchived();
+  }
+
+  return (
+    <div className="panel">
+      <div className="panel-header-row">
+        <h3>Archived Activities</h3>
+        <button className="link-button" onClick={toggleShowArchived}>
+          {showArchived ? "Hide archived" : "Show archived"}
+        </button>
+      </div>
+      {showArchived && (
+        <>
+          {archivedActivities.length === 0 && (
+            <p className="checkin-empty-state">None archived.</p>
+          )}
+          {archivedActivities.map((a) => (
+            <div key={a.id} className="activity-row">
+              <span>
+                {a.title}
+                {a.scheduled_at ? ` — ${a.scheduled_at}` : ""}
+              </span>
+              <button onClick={() => handleRestoreActivity(a.id)}>Restore</button>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,100 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+mod aprs_is;
+mod backup;
+mod callsigns;
+mod commands;
+mod connectors;
+mod datapacks;
+mod db;
+mod net;
+mod repo;
+mod routes;
+
+use commands::AppState;
+use repo::Repository;
+use tauri::Manager;
+
+fn main() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .setup(|app| {
+            let data_dir = app.path().app_data_dir()?;
+            let db_path = data_dir.join("radio_ops.db");
+            let conn = db::open_db(&db_path).expect("failed to open database");
+            let repo = Repository::new(conn);
+
+            let config_dir = app.path().app_config_dir()?;
+            std::fs::create_dir_all(&config_dir).ok();
+            let settings_path = config_dir.join("settings.json");
+
+            let datapacks_dir = data_dir.join("datapacks");
+
+            app.manage(AppState::new(repo, settings_path, datapacks_dir));
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::list_operators,
+            commands::create_operator,
+            commands::set_operator_location,
+            commands::set_operator_location_coords,
+            commands::list_activities,
+            commands::list_archived_activities,
+            commands::create_activity,
+            commands::list_activity_templates,
+            commands::save_activity_template,
+            commands::update_activity_template,
+            commands::delete_activity_template,
+            commands::update_activity,
+            commands::start_activity,
+            commands::close_activity,
+            commands::reopen_activity,
+            commands::activity_summary,
+            commands::set_activity_location,
+            commands::set_activity_location_coords,
+            commands::archive_activity,
+            commands::restore_activity,
+            commands::create_checkin,
+            commands::list_checkins,
+            commands::list_voided_checkins,
+            commands::update_checkin,
+            commands::set_checkin_traffic_handled,
+            commands::void_checkin,
+            commands::restore_checkin,
+            commands::set_checkin_location_coords,
+            commands::clear_checkin_location,
+            commands::create_spotter_report,
+            commands::list_spotter_reports,
+            commands::list_voided_spotter_reports,
+            commands::update_spotter_report,
+            commands::void_spotter_report,
+            commands::restore_spotter_report,
+            commands::create_audit_event,
+            commands::list_audit_events,
+            commands::list_recent_audit_events,
+            commands::activity_history,
+            commands::get_settings,
+            commands::save_settings,
+            commands::set_weather_area,
+            commands::set_weather_area_coords,
+            commands::fetch_nws_alerts,
+            commands::fetch_nws_forecast,
+            commands::start_aprs_is_stream,
+            commands::stop_aprs_is_stream,
+            commands::backup_database,
+            commands::inspect_backup,
+            commands::restore_database,
+            commands::list_data_packs,
+            commands::update_data_pack,
+            commands::resolve_mile_marker,
+            commands::callsign_pack_status,
+            commands::update_callsign_pack,
+            commands::remove_callsign_pack,
+            commands::lookup_callsign_offline,
+            commands::lookup_qrz_callsign,
+            commands::geocode_location,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

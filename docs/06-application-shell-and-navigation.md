@@ -1,0 +1,152 @@
+# Application Shell and Navigation
+
+## Navigation model
+
+The application opens into a persistent tabbed shell rather than a task-selection start screen.
+
+Initial primary tabs:
+
+1. Operations
+2. Check-ins
+3. Spotter Reports
+4. Weather
+5. Map / APRS
+6. Exports
+7. History
+8. Settings
+
+Traffic is recorded on the check-in it came from (`NETOPS-050`–`056`) rather than in a tab of its own.
+
+Templates may hide, deemphasize, or badge tabs. The order and meaning of core tabs remain stable so operators do not relearn navigation between activities.
+
+## Persistent header
+
+The header displays:
+
+- Focused activity and state
+- Current operator and NCS when applicable
+- Primary channel/frequency
+- Local clock
+- UTC clock
+- Internet state — implemented as an Online/Offline indicator reflecting the
+  OS-reported network connection (`navigator.onLine` and the `online`/`offline`
+  events), not per-service reachability
+- Connector summary for NWS, radar, APRS, QRZ, and geocoding — not yet built;
+  each connector currently reports its own offline/error state where it's used
+  (`VISION-002`, `QRZ-031`, `CIMAP-022`) rather than in one header summary
+- Activity switcher
+- New activity action
+
+## Requirements
+
+- **UX-001:** The shell MUST open without requiring internet access.
+- **UX-002:** The operator MUST be able to change tabs without losing unsaved form data.
+- **UX-003:** Tabs irrelevant to the active template MAY be hidden, but the activity configuration MUST reveal what is hidden.
+- **UX-004:** A global activity switcher MUST list open activities and visually identify their states.
+- **UX-005:** Switching focused activity MUST preserve per-activity tab and filter state.
+- **UX-006:** The interface MUST distinguish global settings/history from records belonging to the focused activity.
+- **UX-007:** Common actions MUST use descriptive labels; icons alone are insufficient.
+- **UX-008:** Keyboard shortcuts MUST be discoverable and configurable.
+- **UX-009:** Status and severity MUST use text or icons in addition to color.
+- **UX-010:** The default theme SHOULD use a restrained weather/radio/Linux-console visual language without reducing legibility.
+
+## Keyboard shortcuts
+
+Global shortcuts work from any tab. `UX-008` requires that shortcuts be
+discoverable and configurable; an in-app shortcut reference/editor is not
+yet built, so these are documented here as the interim source of truth.
+
+- **UX-011:** Ctrl+1 through Ctrl+9 MUST switch to the corresponding tab in
+  the order defined in "Navigation model".
+- **UX-012:** Ctrl+K MUST switch to the Check-ins tab and place keyboard
+  focus on the call-sign entry field.
+- **UX-013:** Ctrl+Shift+Plus and Ctrl+Shift+Minus MUST increase and
+  decrease the application's UI zoom level in fixed steps, bounded to a
+  reasonable minimum and maximum; Ctrl+Shift+0 MUST reset zoom to 100%.
+- **UX-014:** The zoom level MUST persist across application restarts as a
+  local display preference. It is per-viewer display state, not operational
+  data, and MUST NOT appear in exports, backups, or audit events.
+
+## Check-in interaction
+
+- **UX-CI-001:** Saving a check-in MUST return focus to the call-sign field for the next entry when rapid-entry mode is enabled.
+- **UX-CI-002:** Entering a known call sign SHOULD populate the locally stored display name immediately.
+- **UX-CI-003:** QRZ enrichment MUST occur asynchronously and MUST NOT delay saving.
+- **UX-CI-004:** A selected check-in MUST offer a direct action to create a linked report or traffic item.
+- **UX-CI-005:** Recently created check-ins MUST remain visible for quick correction.
+- **UX-CI-006:** The Check-ins tab MUST present rapid check-in entry and the activity roster as the tab's primary, full-size workspace. It MUST NOT be reduced to a narrow sidebar widget.
+
+## Operations tab layout
+
+The Operations tab follows the same division of labor as the Check-ins tab
+(`UX-CI-006`): the sidebar is for browsing and selecting, and the substantive
+work — creating, correcting, and archiving activities, and managing operator
+profiles — happens in the tab's main content, not the sidebar.
+
+- **UX-OPS-001:** The Operations sidebar MUST be limited to a browsable,
+  clickable list of open (non-archived) activities used to change the
+  focused activity. It MUST NOT contain activity or operator creation,
+  editing, or archival controls.
+- **UX-OPS-003:** The focused activity MUST be chosen from a selector in the
+  application header, visible on every tab, listing each open activity with
+  its date and time so same-titled activities can be told apart. Other tabs
+  MUST NOT carry their own activity selector.
+- **UX-OPS-004:** The header MUST show the focused activity's frequency and
+  offer an "Edit" action that goes to the Operations tab with that
+  activity's edit form already open.
+- **UX-OPS-005:** The application MUST provide keyboard shortcuts to step to
+  the previous and next activity (Ctrl+[ and Ctrl+]), wrapping around, so
+  operators running several nets can switch without the mouse.
+- **UX-OPS-002:** The Operations tab's main content MUST show the focused
+  activity's details with correction and archival actions, a create-new-
+  activity form, and operator profile management (a list of existing
+  operators and a create-operator form), so an operator never needs to leave
+  the tab to set up who and what a session involves.
+- **UX-OPS-007:** The header MUST show the focused activity's lifecycle state
+  and the one lifecycle action that applies (start, end, or reopen); see
+  [features/activity-lifecycle-and-wrap-up.md](features/activity-lifecycle-and-wrap-up.md).
+- **UX-OPS-008:** The header MUST show the focused activity's type next to
+  its state.
+- **UX-OPS-006:** The create-activity form MUST allow choosing a start time,
+  frequency, and location, and MUST offer saved activity templates
+  ([features/activity-templates.md](features/activity-templates.md)). The
+  Operations tab MUST also list those templates for editing and deletion.
+
+## Activity correction and archival
+
+Per `AUDIT-003`, retiring an activity is always archival, not deletion — the
+underlying record and its check-ins remain intact.
+
+- **UX-OPS-010:** The operator MUST be able to correct an activity's title,
+  scheduled date and time, channel/frequency (`NETOPS-040`), and location
+  from the Operations tab's main content.
+- **UX-OPS-011:** Correcting an activity MUST record an audit event capturing
+  the before and after values, the acting operator, and the correction time
+  (`AUDIT-001`, `AUDIT-002`).
+- **UX-OPS-012:** The operator MUST be able to archive an activity. Archiving
+  MUST hide it from the normal activity list without deleting it (`EVENT-005`)
+  and MUST require explicit confirmation (`PERSONA-009`).
+- **UX-OPS-013:** The Operations tab MUST offer a way to view and restore
+  archived activities.
+- **UX-OPS-014:** Archiving the focused activity MUST reassign or clear the
+  focused-activity selection so the interface never presents an archived
+  activity as focused.
+
+## Map as a supporting tool
+
+The map is accessed through the Map / APRS tab, an embedded location-picker dialog from reports and incidents, or the on-demand check-in location map on the Check-ins workspace (see [features/checkin-location-map.md](features/checkin-location-map.md)).
+
+- **UX-MAP-001:** Opening the location picker MUST preserve the report form beneath it.
+- **UX-MAP-002:** The picker MUST accept a textual address, intersection, landmark, or coordinates.
+- **UX-MAP-003:** The operator MUST be able to click or drag a marker and review coordinates before applying them.
+- **UX-MAP-004:** Applying a mapped location MUST populate mapped label and coordinate fields without overwriting original reported-location text.
+- **UX-MAP-005:** The report MUST remain savable when online geocoding or map data is unavailable.
+
+## SKYWARN report entry
+
+The report form shows common fields first and category-specific fields after category selection. It links to the reporting check-in when launched from that station.
+
+Common fields include observed time, received time, reporter, source, county, original location text, mapped location, coordinates, report category, magnitude, measured/estimated state, narrative, verification state, forwarding state, and entering operator.
+
+The form MUST NOT contain Slack or generic team-chat actions.
+

@@ -1,0 +1,95 @@
+name: Release
+
+# Builds installers for Linux and Windows and publishes them to the GitHub
+# Releases page.
+#
+# Trigger: push a tag like "v1.0.0" (a plain `git tag v1.0.0 && git push
+# --tags` after bumping the version in package.json, src-tauri/Cargo.toml,
+# and src-tauri/tauri.conf.json — those three MUST agree, or Tauri refuses to
+# build). "Run workflow" from the Actions tab also works, for a dry run
+# without creating a tag or a release.
+#
+# The test job (shared with ci.yml — see reusable-test.yml) gates the
+# release: nothing is published unless the full test suite passes first.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch: {}
+
+# Ubuntu system libraries Tauri needs to compile the webview shell. Also
+# duplicated in reusable-test.yml, which (being a separate reusable workflow)
+# can't share this block — see README.md's "Get it running" section for the
+# same list documented for a local dev setup.
+env:
+  LINUX_APT_PACKAGES: >-
+    build-essential
+    libssl-dev
+    libxdo-dev
+    libwebkit2gtk-4.1-dev
+    libayatana-appindicator3-dev
+    librsvg2-dev
+    patchelf
+
+jobs:
+  test:
+    uses: ./.github/workflows/reusable-test.yml
+
+  release:
+    needs: test
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 22.04 (not "ubuntu-latest") so the build links against an older
+          # glibc — the .deb/.rpm/.AppImage stay installable on older
+          # distributions too, not just whatever the runner happens to ship.
+          - platform: ubuntu-22.04
+          - platform: windows-latest
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ env.LINUX_APT_PACKAGES }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Radio Operations Console ${{ github.ref_name }}"
+          releaseBody: |
+            See the assets below for your platform:
+
+            - **Linux:** `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), or `.AppImage` (runs on most distributions)
+            - **Windows:** `.msi` or the `.exe` (NSIS) installer
+
+            Windows and Linux builds come from the same source. Windows installers are not code-signed, so
+            Windows may warn ("Unknown publisher" / SmartScreen) before you can run one — this is expected
+            for an unsigned open-source build, not a sign of tampering.
+          releaseDraft: true
+          prerelease: false

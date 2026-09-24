@@ -1,0 +1,47 @@
+name: Test (reusable)
+
+# The frontend + backend test suite, factored out so ci.yml (every PR and
+# push to main) and release.yml (before publishing) run the exact same
+# checks instead of two copies quietly drifting apart. Not meant to be run
+# directly — it only triggers when another workflow calls it.
+on:
+  workflow_call: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev libxdo-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Type-check and build the frontend
+        run: npm run build
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Run backend tests
+        working-directory: src-tauri
+        run: cargo test --locked
