@@ -97,6 +97,7 @@ export default function OperationsTab({
         <div className="operations-column operations-column-narrow">
           <OperatorsPanel
             operators={operators}
+            selectedOperatorId={selectedOperatorId}
             onOperatorsChanged={onOperatorsChanged}
             onSelectOperator={onSelectOperator}
           />

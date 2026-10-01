@@ -68,6 +68,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0016_activity_types.sql",
         include_str!("../migrations/0016_activity_types.sql"),
     ),
+    (
+        "0017_operator_retired.sql",
+        include_str!("../migrations/0017_operator_retired.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't
@@ -84,6 +88,10 @@ pub fn open_db(path: &Path) -> Result<Connection, Box<dyn Error>> {
     conn.pragma_update(None, "foreign_keys", "ON")
         .map_err(Box::<dyn Error>::from)?;
     conn.pragma_update(None, "journal_mode", "WAL")
+        .map_err(Box::<dyn Error>::from)?;
+    // Deleted content is overwritten rather than left in free pages, so a
+    // permanent delete really erases names and addresses (AUDIT-009).
+    conn.pragma_update(None, "secure_delete", "ON")
         .map_err(Box::<dyn Error>::from)?;
     run_migrations(&conn)?;
     Ok(conn)
@@ -118,4 +126,36 @@ pub fn run_migrations(conn: &Connection) -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_database_from_before_retired_operators_upgrades_with_everyone_active() {
+        // A database (or a restored backup) made before 0017.
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE schema_migrations (version TEXT PRIMARY KEY, applied_at TEXT NOT NULL)",
+            [],
+        )
+        .unwrap();
+        for (version, sql) in MIGRATIONS.iter().take_while(|(v, _)| *v != "0017_operator_retired.sql") {
+            conn.execute_batch(sql).unwrap();
+            conn.execute("INSERT INTO schema_migrations VALUES (?1, 't')", params![version]).unwrap();
+        }
+        conn.execute(
+            "INSERT INTO operators(id, display_name, created_at) VALUES ('op1', 'Pat', 't')",
+            [],
+        )
+        .unwrap();
+
+        run_migrations(&conn).unwrap();
+
+        let repo = crate::repo::Repository::new(conn);
+        assert_eq!(repo.list_operators().unwrap().len(), 1);
+        assert!(repo.list_retired_operators().unwrap().is_empty());
+        assert!(is_known_migration("0017_operator_retired.sql"));
+    }
 }

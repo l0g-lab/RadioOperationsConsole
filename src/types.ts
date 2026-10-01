@@ -40,6 +40,12 @@ export interface Activity {
   conclusion: string;
 }
 
+/** How many records an activity holds, or held before it was permanently deleted. */
+export interface DeletedCounts {
+  checkins: number;
+  spotter_reports: number;
+}
+
 export interface Checkin {
   id: string;
   call_sign: string;

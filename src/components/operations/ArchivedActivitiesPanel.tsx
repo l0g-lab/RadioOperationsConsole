@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity } from "../../types";
+import DeleteActivityDialog from "../lifecycle/DeleteActivityDialog";
 
 interface Props {
   activities: Activity[];
@@ -15,6 +16,7 @@ export default function ArchivedActivitiesPanel({
 }: Props) {
   const [showArchived, setShowArchived] = useState(false);
   const [archivedActivities, setArchivedActivities] = useState<Activity[]>([]);
+  const [deleting, setDeleting] = useState<Activity | null>(null);
 
   async function refreshArchived() {
     const list = await api.listArchivedActivities().catch(() => []);
@@ -60,10 +62,26 @@ export default function ArchivedActivitiesPanel({
                 {a.title}
                 {a.scheduled_at ? ` — ${a.scheduled_at}` : ""}
               </span>
-              <button onClick={() => handleRestoreActivity(a.id)}>Restore</button>
+              <span className="inline-form">
+                <button onClick={() => handleRestoreActivity(a.id)}>Restore</button>
+                <button className="danger" onClick={() => setDeleting(a)}>
+                  Delete…
+                </button>
+              </span>
             </div>
           ))}
         </>
+      )}
+      {deleting && (
+        <DeleteActivityDialog
+          activity={deleting}
+          operatorId={selectedOperatorId}
+          onClose={() => setDeleting(null)}
+          onDeleted={async () => {
+            setDeleting(null);
+            await refreshArchived();
+          }}
+        />
       )}
     </div>
   );

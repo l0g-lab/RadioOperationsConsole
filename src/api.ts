@@ -3,6 +3,7 @@ import type {
   Activity,
   HistoryEvent,
   ActivitySummary,
+  DeletedCounts,
   BackupSummary,
   RestoreResult,
   ActivityTemplate,
@@ -21,6 +22,28 @@ import type {
 } from "./types";
 
 export const listOperators = () => invoke<Operator[]>("list_operators");
+
+// Removing operators (AUDIT-012/013): one nothing names can be deleted;
+// otherwise retired (hidden, kept for history) and restorable.
+export const listRetiredOperators = () => invoke<Operator[]>("list_retired_operators");
+
+export const operatorHasRecords = (operator_id: string) =>
+  invoke<boolean>("operator_has_records", { operatorId: operator_id });
+
+export const deleteOperator = (operator_id: string) =>
+  invoke<void>("delete_operator", { operatorId: operator_id });
+
+export const retireOperator = (operator_id: string, acting_operator_id: string | null) =>
+  invoke<void>("retire_operator", {
+    operatorId: operator_id,
+    actingOperatorId: acting_operator_id,
+  });
+
+export const restoreOperator = (operator_id: string, acting_operator_id: string | null) =>
+  invoke<void>("restore_operator", {
+    operatorId: operator_id,
+    actingOperatorId: acting_operator_id,
+  });
 
 export const createOperator = (display_name: string, call_sign: string | null) =>
   invoke<string>("create_operator", { displayName: display_name, callSign: call_sign });
@@ -155,6 +178,13 @@ export const archiveActivity = (
 
 export const restoreActivity = (activity_id: string, operator_id: string | null) =>
   invoke<void>("restore_activity", { activityId: activity_id, operatorId: operator_id });
+
+// Permanent deletion (AUDIT-007): what it would erase, then erase it.
+export const activityDeletePreview = (activity_id: string) =>
+  invoke<DeletedCounts>("activity_delete_preview", { activityId: activity_id });
+
+export const deleteActivity = (activity_id: string, operator_id: string | null) =>
+  invoke<DeletedCounts>("delete_activity", { activityId: activity_id, operatorId: operator_id });
 
 export const createCheckin = (
   activity_id: string,

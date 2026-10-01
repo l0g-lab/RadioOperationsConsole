@@ -44,7 +44,11 @@ export default function App() {
   const refreshOperators = useCallback(() => {
     api.listOperators().then((ops) => {
       setOperators(ops);
-      setSelectedOperatorId((prev) => prev ?? ops[0]?.id ?? null);
+      // A deleted or retired current operator is dropped from the list, so
+      // move to another one rather than keep pointing at them (AUDIT-014).
+      setSelectedOperatorId((prev) =>
+        prev && ops.some((o) => o.id === prev) ? prev : (ops[0]?.id ?? null)
+      );
     });
   }, []);
 

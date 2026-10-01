@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as api from "../../api";
 import { lookupCallsign } from "../../callsignLookup";
 import type { Operator } from "../../types";
@@ -7,11 +7,18 @@ import { resolveOfflineLocationAsync } from "../../locationResolution";
 
 interface Props {
   operators: Operator[];
+  /** The current operator, recorded as who retired or restored someone. */
+  selectedOperatorId: string | null;
   onOperatorsChanged: () => void;
   onSelectOperator: (id: string | null) => void;
 }
 
-export default function OperatorsPanel({ operators, onOperatorsChanged, onSelectOperator }: Props) {
+export default function OperatorsPanel({
+  operators,
+  selectedOperatorId,
+  onOperatorsChanged,
+  onSelectOperator,
+}: Props) {
   const hasOperators = operators.length > 0;
   // Collapsed by default once operators exist, so the roster isn't crowded
   // out by a form most visits don't need — but open for a brand-new setup.
@@ -22,6 +29,52 @@ export default function OperatorsPanel({ operators, onOperatorsChanged, onSelect
   const [operatorLookingUp, setOperatorLookingUp] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationEditOperator, setLocationEditOperator] = useState<Operator | null>(null);
+  // Removing: an operator nothing names is deleted; one with records can only
+  // be retired, so history keeps who did what (AUDIT-012, AUDIT-013).
+  const [removing, setRemoving] = useState<{ operator: Operator; hasRecords: boolean } | null>(
+    null
+  );
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [retired, setRetired] = useState<Operator[]>([]);
+  const [showRetired, setShowRetired] = useState(false);
+
+  useEffect(() => {
+    api
+      .listRetiredOperators()
+      .then(setRetired)
+      .catch(() => setRetired([]));
+  }, [operators]);
+
+  async function startRemove(o: Operator) {
+    setRemoveError(null);
+    try {
+      setRemoving({ operator: o, hasRecords: await api.operatorHasRecords(o.id) });
+    } catch (e) {
+      setRemoveError(String(e));
+    }
+  }
+
+  async function confirmRemove() {
+    if (!removing) return;
+    try {
+      if (removing.hasRecords) await api.retireOperator(removing.operator.id, selectedOperatorId);
+      else await api.deleteOperator(removing.operator.id);
+      setRemoving(null);
+      onOperatorsChanged();
+    } catch (e) {
+      setRemoveError(String(e));
+    }
+  }
+
+  async function handleRestore(o: Operator) {
+    setRemoveError(null);
+    try {
+      await api.restoreOperator(o.id, selectedOperatorId);
+      onOperatorsChanged();
+    } catch (e) {
+      setRemoveError(String(e));
+    }
+  }
 
   async function handleAddOperator() {
     if (!operatorName.trim()) return;
@@ -121,13 +174,72 @@ export default function OperatorsPanel({ operators, onOperatorsChanged, onSelect
               {o.location_label && ` — ${o.location_label}`}
               {o.call_sign && ` — ${o.call_sign}`}
             </span>
-            <button className="link-button" onClick={() => setLocationEditOperator(o)}>
-              Edit location
-            </button>
+            <span className="operator-row-actions">
+              <button className="link-button" onClick={() => setLocationEditOperator(o)}>
+                Edit location
+              </button>
+              <button
+                className="link-button danger-link"
+                aria-label={`Remove ${o.display_name}`}
+                onClick={() => startRemove(o)}
+              >
+                Remove
+              </button>
+            </span>
           </div>
         ))}
       </div>
+      {removing && (
+        <div className="confirm-row">
+          {removing.hasRecords ? (
+            <p>
+              {removing.operator.display_name} is named on check-ins, reports, or history, so they
+              can't be deleted without losing who did what. Retire them instead? They'll be hidden
+              from operator lists, and history keeps their name. You can restore them later.
+            </p>
+          ) : (
+            <p>
+              Delete {removing.operator.display_name} permanently? They haven't been recorded on
+              anything, so nothing else changes. This cannot be undone.
+            </p>
+          )}
+          <div className="inline-form">
+            {removing.hasRecords ? (
+              <button onClick={confirmRemove}>Retire</button>
+            ) : (
+              <button className="danger" onClick={confirmRemove}>
+                Delete permanently
+              </button>
+            )}
+            <button onClick={() => setRemoving(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {removeError && <p className="weather-area-error">{removeError}</p>}
       {locationError && <p className="weather-area-error">{locationError}</p>}
+      {retired.length > 0 && (
+        <>
+          <button className="link-button" onClick={() => setShowRetired((v) => !v)}>
+            {showRetired ? "Hide retired" : `Show retired (${retired.length})`}
+          </button>
+          {showRetired &&
+            retired.map((o) => (
+              <div key={o.id} className="operator-row">
+                <span className="settings-hint">
+                  {o.display_name}
+                  {o.call_sign && ` — ${o.call_sign}`}
+                </span>
+                <button
+                  className="link-button"
+                  aria-label={`Restore ${o.display_name}`}
+                  onClick={() => handleRestore(o)}
+                >
+                  Restore
+                </button>
+              </div>
+            ))}
+        </>
+      )}
 
       {showAddForm && (
         <>

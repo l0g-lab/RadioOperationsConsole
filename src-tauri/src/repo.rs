@@ -141,6 +141,13 @@ pub struct HistoryEvent {
     pub created_at: String,
 }
 
+/// How many records an activity holds, or held before it was deleted.
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+pub struct DeletedCounts {
+    pub checkins: u32,
+    pub spotter_reports: u32,
+}
+
 impl Repository {
     pub fn new(conn: Connection) -> Self {
         Self { conn }
@@ -162,7 +169,7 @@ impl Repository {
 
     pub fn list_operators(&self) -> rusqlite::Result<Vec<Operator>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, display_name, coalesce(call_sign,''), coalesce(location_label,''), location_lat, location_lon FROM operators ORDER BY display_name",
+            "SELECT id, display_name, coalesce(call_sign,''), coalesce(location_label,''), location_lat, location_lon FROM operators WHERE retired_at IS NULL ORDER BY display_name",
         )?;
         let rows = stmt.query_map([], |r| {
             Ok(Operator {
@@ -209,6 +216,66 @@ impl Repository {
             "UPDATE operators SET location_label = ?1, location_lat = ?2, location_lon = ?3 WHERE id = ?4",
             params![location_label, location_lat, location_lon, id],
         )?;
+        Ok(())
+    }
+
+    /// Retired operators: hidden from lists and pickers, kept for history (AUDIT-013).
+    pub fn list_retired_operators(&self) -> rusqlite::Result<Vec<Operator>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, display_name, coalesce(call_sign,''), coalesce(location_label,''), location_lat, location_lon FROM operators WHERE retired_at IS NOT NULL ORDER BY display_name",
+        )?;
+        let rows = stmt.query_map([], |r| {
+            Ok(Operator {
+                id: r.get(0)?,
+                display_name: r.get(1)?,
+                call_sign: r.get(2)?,
+                location_label: r.get(3)?,
+                location_lat: r.get(4)?,
+                location_lon: r.get(5)?,
+            })
+        })?;
+        rows.collect()
+    }
+
+    /// Whether anything names this operator: a check-in, a spotter report, or
+    /// a history event (other than the operator's own retire/restore events).
+    pub fn operator_has_records(&self, id: &str) -> rusqlite::Result<bool> {
+        self.conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM checkins WHERE operator_id = ?1) \
+                 OR EXISTS(SELECT 1 FROM spotter_reports WHERE operator_id = ?1) \
+                 OR EXISTS(SELECT 1 FROM audit_events WHERE operator_id = ?1 \
+                           AND NOT (entity_type = 'operator' AND entity_id = ?1))",
+            params![id],
+            |r| r.get(0),
+        )
+    }
+
+    /// Permanently deletes an operator nothing names (AUDIT-012). One with
+    /// records can only be retired (AUDIT-013), so this refuses.
+    pub fn delete_operator(&self, id: &str) -> Result<(), String> {
+        if self.operator_has_records(id).map_err(|e| e.to_string())? {
+            return Err(
+                "This operator has been recorded on check-ins, reports, or history, so they can only be retired.".into(),
+            );
+        }
+        let tx = self.conn.unchecked_transaction().map_err(|e| e.to_string())?;
+        tx.execute("DELETE FROM audit_events WHERE entity_type = 'operator' AND entity_id = ?1", params![id])
+            .map_err(|e| e.to_string())?;
+        let n = tx.execute("DELETE FROM operators WHERE id = ?1", params![id]).map_err(|e| e.to_string())?;
+        if n == 0 {
+            return Err("That operator no longer exists.".into());
+        }
+        tx.commit().map_err(|e| e.to_string())
+    }
+
+    pub fn retire_operator(&self, id: &str) -> rusqlite::Result<()> {
+        let now = Utc::now().to_rfc3339();
+        self.conn.execute("UPDATE operators SET retired_at = ?1 WHERE id = ?2", params![now, id])?;
+        Ok(())
+    }
+
+    pub fn restore_operator(&self, id: &str) -> rusqlite::Result<()> {
+        self.conn.execute("UPDATE operators SET retired_at = NULL WHERE id = ?1", params![id])?;
         Ok(())
     }
 
@@ -414,6 +481,55 @@ impl Repository {
             params![title, Self::clean_activity_type(activity_type), scheduled_at, frequency, id],
         )?;
         Ok(())
+    }
+
+    /// What deleting this activity would erase: all its check-ins (removed
+    /// ones too) and spotter reports (AUDIT-008).
+    pub fn activity_contents(&self, id: &str) -> rusqlite::Result<DeletedCounts> {
+        self.conn.query_row(
+            "SELECT (SELECT count(*) FROM checkins WHERE activity_id = ?1), \
+                    (SELECT count(*) FROM spotter_reports WHERE activity_id = ?1)",
+            params![id],
+            |r| Ok(DeletedCounts { checkins: r.get(0)?, spotter_reports: r.get(1)? }),
+        )
+    }
+
+    /// Permanently erases an activity with its check-ins, spotter reports, and
+    /// all history on them (AUDIT-007), leaving one event that says it was
+    /// deleted, by whom, with its title and counts only (AUDIT-010). The
+    /// database runs with `secure_delete` on, and the WAL is checkpointed so
+    /// the erased text isn't left in it either (AUDIT-009).
+    pub fn delete_activity_permanently(
+        &self,
+        id: &str,
+        operator_id: Option<&str>,
+    ) -> Result<DeletedCounts, String> {
+        let activity = self.get_activity(id).map_err(|_| "That activity no longer exists.".to_string())?;
+        let counts = self.activity_contents(id).map_err(|e| e.to_string())?;
+        let tx = self.conn.unchecked_transaction().map_err(|e| e.to_string())?;
+        for sql in [
+            "DELETE FROM audit_events WHERE entity_id = ?1 \
+                OR entity_id IN (SELECT id FROM checkins WHERE activity_id = ?1) \
+                OR entity_id IN (SELECT id FROM spotter_reports WHERE activity_id = ?1)",
+            "DELETE FROM spotter_reports WHERE activity_id = ?1",
+            "DELETE FROM checkins WHERE activity_id = ?1",
+            "DELETE FROM activities WHERE id = ?1",
+        ] {
+            tx.execute(sql, params![id]).map_err(|e| e.to_string())?;
+        }
+        tx.commit().map_err(|e| e.to_string())?;
+        let data = serde_json::json!({
+            "title": activity.title,
+            "checkins": counts.checkins,
+            "spotter_reports": counts.spotter_reports,
+        })
+        .to_string();
+        self.create_audit_event("activity", id, "delete_permanently", Some(&data), operator_id)
+            .map_err(|e| e.to_string())?;
+        self.conn
+            .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))
+            .map_err(|e| e.to_string())?;
+        Ok(counts)
     }
 
     pub fn archive_activity(&self, id: &str) -> rusqlite::Result<()> {
@@ -1088,4 +1204,169 @@ mod lifecycle_tests {
         assert_eq!(r.get_activity(&id).unwrap().activity_type, "directed_net");
     }
 
+}
+
+#[cfg(test)]
+mod deletion_tests {
+    use super::*;
+
+    fn repo_at() -> (Repository, std::path::PathBuf) {
+        let path = std::env::temp_dir().join(format!("roc-del-{}.db", Uuid::new_v4()));
+        (Repository::new(crate::db::open_db(&path).unwrap()), path)
+    }
+
+    fn repo() -> Repository {
+        repo_at().0
+    }
+
+    /// An activity with a check-in (later removed), another check-in, a spotter
+    /// report linked to it, and history on each.
+    fn populated(r: &Repository, op: &str) -> (String, String, String) {
+        let a = r.create_activity("Storm Net", "skywarn", None, None).unwrap();
+        let c = r
+            .create_checkin(&a, "ZZ9SECRET", Some("Secret Person"), None, None, Some("99 Hidden Lane"), Some(op), None, None, None, false, None)
+            .unwrap();
+        let c2 = r.create_checkin(&a, "W1AW", None, None, None, None, Some(op), None, None, None, false, None).unwrap();
+        r.void_checkin(&c2, Some("dup")).unwrap();
+        let s = r
+            .create_spotter_report(&a, "2026-09-21T19:00", None, None, None, None, Some("ZZ9SECRET"), "hail", None, None, Some("Secret notes"), Some(&c), Some(op))
+            .unwrap();
+        r.create_audit_event("checkin", &c, "correct", Some("{\"before\":\"Secret Person\"}"), Some(op)).unwrap();
+        r.create_audit_event("spotter_report", &s, "correct", Some("{}"), Some(op)).unwrap();
+        r.create_audit_event("activity", &a, "activity_entry", Some("Net opened"), Some(op)).unwrap();
+        (a, c, s)
+    }
+
+    fn count(r: &Repository, sql: &str, id: &str) -> i64 {
+        r.conn.query_row(sql, params![id], |row| row.get(0)).unwrap()
+    }
+
+    #[test]
+    fn previews_what_an_activity_delete_will_erase() {
+        let r = repo();
+        let op = r.create_operator("Pat", Some("K8ABC")).unwrap();
+        let (a, _, _) = populated(&r, &op);
+        assert_eq!(r.activity_contents(&a).unwrap(), DeletedCounts { checkins: 2, spotter_reports: 1 });
+    }
+
+    #[test]
+    fn deleting_an_activity_erases_it_and_everything_recorded_on_it() {
+        let r = repo();
+        let op = r.create_operator("Pat", Some("K8ABC")).unwrap();
+        let (a, c, s) = populated(&r, &op);
+        let other = r.create_activity("Other Net", "simple_net", None, None).unwrap();
+        let kept = r.create_checkin(&other, "N0KEEP", None, None, None, None, Some(&op), None, None, None, false, None).unwrap();
+
+        let counts = r.delete_activity_permanently(&a, Some(&op)).unwrap();
+        assert_eq!(counts, DeletedCounts { checkins: 2, spotter_reports: 1 });
+
+        assert!(r.get_activity(&a).is_err());
+        assert_eq!(count(&r, "SELECT count(*) FROM checkins WHERE activity_id = ?1", &a), 0);
+        assert_eq!(count(&r, "SELECT count(*) FROM spotter_reports WHERE activity_id = ?1", &a), 0);
+        for id in [&c, &s] {
+            assert_eq!(count(&r, "SELECT count(*) FROM audit_events WHERE entity_id = ?1", id), 0);
+        }
+        // Other activities are untouched.
+        assert_eq!(count(&r, "SELECT count(*) FROM checkins WHERE id = ?1", &kept), 1);
+        assert!(r.get_activity(&other).is_ok());
+    }
+
+    #[test]
+    fn leaves_one_event_saying_what_was_deleted_without_the_content() {
+        let r = repo();
+        let op = r.create_operator("Pat", Some("K8ABC")).unwrap();
+        let (a, _, _) = populated(&r, &op);
+        r.delete_activity_permanently(&a, Some(&op)).unwrap();
+
+        let events = r.list_audit_events(&a).unwrap();
+        assert_eq!(events.len(), 1, "{events:?}");
+        assert_eq!(events[0].action, "delete_permanently");
+        let data: serde_json::Value = serde_json::from_str(&events[0].data).unwrap();
+        assert_eq!(data["title"], "Storm Net");
+        assert_eq!(data["checkins"], 2);
+        assert_eq!(data["spotter_reports"], 1);
+        assert!(!events[0].data.contains("SECRET"));
+        let by: Option<String> = r
+            .conn
+            .query_row("SELECT operator_id FROM audit_events WHERE entity_id = ?1", params![a], |row| row.get(0))
+            .unwrap();
+        assert_eq!(by.as_deref(), Some(op.as_str()));
+    }
+
+    #[test]
+    fn erased_text_is_overwritten_in_the_database_file() {
+        let (r, path) = repo_at();
+        let op = r.create_operator("Pat", None).unwrap();
+        let (a, _, _) = populated(&r, &op);
+        r.delete_activity_permanently(&a, Some(&op)).unwrap();
+
+        let mut bytes = std::fs::read(&path).unwrap();
+        bytes.extend(std::fs::read(path.with_extension("db-wal")).unwrap_or_default());
+        let has = |needle: &str| bytes.windows(needle.len()).any(|w| w == needle.as_bytes());
+        for secret in ["ZZ9SECRET", "Secret Person", "99 Hidden Lane", "Secret notes"] {
+            assert!(!has(secret), "{secret} still on disk");
+        }
+    }
+
+    #[test]
+    fn deleting_a_missing_activity_is_an_error() {
+        let r = repo();
+        assert!(r.delete_activity_permanently("nope", None).is_err());
+    }
+
+    #[test]
+    fn an_operator_with_no_records_can_be_deleted() {
+        let r = repo();
+        let op = r.create_operator("Typo", Some("K8ABX")).unwrap();
+        assert!(!r.operator_has_records(&op).unwrap());
+        r.delete_operator(&op).unwrap();
+        assert!(r.get_operator(&op).is_err());
+    }
+
+    #[test]
+    fn an_operator_with_records_cannot_be_deleted_only_retired() {
+        let r = repo();
+        let op = r.create_operator("Pat", Some("K8ABC")).unwrap();
+        let a = r.create_activity("Net", "simple_net", None, None).unwrap();
+        r.create_checkin(&a, "W1AW", None, None, None, None, Some(&op), None, None, None, false, None).unwrap();
+        assert!(r.operator_has_records(&op).unwrap());
+        assert!(r.delete_operator(&op).is_err());
+        assert!(r.get_operator(&op).is_ok());
+
+        r.retire_operator(&op).unwrap();
+        assert!(r.list_operators().unwrap().iter().all(|o| o.id != op), "hidden from lists");
+        assert_eq!(r.list_retired_operators().unwrap()[0].id, op);
+        assert_eq!(r.get_operator(&op).unwrap().display_name, "Pat", "still resolvable for history");
+
+        r.restore_operator(&op).unwrap();
+        assert!(r.list_operators().unwrap().iter().any(|o| o.id == op));
+        assert!(r.list_retired_operators().unwrap().is_empty());
+    }
+
+    #[test]
+    fn history_entries_or_reports_also_count_as_records() {
+        let r = repo();
+        let by_event = r.create_operator("A", None).unwrap();
+        r.create_audit_event("activity", "x", "activity_entry", None, Some(&by_event)).unwrap();
+        assert!(r.operator_has_records(&by_event).unwrap());
+
+        let by_report = r.create_operator("B", None).unwrap();
+        let a = r.create_activity("Net", "skywarn", None, None).unwrap();
+        r.create_spotter_report(&a, "2026-09-21T19:00", None, None, None, None, None, "hail", None, None, None, None, Some(&by_report))
+            .unwrap();
+        assert!(r.operator_has_records(&by_report).unwrap());
+    }
+
+    #[test]
+    fn retiring_and_restoring_alone_dont_make_an_operator_undeletable() {
+        let r = repo();
+        let op = r.create_operator("Typo", None).unwrap();
+        r.retire_operator(&op).unwrap();
+        r.create_audit_event("operator", &op, "retire", None, Some(&op)).unwrap();
+        r.restore_operator(&op).unwrap();
+        r.create_audit_event("operator", &op, "restore", None, Some(&op)).unwrap();
+        assert!(!r.operator_has_records(&op).unwrap());
+        r.delete_operator(&op).unwrap();
+        assert_eq!(count(&r, "SELECT count(*) FROM audit_events WHERE entity_id = ?1", &op), 0);
+    }
 }

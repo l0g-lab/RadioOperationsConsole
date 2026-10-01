@@ -84,6 +84,22 @@ button.primary:hover {
   filter: brightness(1.12);
 }
 
+button.danger {
+  border-color: var(--danger, #e05252);
+  color: var(--danger, #e05252);
+  font-weight: 600;
+}
+
+button.danger:hover:not(:disabled) {
+  background: var(--danger, #e05252);
+  color: var(--bg);
+}
+
+button.danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .unsaved-status {
   color: var(--warning, #e8a33d);
   font-weight: 600;
@@ -257,6 +273,12 @@ select {
   border: none;
 }
 
+/* A destructive text action (e.g. Remove), set apart from its neighbours by colour. */
+.link-button.danger-link,
+.link-button.danger-link:hover {
+  color: var(--danger, #e05252);
+}
+
 .link-button:disabled {
   color: var(--border);
   text-decoration: none;
@@ -370,6 +392,12 @@ details > summary {
   gap: 8px;
   padding: 4px 2px;
   border-bottom: 1px solid var(--border);
+}
+
+.operator-row-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 16px;
 }
 
 /* ============================================================

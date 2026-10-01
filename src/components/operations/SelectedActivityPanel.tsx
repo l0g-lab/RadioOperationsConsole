@@ -6,6 +6,7 @@ import ActivitySummaryPanel from "./ActivitySummaryPanel";
 import ActivityTypeSelect from "./ActivityTypeSelect";
 import { activityTypeLabel } from "../../activityTypes";
 import LocationPicker from "../LocationPicker";
+import DeleteActivityDialog from "../lifecycle/DeleteActivityDialog";
 import { formatCoordsWithGrid } from "../../geo";
 import { combineScheduledAt, splitScheduledAt } from "../../utils";
 
@@ -22,7 +23,7 @@ interface Props {
 }
 
 /**
- * Edit, archive, and per-activity location controls for the selected
+ * Edit, archive, delete, and per-activity location controls for the selected
  * activity. Which activity is selected is chosen in the top bar (or the list
  * beside this panel); this is where it's managed.
  */
@@ -46,6 +47,7 @@ export default function SelectedActivityPanel({
   const [editFrequency, setEditFrequency] = useState("");
   const [archivingFocused, setArchivingFocused] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
+  const [deletingFocused, setDeletingFocused] = useState(false);
   const [activityLocationError, setActivityLocationError] = useState<string | null>(null);
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   const [locationSectionOverride, setLocationSectionOverride] = useState<boolean | null>(null);
@@ -191,6 +193,9 @@ export default function SelectedActivityPanel({
             >
               Save as template
             </button>
+            <button className="danger" onClick={() => setDeletingFocused(true)}>
+              Delete…
+            </button>
             {templateSavedName && (
               <span className="qrz-status qrz-status-found">
                 Saved template “{templateSavedName}”
@@ -312,6 +317,19 @@ export default function SelectedActivityPanel({
           <button onClick={confirmArchiveFocused}>Confirm archive</button>
           <button onClick={cancelArchiveFocused}>Cancel</button>
         </div>
+      )}
+
+      {deletingFocused && focusedActivity && (
+        <DeleteActivityDialog
+          activity={focusedActivity}
+          operatorId={selectedOperatorId}
+          onClose={() => setDeletingFocused(false)}
+          onDeleted={() => {
+            setDeletingFocused(false);
+            // The deleted activity drops out of the list, and focus moves on (AUDIT-011).
+            onActivitiesChanged();
+          }}
+        />
       )}
 
       {showActivityPicker && focusedActivity && (

@@ -1,6 +1,6 @@
 use super::{AppState, ERR_OFFLINE};
 use crate::connectors;
-use crate::repo::{Activity, ActivitySummary, ActivityTemplate};
+use crate::repo::{Activity, ActivitySummary, ActivityTemplate, DeletedCounts};
 use tauri::State;
 
 #[tauri::command]
@@ -195,6 +195,26 @@ pub fn restore_activity(
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// What permanently deleting an activity would erase, for the confirmation (AUDIT-008).
+#[tauri::command]
+pub fn activity_delete_preview(state: State<AppState>, activity_id: String) -> Result<DeletedCounts, String> {
+    state.repo.lock().unwrap().activity_contents(&activity_id).map_err(|e| e.to_string())
+}
+
+/// Permanently erases an activity and everything recorded on it (AUDIT-007).
+#[tauri::command]
+pub fn delete_activity(
+    state: State<AppState>,
+    activity_id: String,
+    operator_id: Option<String>,
+) -> Result<DeletedCounts, String> {
+    state
+        .repo
+        .lock()
+        .unwrap()
+        .delete_activity_permanently(&activity_id, operator_id.as_deref())
 }
 
 #[tauri::command]

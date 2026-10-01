@@ -114,8 +114,10 @@ profiles — happens in the tab's main content, not the sidebar.
 
 ## Activity correction and archival
 
-Per `AUDIT-003`, retiring an activity is always archival, not deletion — the
-underlying record and its check-ins remain intact.
+Per `AUDIT-003`, retiring an activity is archival, not deletion — the
+underlying record and its check-ins remain intact. Permanent deletion is a
+separate, explicitly confirmed action (`AUDIT-007`–`AUDIT-011`), offered both
+for the selected activity and in the archived list.
 
 - **UX-OPS-010:** The operator MUST be able to correct an activity's title,
   scheduled date and time, channel/frequency (`NETOPS-040`), and location
