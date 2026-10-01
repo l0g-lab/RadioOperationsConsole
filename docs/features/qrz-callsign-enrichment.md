@@ -66,6 +66,13 @@ login without that subscription will authenticate but fail lookups.
   delay or block saving a check-in.
 - **QRZ-021:** A successful lookup SHOULD prefill the check-in Name field
   only when the operator has not already entered a name for that entry.
+- **QRZ-037:** The type-as-you-go lookup MUST wait for a pause in typing long
+  enough (about 0.8 s) that a brief hesitation partway through a call sign does
+  not look up the partial call. If the call sign changes after a lookup has
+  filled fields (for example `KR4H` filled, then typing continues to `KR4HGY`),
+  every value that lookup supplied and the operator has not edited MUST be
+  cleared and the new call sign looked up. Values the operator entered MUST be
+  kept.
 - **QRZ-022:** The operator MUST be able to edit or clear a QRZ-suggested
   name before saving. The suggestion MUST NOT be written to the record
   through any path other than the normal save action the operator triggers.

@@ -25,7 +25,9 @@ interface Props {
 
 type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
 
-const QRZ_LOOKUP_DEBOUNCE_MS = 400;
+// Long enough that a pause mid-call ("KR4H…GY") doesn't look up the partial
+// call, short enough that the result is there by the time the name is needed.
+const QRZ_LOOKUP_DEBOUNCE_MS = 800;
 const QRZ_LOOKUP_MIN_LENGTH = 3;
 
 /** The rapid check-in entry row: call sign/name/QTH/grid/address plus type-as-you-go QRZ lookup. */
@@ -67,6 +69,17 @@ export default function CheckinEntryForm({
   const [fileLacksStreet, setFileLacksStreet] = useState(false);
   const callSignRef = useRef<HTMLInputElement>(null);
   const qrzRequestedForRef = useRef<string | null>(null);
+  // What the last lookup filled in, and for which call sign. When the call
+  // sign changes (typing went on after a pause: "KR4H" → "KR4HGY"), those
+  // values belong to another station; any the operator hasn't edited are
+  // cleared so the new call is looked up (QRZ-037).
+  const autoFilledRef = useRef<{
+    call: string;
+    name: string | null;
+    qth: string | null;
+    grid: string | null;
+    address: string | null;
+  } | null>(null);
 
   useEffect(() => {
     if (coordsEditedRef.current) return;
@@ -149,12 +162,34 @@ export default function CheckinEntryForm({
       resetCoords();
       setQrzStatus("idle");
       qrzRequestedForRef.current = null;
+      autoFilledRef.current = null;
       return;
+    }
+    // Values on screen as of this call sign, after dropping any that were
+    // filled for a different one.
+    let current = { name, qth: qthLocation, grid: gridSquare, address };
+    const filled = autoFilledRef.current;
+    if (filled && filled.call !== call) {
+      autoFilledRef.current = null;
+      const keep = (value: string, auto: string | null) =>
+        auto !== null && value === auto ? "" : value;
+      current = {
+        name: keep(name, filled.name),
+        qth: keep(qthLocation, filled.qth),
+        grid: keep(gridSquare, filled.grid),
+        address: keep(address, filled.address),
+      };
+      setName(current.name);
+      setQthLocation(current.qth);
+      setGridSquare(current.grid);
+      setAddress(current.address);
+      setQrzExact(null);
+      setQrzStatus("idle");
     }
     if (
       // A GMRS call sign is always looked up, so a missing GMRS file can be pointed out.
       !(qrzConfigured || offlineCallsAvailable || callSignService(call) === "gmrs") ||
-      name.trim() ||
+      current.name.trim() ||
       call.length < QRZ_LOOKUP_MIN_LENGTH
     ) {
       setQrzStatus("idle");
@@ -174,10 +209,22 @@ export default function CheckinEntryForm({
           setLookupSource(outcome.source);
           setFileLacksStreet(Boolean(outcome.fileLacksStreet));
           setQrzStatus("found");
-          if (!name.trim() && result.name) setName(result.name);
-          if (!qthLocation.trim() && result.qth_location) setQthLocation(result.qth_location);
-          if (!gridSquare.trim() && result.grid_square) setGridSquare(result.grid_square);
-          if (!address.trim() && result.address) setAddress(result.address);
+          // Only blank fields are filled; remember just those, so a field the
+          // operator typed is never mistaken for a lookup's and cleared.
+          const fill = (value: string, found: string | null) =>
+            !value.trim() && found ? found : null;
+          const auto = {
+            call,
+            name: fill(current.name, result.name),
+            qth: fill(current.qth, result.qth_location),
+            grid: fill(current.grid, result.grid_square),
+            address: fill(current.address, result.address),
+          };
+          autoFilledRef.current = auto;
+          if (auto.name !== null) setName(auto.name);
+          if (auto.qth !== null) setQthLocation(auto.qth);
+          if (auto.grid !== null) setGridSquare(auto.grid);
+          if (auto.address !== null) setAddress(auto.address);
           if (result.exact_lat != null && result.exact_lon != null) {
             setQrzExact({ lat: result.exact_lat, lon: result.exact_lon });
           }
@@ -211,6 +258,7 @@ export default function CheckinEntryForm({
     resetCoords();
     setQrzStatus("idle");
     qrzRequestedForRef.current = null;
+    autoFilledRef.current = null;
   }
 
   async function handleSaveCheckin() {
