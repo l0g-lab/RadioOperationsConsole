@@ -84,10 +84,13 @@ export default function CallsignDirectoryRow({
   def,
   otherBusy,
   onBusyChange,
+  onChanged,
 }: {
   def: CallsignDirectoryDef;
   otherBusy: boolean;
   onBusyChange: (busy: boolean) => void;
+  /** The file on disk was downloaded or removed. */
+  onChanged?: () => void;
 }) {
   const [status, setStatus] = useState<CallsignPackStatus | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -136,6 +139,7 @@ export default function CallsignDirectoryRow({
     } finally {
       setProgress(null);
       onBusyChange(false);
+      onChanged?.();
     }
   }
 
@@ -143,6 +147,7 @@ export default function CallsignDirectoryRow({
     setMessage(null);
     try {
       setStatus(await api.removeCallsignPack(def.service));
+      onChanged?.();
     } catch (e) {
       setMessage({ kind: "error", text: String(e) });
     }

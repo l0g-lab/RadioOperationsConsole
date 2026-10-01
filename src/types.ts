@@ -384,3 +384,17 @@ export interface HistoryEvent {
   operator: string;
   created_at: string;
 }
+
+/** Something kept on this computer besides the records (STORE-001). */
+export type StorageItemId =
+  | "callsigns-amateur"
+  | "callsigns-gmrs"
+  | "road-data"
+  | "partial-downloads"
+  | "restore-copies";
+
+export interface StorageItem {
+  id: StorageItemId;
+  files: number;
+  bytes: number;
+}

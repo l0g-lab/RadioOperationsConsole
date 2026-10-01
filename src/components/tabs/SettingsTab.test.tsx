@@ -20,6 +20,7 @@ vi.mock("../../api", () => ({
 }));
 vi.mock("../settings/BackupPanel", () => ({ default: () => null }));
 vi.mock("../settings/OfflineDataPanel", () => ({ default: () => null }));
+vi.mock("../settings/StoragePanel", () => ({ default: () => null }));
 
 import * as api from "../../api";
 import SettingsTab from "./SettingsTab";

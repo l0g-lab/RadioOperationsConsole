@@ -19,6 +19,8 @@ import type {
   Operator,
   QrzLookupResponse,
   SpotterReport,
+  StorageItem,
+  StorageItemId,
 } from "./types";
 
 export const listOperators = () => invoke<Operator[]>("list_operators");
@@ -444,6 +446,12 @@ export const removeCallsignPack = (service: LicenseService) =>
 
 export const lookupCallsignOffline = (call_sign: string, service: LicenseService) =>
   invoke<OfflineCallLookup>("lookup_callsign_offline", { callSign: call_sign, service });
+
+// What's kept on this computer besides the records (STORE-001), and clearing it.
+export const storageUsage = () => invoke<StorageItem[]>("storage_usage");
+
+export const clearStorage = (id: StorageItemId) =>
+  invoke<StorageItem[]>("clear_storage", { id });
 
 export const backupDatabase = (path: string) => invoke<BackupSummary>("backup_database", { path });
 

@@ -41,7 +41,7 @@ function formatUpdated(iso: string): string {
  * online add-on that downloads the latest data from the public source and
  * rebuilds the local copy, so it can be taken to places with no internet.
  */
-export default function OfflineDataPanel() {
+export default function OfflineDataPanel({ onChanged }: { onChanged?: () => void }) {
   const [packs, setPacks] = useState<DataPackInfo[]>([]);
   const [status, setStatus] = useState<Record<string, Status>>({});
   const [updatingAll, setUpdatingAll] = useState(false);
@@ -70,6 +70,7 @@ export default function OfflineDataPanel() {
         ),
       ]);
       setPacks((ps) => ps.map((p) => (p.id === id ? info : p)));
+      onChanged?.();
       setStatus((s) => ({
         ...s,
         [id]: {
@@ -164,6 +165,7 @@ export default function OfflineDataPanel() {
             def={def}
             otherBusy={callsBusy !== null && callsBusy !== def.service}
             onBusyChange={(busy) => setCallsBusy(busy ? def.service : null)}
+            onChanged={onChanged}
           />
         ))}
       </div>

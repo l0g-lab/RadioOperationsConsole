@@ -11,6 +11,14 @@ pub struct RestoreResult {
     pub summary: BackupSummary,
 }
 
+/// Where "before restore" safety copies are kept: `backups/` next to the database.
+pub(super) fn safety_dir(repo: &crate::repo::Repository) -> Result<PathBuf, String> {
+    repo.conn
+        .path()
+        .map(|p| Path::new(p).parent().unwrap_or(Path::new(".")).join("backups"))
+        .ok_or_else(|| "Couldn't find the database folder.".to_string())
+}
+
 /// Writes a backup of the whole database to `path`.
 #[tauri::command]
 pub fn backup_database(state: State<AppState>, path: String) -> Result<BackupSummary, String> {
@@ -30,11 +38,7 @@ pub fn inspect_backup(path: String) -> Result<BackupSummary, String> {
 #[tauri::command]
 pub fn restore_database(state: State<AppState>, path: String) -> Result<RestoreResult, String> {
     let mut repo = state.repo.lock().unwrap();
-    let safety_dir: PathBuf = repo
-        .conn
-        .path()
-        .map(|p| Path::new(p).parent().unwrap_or(Path::new(".")).join("backups"))
-        .ok_or("Couldn't find the database folder.")?;
+    let safety_dir = safety_dir(&repo)?;
     let summary = backup::inspect(Path::new(&path))?;
     let safety = backup::restore_backup(&mut repo.conn, Path::new(&path), &safety_dir)?;
     Ok(RestoreResult {

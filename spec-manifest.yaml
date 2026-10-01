@@ -41,6 +41,7 @@ reading_order:
   - docs/features/activity-templates.md
   - docs/features/database-backup-restore.md
   - docs/features/display-preferences.md
+  - docs/features/local-storage.md
   - docs/features/activity-lifecycle-and-wrap-up.md
   - docs/features/ics-form-exports.md
   - docs/features/activity-exports.md
@@ -78,6 +79,7 @@ id_prefixes:
   ACTTPL: docs/features/activity-templates.md
   BACKUP: docs/features/database-backup-restore.md
   PREF: docs/features/display-preferences.md
+  STORE: docs/features/local-storage.md
   LIFE: docs/features/activity-lifecycle-and-wrap-up.md
   ICSF: docs/features/ics-form-exports.md
   EXPORT: docs/features/activity-exports.md
@@ -172,6 +174,10 @@ documents:
     path: docs/features/display-preferences.md
     status: draft
     depends_on: [UX, FEATURE_LOCRES]
+  - id: FEATURE_STORE
+    path: docs/features/local-storage.md
+    status: draft
+    depends_on: [UX, FEATURE_BACKUP, FEATURE_CALLDIR, FEATURE_MILE, FEATURE_CIMAP]
   - id: FEATURE_LIFE
     path: docs/features/activity-lifecycle-and-wrap-up.md
     status: draft

@@ -10,6 +10,7 @@ mod db;
 mod net;
 mod repo;
 mod routes;
+mod storage;
 
 use commands::AppState;
 use repo::Repository;
@@ -100,6 +101,8 @@ fn main() {
             commands::update_callsign_pack,
             commands::remove_callsign_pack,
             commands::lookup_callsign_offline,
+            commands::storage_usage,
+            commands::clear_storage,
             commands::lookup_qrz_callsign,
             commands::geocode_location,
         ])

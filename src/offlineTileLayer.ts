@@ -14,6 +14,31 @@ function cachingSupported(): boolean {
 }
 
 /**
+ * How many map tiles are cached and their total size (STORE-002), or null
+ * when the webview has no cache storage. Uses each response's
+ * Content-Length, reading the body only when that header is missing.
+ */
+export async function tileCacheUsage(): Promise<{ tiles: number; bytes: number } | null> {
+  if (!cachingSupported()) return null;
+  const cache = await caches.open(CACHE_NAME);
+  const requests = await cache.keys();
+  let bytes = 0;
+  for (const req of requests) {
+    const res = await cache.match(req);
+    if (!res) continue;
+    const length = Number(res.headers.get("content-length"));
+    bytes += Number.isFinite(length) && length > 0 ? length : (await res.blob()).size;
+  }
+  return { tiles: requests.length, bytes };
+}
+
+/** Deletes every cached map tile (STORE-003). */
+export async function clearTileCache(): Promise<void> {
+  if (!cachingSupported()) return;
+  await caches.delete(CACHE_NAME);
+}
+
+/**
  * Resolves a tile URL to something an <img> can display: the cached blob
  * as an object URL when available, otherwise a live fetch that also
  * populates the cache for next time. Returns null when the tile is

@@ -6,6 +6,7 @@ import { COORD_FORMAT_LABELS, getCoordFormat, setCoordFormat, type CoordFormat }
 import InfoToggle from "../settings/InfoToggle";
 import BackupPanel from "../settings/BackupPanel";
 import OfflineDataPanel from "../settings/OfflineDataPanel";
+import StoragePanel from "../settings/StoragePanel";
 
 const DEFAULT_SETTINGS: AppSettings = {
   nws_api_key: "",
@@ -24,6 +25,10 @@ export default function SettingsTab() {
   const [dirty, setDirty] = useState(false);
   const [coordFormat, setCoordFormatState] = useState<CoordFormat>(getCoordFormat);
   const [themeMode, setThemeModeState] = useState<ThemeMode>(getThemeMode);
+  // Downloading in Offline data changes what Storage measures, and clearing in
+  // Storage changes what Offline data shows: each remounts the other.
+  const [offlineKey, setOfflineKey] = useState(0);
+  const [storageKey, setStorageKey] = useState(0);
 
   useEffect(() => {
     api
@@ -180,7 +185,19 @@ export default function SettingsTab() {
         </h2>
         <p className="settings-hint">These buttons take effect immediately — no need to save.</p>
       </div>
-      <OfflineDataPanel />
+      <OfflineDataPanel key={offlineKey} onChanged={() => setStorageKey((k) => k + 1)} />
+
+      <div className="settings-section-heading">
+        <h2>
+          Storage on this computer
+          <InfoToggle label="storage on this computer">
+            Downloaded files and cached map tiles the app keeps so it works offline, with how much
+            space each takes. Clearing one frees the space; you can download or cache it again later
+            while online. Your activities and records aren't listed here and aren't affected.
+          </InfoToggle>
+        </h2>
+      </div>
+      <StoragePanel key={storageKey} onCleared={() => setOfflineKey((k) => k + 1)} />
 
       <div className="settings-section-heading">
         <h2>Your data</h2>

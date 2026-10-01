@@ -17,6 +17,7 @@ mod operators;
 mod qrz;
 mod settings;
 mod spotter_reports;
+mod storage;
 mod weather;
 
 pub use activities::*;
@@ -31,6 +32,7 @@ pub use operators::*;
 pub use qrz::*;
 pub use settings::*;
 pub use spotter_reports::*;
+pub use storage::*;
 pub use weather::*;
 
 /// Stable error sentinels the frontend matches on to decide whether to show
