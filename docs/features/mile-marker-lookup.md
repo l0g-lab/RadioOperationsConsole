@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft — implemented for Florida (Turnpike, I-95, I-75, US-1 in the Keys).
+Draft — implemented for Florida (Turnpike, I-95, I-75, US-1 in the Keys, US-41 Tamiami Trail).
 
 ## Purpose
 

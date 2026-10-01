@@ -46,6 +46,10 @@ pub struct Source {
     pub layer: &'static str,
     pub where_clause: &'static str,
     pub mile_field: &'static str,
+    /// This source numbers the road in the opposite direction from the
+    /// first (primary) source. Its miles are flipped and shifted to line up
+    /// with the primary's where the two overlap — see `align_reversed`.
+    pub reversed: bool,
 }
 
 pub struct PackDef {
@@ -70,6 +74,7 @@ pub const PACK_DEFS: &[PackDef] = &[
             layer: FDOT_SIGNS,
             where_clause: "ROADWAY IN ('87471000','86471000','86470000','93470000','89470000','94470000','88470000','92470000','92471000','75470000','11470000','18470000')",
             mile_field: "MILEPOINT",
+            reversed: false,
         }],
         seed: include_str!("../datapacks/route-fl-turnpike.json"),
     },
@@ -83,11 +88,13 @@ pub const PACK_DEFS: &[PackDef] = &[
                 layer: FDOT_SIGNS,
                 where_clause: "ROADWAY IN ('93220000','89095000','94001000','88081000','70220000','70225000','79002000','73001000','78080000','72280000','72020000','72290000','74160000')",
                 mile_field: "MILEPOINT",
+                reversed: false,
             },
             Source {
                 layer: STATE_ROAD_MARKERS,
                 where_clause: "ROUTE='SR    9'",
                 mile_field: "Mile_Marker",
+                reversed: false,
             },
         ],
         seed: include_str!("../datapacks/route-fl-i95.json"),
@@ -101,6 +108,7 @@ pub const PACK_DEFS: &[PackDef] = &[
             layer: FDOT_SIGNS,
             where_clause: "ROADWAY IN ('86075000','03175000','12075000','01075000','17075000','13075000','10075000','14140000','08150000','18130000','36210000','26260000','29180000','37130000','32100000')",
             mile_field: "MILEPOINT",
+            reversed: false,
         }],
         seed: include_str!("../datapacks/route-fl-i75.json"),
     },
@@ -113,8 +121,36 @@ pub const PACK_DEFS: &[PackDef] = &[
             layer: FDOT_SIGNS,
             where_clause: "ROADWAY IN ('90010000','90020000','90030000','90040000','90050000','90060000','87010000','87020000')",
             mile_field: "MILEPOINT",
+            reversed: false,
         }],
         seed: include_str!("../datapacks/route-fl-us1-keys.json"),
+    },
+    PackDef {
+        id: "route-fl-us41-tamiami",
+        name: "US-41 (Tamiami Trail)",
+        description: "Mile markers 3-107, Miami to Naples (as posted, counting west from Miami)",
+        aliases: &["us-41", "us 41", "sr 41", "41", "tamiami trail", "tamiami", "sr 90"],
+        // The posted signs count west from downtown Miami, but the sign
+        // inventory only has the Miami-Dade stretch (about 19-43). The rest
+        // comes from the state-road layer (US-41 here is SR 90; that layer's
+        // "SR 41" is a different road, near Plant City), which numbers the
+        // road the other way, from Naples. Its miles 1-6 are a separate
+        // downtown-Miami stretch numbered out of sequence, so they're left out.
+        sources: &[
+            Source {
+                layer: FDOT_SIGNS,
+                where_clause: "ROADWAY = '87110000'",
+                mile_field: "MILEPOINT",
+                reversed: false,
+            },
+            Source {
+                layer: STATE_ROAD_MARKERS,
+                where_clause: "ROUTE='SR   90' AND Mile_Marker >= 7",
+                mile_field: "Mile_Marker",
+                reversed: true,
+            },
+        ],
+        seed: include_str!("../datapacks/route-fl-us41-tamiami.json"),
     },
 ];
 
@@ -239,6 +275,51 @@ pub fn merge_sources(sources: Vec<Vec<Anchor>>, fill_gap_miles: f64) -> Vec<Anch
     merged
 }
 
+/// Markers from the two sources this close together are the same spot.
+const ALIGN_MATCH_MILES: f64 = 0.25;
+/// Fewer shared spots than this and the offset can't be trusted.
+const ALIGN_MIN_MATCHES: usize = 5;
+/// Shared spots should all agree on the offset to within this.
+const ALIGN_MAX_SPREAD_MILES: f64 = 0.5;
+
+/// Renumbers `other`, which counts the road in the opposite direction from
+/// `primary`, onto the primary's numbering: mile becomes `offset - mile`.
+/// The offset is worked out from the data each time (at every spot both
+/// sources have a marker, the two miles add up to the same total), so if
+/// either provider renumbers, the result follows — or the update is refused
+/// when they no longer line up, rather than putting markers in wrong places.
+pub fn align_reversed(primary: &[Anchor], other: Vec<Anchor>) -> Result<Vec<Anchor>, String> {
+    let mut sums: Vec<f64> = other
+        .iter()
+        .filter_map(|o| {
+            primary
+                .iter()
+                .map(|p| (p, haversine_miles((p.lat, p.lon), (o.lat, o.lon))))
+                .filter(|(_, d)| *d <= ALIGN_MATCH_MILES)
+                .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+                .map(|(p, _)| p.mile + o.mile)
+        })
+        .collect();
+    if sums.len() < ALIGN_MIN_MATCHES {
+        return Err(format!(
+            "The two data sources overlap too little to line up ({} shared markers).",
+            sums.len()
+        ));
+    }
+    sums.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let offset = sums[sums.len() / 2];
+    let lo = sums[sums.len() / 10];
+    let hi = sums[sums.len() - 1 - sums.len() / 10];
+    if hi - lo > ALIGN_MAX_SPREAD_MILES {
+        return Err("The two data sources number the road inconsistently.".into());
+    }
+    // Tenths, like a posted milepoint.
+    Ok(other
+        .into_iter()
+        .map(|a| Anchor { mile: ((offset - a.mile) * 10.0).round() / 10.0, ..a })
+        .collect())
+}
+
 fn round5(x: f64) -> f64 {
     (x * 100_000.0).round() / 100_000.0
 }
@@ -252,9 +333,14 @@ pub async fn build_pack(def: &PackDef, total_timeout: Duration) -> Result<RouteP
     let work = async {
         let client = net::client(CONNECT_TIMEOUT, Some(REQUEST_TIMEOUT))
             .map_err(|e| FetchError::Other(e.to_string()))?;
-        let mut fetched = Vec::new();
+        let mut fetched: Vec<Vec<Anchor>> = Vec::new();
         for src in def.sources {
-            fetched.push(fetch_source(&client, src.layer, src.where_clause, src.mile_field).await?);
+            let mut anchors = fetch_source(&client, src.layer, src.where_clause, src.mile_field).await?;
+            if src.reversed {
+                let primary = fetched.first().map(Vec::as_slice).unwrap_or(&[]);
+                anchors = align_reversed(primary, anchors).map_err(FetchError::Other)?;
+            }
+            fetched.push(anchors);
         }
         let anchors = clean_anchors(merge_sources(fetched, 3.0));
         Ok(RoutePack {
@@ -578,6 +664,48 @@ mod tests {
         assert!(merged.iter().filter(|x| x.mile == 60.0).all(|x| x.lat == 1.0));
     }
 
+    /// A straight east-west road: one marker a mile, `start..=end`, where
+    /// mile `m` sits `m` miles east (or west, when `west`) of the origin.
+    fn road(start: i32, end: i32, west: bool, reading: impl Fn(f64) -> f64) -> Vec<Anchor> {
+        (start..=end)
+            .map(|i| {
+                let east = if west { -(i as f64) } else { i as f64 };
+                Anchor { mile: reading(i as f64), lat: 25.76, lon: -80.5 + east * 0.016 }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn reversed_source_is_renumbered_onto_the_primary() {
+        // Signs count west from 19 to 43; the other source counts the same
+        // spots the opposite way (sign 19 = its 95.2).
+        let signs = road(19, 43, true, |m| m);
+        let other = road(3, 100, true, |m| 114.2 - m);
+        let aligned = align_reversed(&signs, other).unwrap();
+        for a in &aligned {
+            let at_sign = signs.iter().find(|s| (s.lon - a.lon).abs() < 1e-9);
+            if let Some(s) = at_sign {
+                assert!((s.mile - a.mile).abs() < 0.051, "{} vs {}", s.mile, a.mile);
+            }
+        }
+        // Beyond the signs it keeps counting the same way, in tenths.
+        assert!(aligned.iter().any(|a| a.mile == 100.0));
+        assert!(aligned.iter().all(|a| (a.mile * 10.0 - (a.mile * 10.0).round()).abs() < 1e-9));
+    }
+
+    #[test]
+    fn reversed_source_is_refused_when_it_cant_be_lined_up() {
+        let signs = road(19, 43, true, |m| m);
+        // Too little overlap: only 3 shared spots.
+        let short = road(41, 43, true, |m| 114.0 - m);
+        assert!(align_reversed(&signs, short).unwrap_err().contains("overlap too little"));
+        // Same spots, but the numbering isn't a consistent flip.
+        let skewed = road(19, 43, true, |m| 114.0 - m * 1.1);
+        assert!(align_reversed(&signs, skewed).unwrap_err().contains("inconsistently"));
+        // No primary at all.
+        assert!(align_reversed(&[], road(3, 100, true, |m| m)).is_err());
+    }
+
     // ---- the download path, against a throwaway local server ----
 
     /// A tiny HTTP server. The handler gets the request path+query and
@@ -713,6 +841,15 @@ mod tests {
         // I-95 exit 18 is Hallandale Beach Blvd.
         near("I-95 exit 18", 25.98, -80.166, 1.0);
         near("mile marker 18 on 95", 25.98, -80.166, 1.0);
+        // US-41 (Tamiami Trail), as posted, counting west from Miami: sign
+        // 23 is Coopertown and 43 the Miami-Dade line (from the sign
+        // inventory); beyond it, renumbered from SR 90 — the Oasis Visitor
+        // Center is posted MM 55, and the Naples end is about 107.
+        near("mile marker 23 on US 41", 25.761, -80.5604, 0.2);
+        near("MM 43 Tamiami Trail", 25.7972, -80.8646, 0.2);
+        near("mm 55 state road 41", 25.8566, -81.0338, 0.5);
+        near("mile marker 72 sr41", 25.90, -81.31, 1.0);
+        near("MM 107 us41", 26.139, -81.786, 1.0);
     }
 
     // ---- against the real provider (needs internet; run by hand) ----

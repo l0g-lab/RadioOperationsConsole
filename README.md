@@ -114,7 +114,7 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 The app is built to be taken into the field. To prepare, spend a few minutes online first:
 
 - **Map tiles** are cached as you look at them. Browse your operating area (check-in map, spotter map, location picker) at the zooms you'll need. Tiles you've never viewed stay blank offline, but pins still appear.
-- **Settings → Offline data** downloads mile-marker data for Florida's Turnpike, I-95, I-75, and US-1 (Keys) from the Florida DOT, and the FCC's U.S. call-sign databases: amateur (about 200 MB, best on Wi-Fi) and GMRS (about 55 MB). An interrupted download resumes. The amateur file is only used when QRZ isn't available; GMRS call signs are looked up only in the GMRS file, since QRZ covers amateur licenses only.
+- **Settings → Offline data** downloads mile-marker data for Florida's Turnpike, I-95, I-75, US-1 (Keys), and US-41 (Tamiami Trail) from the Florida DOT, and the FCC's U.S. call-sign databases: amateur (about 200 MB, best on Wi-Fi) and GMRS (about 55 MB). An interrupted download resumes. The amateur file is only used when QRZ isn't available; GMRS call signs are looked up only in the GMRS file, since QRZ covers amateur licenses only.
 - **Settings → Backup & Restore** saves everything you've entered to one file. Restoring replaces the current data — a safety copy is kept first, so it can be undone.
 
 | Works with no internet | Needs internet |
