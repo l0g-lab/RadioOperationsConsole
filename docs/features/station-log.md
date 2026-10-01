@@ -44,8 +44,8 @@ or end, and each record is a contact carrying its radio details.
   or edited; it is saved with none. Changing an activity's type to station
   log clears its date (the earlier date stays in its history).
 - **LOG-005:** The activity sidebar MUST list station logs in their own
-  "Station logs" group, first and alphabetically, apart from the nets, which
-  stay grouped by date (newest first) with undated ones last.
+  "Station logs" group, alphabetically, whatever their state, apart from the
+  nets (see `UX-OPS-015`).
 
 ## Contacts
 

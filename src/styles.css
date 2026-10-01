@@ -159,6 +159,17 @@ select {
   min-height: 0;
 }
 
+.sidebar-filter {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+/* "(14)" after a sidebar group's name. */
+.sidebar-count {
+  color: var(--text-dim);
+  font-weight: normal;
+}
+
 .ops-sidebar {
   width: 260px;
   flex-shrink: 0;

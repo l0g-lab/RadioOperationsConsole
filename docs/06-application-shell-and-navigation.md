@@ -116,6 +116,17 @@ profiles — happens in the tab's main content, not the sidebar.
   clickable list of open (non-archived) activities used to change the
   focused activity. It MUST NOT contain activity or operator creation,
   editing, or archival controls.
+- **UX-OPS-015:** The sidebar MUST group activities by what is happening,
+  not by date, in this order: **Open now** (started, not ended; each with
+  when it opened), **Station logs** (`LOG-005`), **Upcoming** (not started;
+  soonest first, undated last; each with its day and time), and **Closed**
+  (most recently closed first; each with the day it closed). Each group
+  MUST show how many it holds; empty groups are left out.
+- **UX-OPS-016:** Groups MUST be foldable, with Closed folded by default, and
+  which are folded MUST be remembered on this computer.
+- **UX-OPS-017:** The sidebar MUST offer a filter by title. While filtering,
+  every group with a match MUST be shown open, and a filter with no matches
+  MUST say so.
 - **UX-OPS-003:** The focused activity MUST be chosen from a selector in the
   application header, visible on every tab, listing each open activity with
   its date and time so same-titled activities can be told apart. Other tabs
