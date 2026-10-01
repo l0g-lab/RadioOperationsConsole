@@ -79,6 +79,8 @@ pub struct AppState {
         Mutex<std::collections::HashMap<crate::callsigns::Service, std::sync::Arc<crate::callsigns::CallDb>>>,
     /// One FCC download at a time, whichever directory it's for.
     pub callsign_update_running: std::sync::atomic::AtomicBool,
+    /// Set by Cancel; the running download notices and stops (CALLDIR-037).
+    pub callsign_update_cancel: std::sync::atomic::AtomicBool,
 }
 
 impl AppState {
@@ -103,6 +105,7 @@ impl AppState {
             datapacks_dir,
             callsign_dbs: Mutex::new(std::collections::HashMap::new()),
             callsign_update_running: std::sync::atomic::AtomicBool::new(false),
+            callsign_update_cancel: std::sync::atomic::AtomicBool::new(false),
         }
     }
 }

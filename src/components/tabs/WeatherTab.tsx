@@ -3,6 +3,7 @@ import * as api from "../../api";
 import type { AppSettings } from "../../types";
 import { ERR_OFFLINE } from "../../types";
 import { offlineMessage } from "../../workOffline";
+import { pad2 } from "../../utils";
 import RadarPanel from "../RadarPanel";
 import LocationPicker from "../LocationPicker";
 
@@ -43,6 +44,16 @@ function severityColor(severity: string): string {
   }
 }
 
+/** "Fetched 19:04" (local time), so it's clear how fresh what's shown is. */
+function FetchedAt({ at }: { at: Date | null }) {
+  if (!at) return null;
+  return (
+    <span className="settings-hint">
+      Fetched {pad2(at.getHours())}:{pad2(at.getMinutes())}
+    </span>
+  );
+}
+
 export default function WeatherTab() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [nwsLoading, setNwsLoading] = useState(false);
@@ -61,6 +72,25 @@ export default function WeatherTab() {
   const [showRadar, setShowRadar] = useState(false);
   const [showForecast, setShowForecast] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
+  // When each was last fetched, shown beside its Refresh (NWSA-013).
+  const [alertsFetchedAt, setAlertsFetchedAt] = useState<Date | null>(null);
+  const [forecastFetchedAt, setForecastFetchedAt] = useState<Date | null>(null);
+
+  const areaSet = settings?.weather_area_lat != null;
+
+  // Opening a section is the request to fetch it, so it fetches at once
+  // (NWSA-013, NWSA-022); nothing fetches while a section is closed.
+  function toggleAlerts() {
+    const next = !showAlerts;
+    setShowAlerts(next);
+    if (next) handleFetchNws();
+  }
+
+  function toggleForecast() {
+    const next = !showForecast;
+    setShowForecast(next);
+    if (next && areaSet) handleFetchForecast();
+  }
 
   useEffect(() => {
     api
@@ -78,6 +108,7 @@ export default function WeatherTab() {
     try {
       const v = (await api.fetchNwsAlerts()) as { features?: NwsFeature[] };
       setFeatures(Array.isArray(v.features) ? v.features : []);
+      setAlertsFetchedAt(new Date());
     } catch (e) {
       setNwsError(String(e));
     } finally {
@@ -91,6 +122,7 @@ export default function WeatherTab() {
     try {
       const v = (await api.fetchNwsForecast()) as { properties?: { periods?: NwsForecastPeriod[] } };
       setForecastPeriods(v.properties?.periods ?? []);
+      setForecastFetchedAt(new Date());
     } catch (e) {
       setForecastError(String(e));
     } finally {
@@ -194,12 +226,12 @@ export default function WeatherTab() {
       <div className="panel">
         <div className="panel-header-row">
           <h3>Current Forecast (NWS)</h3>
-          <button className="link-button" onClick={() => setShowForecast((v) => !v)}>
+          <button className="link-button" onClick={toggleForecast}>
             {showForecast ? "Hide forecast" : "Show forecast"}
           </button>
         </div>
         {showForecast &&
-          (settings?.weather_area_lat == null ? (
+          (!areaSet ? (
             <p className="checkin-empty-state">
               Set an area of interest above to fetch its forecast — a forecast is always for a
               specific place, unlike alerts.
@@ -207,9 +239,14 @@ export default function WeatherTab() {
           ) : (
             <>
               <div className="inline-form">
-                <button onClick={handleFetchForecast} disabled={forecastLoading}>
-                  {forecastLoading ? "Fetching…" : "Fetch forecast"}
+                <button
+                  onClick={handleFetchForecast}
+                  disabled={forecastLoading}
+                  aria-label="Refresh forecast"
+                >
+                  {forecastLoading ? "Fetching…" : "Refresh"}
                 </button>
+                <FetchedAt at={forecastFetchedAt} />
               </div>
               {forecastError && (
                 <p className="weather-area-error">Couldn't fetch forecast: {forecastError}</p>
@@ -254,16 +291,17 @@ export default function WeatherTab() {
       <div className="panel">
         <div className="panel-header-row">
           <h3>Active Alerts (NWS)</h3>
-          <button className="link-button" onClick={() => setShowAlerts((v) => !v)}>
+          <button className="link-button" onClick={toggleAlerts}>
             {showAlerts ? "Hide alerts" : "Show alerts"}
           </button>
         </div>
         {showAlerts && (
           <>
             <div className="inline-form">
-              <button onClick={handleFetchNws} disabled={nwsLoading}>
-                {nwsLoading ? "Fetching…" : "Fetch NWS alerts"}
+              <button onClick={handleFetchNws} disabled={nwsLoading} aria-label="Refresh alerts">
+                {nwsLoading ? "Fetching…" : "Refresh"}
               </button>
+              <FetchedAt at={alertsFetchedAt} />
             </div>
             {nwsError && <p className="weather-area-error">Couldn't fetch alerts: {nwsError}</p>}
             {features && features.length === 0 && (

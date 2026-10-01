@@ -99,6 +99,7 @@ fn main() {
             commands::resolve_mile_marker,
             commands::callsign_pack_status,
             commands::update_callsign_pack,
+            commands::cancel_callsign_download,
             commands::remove_callsign_pack,
             commands::lookup_callsign_offline,
             commands::storage_usage,

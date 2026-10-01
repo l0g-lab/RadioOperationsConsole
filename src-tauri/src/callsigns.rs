@@ -535,6 +535,7 @@ pub async fn download_fcc(
     dir: &Path,
     stall: Duration,
     progress: &(dyn Fn(u64, u64) + Sync),
+    cancelled: &(dyn Fn() -> bool + Sync),
 ) -> Result<PathBuf, FetchError> {
     use tokio::io::AsyncWriteExt;
     if net::working_offline() {
@@ -599,6 +600,13 @@ pub async fn download_fcc(
                 let _ = file.flush().await;
                 return Err(FetchError::Other(
                     "Stopped because you're working offline — run the update again when back online to pick up where it left off.".into(),
+                ));
+            }
+            // Cancelled by the operator (CALLDIR-037): kept, like a dropped connection.
+            if cancelled() {
+                let _ = file.flush().await;
+                return Err(FetchError::Other(
+                    "Cancelled — downloading again picks up where it left off.".into(),
                 ));
             }
             match tokio::time::timeout(stall, resp.chunk()).await {
@@ -670,9 +678,11 @@ pub async fn build_and_install(
     url: &str,
     dir: &Path,
     progress: ProgressFn,
+    cancelled: &(dyn Fn() -> bool + Sync),
 ) -> Result<CallDb, FetchError> {
     let p = progress.clone();
-    let zip_path = download_fcc(service, url, dir, STALL_TIMEOUT, &move |d, t| p("downloading", d, t)).await?;
+    let zip_path =
+        download_fcc(service, url, dir, STALL_TIMEOUT, &move |d, t| p("downloading", d, t), cancelled).await?;
 
     let p = progress.clone();
     let zp = zip_path.clone();
@@ -1025,7 +1035,7 @@ HD|5|||KC1TST|C
     }
 
     fn get(url: &str, dir: &Path, stall: Duration) -> Result<PathBuf, String> {
-        run(download_fcc(Service::Amateur, url, dir, stall, &|_, _| {})).map_err(|e| match e {
+        run(download_fcc(Service::Amateur, url, dir, stall, &|_, _| {}, &|| false)).map_err(|e| match e {
             FetchError::Offline => "offline".into(),
             FetchError::Other(s) => s,
         })
@@ -1038,7 +1048,7 @@ HD|5|||KC1TST|C
         let d = data.clone();
         let url = run(serve(move |_| Resp::ok(d.clone(), "\"v1\"")));
         let seen = std::sync::Mutex::new(Vec::new());
-        let path = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|d, t| seen.lock().unwrap().push((d, t)))).ok().unwrap();
+        let path = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|d, t| seen.lock().unwrap().push((d, t)), &|| false)).ok().unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), data);
         let seen = seen.lock().unwrap();
         assert_eq!(seen.last().unwrap(), &(200_000, 200_000));
@@ -1137,7 +1147,7 @@ HD|5|||KC1TST|C
             Resp { status: "200 OK", headers: vec![], body: payload(), claim_len: None, hang: false }
         }));
         crate::net::set_work_offline(true);
-        let result = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|_, _| {}));
+        let result = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|_, _| {}, &|| false));
         crate::net::set_work_offline(false);
         assert!(matches!(result, Err(FetchError::Offline)));
         assert_eq!(hits.load(std::sync::atomic::Ordering::SeqCst), 0);
@@ -1148,17 +1158,49 @@ HD|5|||KC1TST|C
     fn going_offline_mid_download_stops_it_and_keeps_the_part_to_resume() {
         let dir = temp_dir("work-offline-mid");
         let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![], body: payload(), claim_len: None, hang: false }));
-        let result = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|done, _| {
-            if done > 0 {
-                crate::net::set_work_offline(true);
-            }
-        }));
+        let result = run(download_fcc(
+            Service::Amateur,
+            &url,
+            &dir,
+            Duration::from_secs(5),
+            &|done, _| {
+                if done > 0 {
+                    crate::net::set_work_offline(true);
+                }
+            },
+            &|| false,
+        ));
         crate::net::set_work_offline(false);
         let err = match result {
             Err(FetchError::Other(e)) => e,
             other => panic!("expected a stop, got ok={}", other.is_ok()),
         };
         assert!(err.contains("offline"), "{err}");
+        assert!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len() > 0, "partial kept");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn cancelling_stops_the_download_and_keeps_the_part_to_resume() {
+        let dir = temp_dir("cancel");
+        let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![], body: payload(), claim_len: None, hang: false }));
+        let cancelled = std::sync::atomic::AtomicBool::new(false);
+        let result = run(download_fcc(
+            Service::Amateur,
+            &url,
+            &dir,
+            Duration::from_secs(5),
+            &|done, _| {
+                if done > 0 {
+                    cancelled.store(true, std::sync::atomic::Ordering::SeqCst);
+                }
+            },
+            &|| cancelled.load(std::sync::atomic::Ordering::SeqCst),
+        ));
+        match result {
+            Err(FetchError::Other(e)) => assert!(e.contains("Cancelled"), "{e}"),
+            other => panic!("expected a cancel, got ok={}", other.is_ok()),
+        }
         assert!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len() > 0, "partial kept");
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -1217,7 +1259,7 @@ HD|5|||KC1TST|C
         let data = payload();
         let body = data.clone();
         let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![], body: body.clone(), claim_len: None, hang: false }));
-        let path = run(download_fcc(Service::Gmrs, &url, &dir, Duration::from_secs(5), &|_, _| {})).ok().unwrap();
+        let path = run(download_fcc(Service::Gmrs, &url, &dir, Duration::from_secs(5), &|_, _| {}, &|| false)).ok().unwrap();
         assert_eq!(std::fs::read(path).unwrap(), data);
         assert_eq!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len(), 1_000, "amateur partial kept");
         assert_eq!(std::fs::read_to_string(meta_path(&dir, Service::Amateur)).unwrap(), "\"amat-v1\"");
@@ -1252,7 +1294,7 @@ HD|5|||KC1TST|C
                 println!("  {phase}: {} / {} MB", d / 1_000_000, t / 1_000_000);
             }
         });
-        let db = run(build_and_install(Service::Amateur, Service::Amateur.url(), &dir, progress))
+        let db = run(build_and_install(Service::Amateur, Service::Amateur.url(), &dir, progress, &|| false))
             .ok()
             .expect("update failed");
         let size = std::fs::metadata(dir.join(Service::Amateur.pack_file())).unwrap().len();

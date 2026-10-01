@@ -82,8 +82,9 @@ rapid check-in still works.
   licensees it holds, its size, and when it was built, and MUST offer
   download, update, and remove.
 - **CALLDIR-031:** Because the download is large (about 200 MB), the
-  interface MUST ask for confirmation first and say roughly how large and
-  long it is.
+  interface MUST say roughly how large and long it is next to the download
+  control, before it is clicked. One click MUST start it; there is no
+  separate confirmation step.
 - **CALLDIR-032:** The download MUST report progress (downloading, reading,
   saving) and MUST NOT block the rest of the application.
 - **CALLDIR-033:** An interrupted download MUST resume where it stopped when
@@ -94,6 +95,9 @@ rapid check-in still works.
 - **CALLDIR-035:** Only one download MAY run at a time.
 - **CALLDIR-036:** A failed or offline update MUST leave any installed file
   unchanged.
+- **CALLDIR-037:** A running download MUST be cancellable. Cancelling MUST
+  keep what has arrived so running it again resumes (`CALLDIR-033`), and MUST
+  leave any installed file unchanged.
 
 ## GMRS licenses
 
@@ -106,8 +110,8 @@ GMRS gets its own directory built the same way.
 - **CALLDIR-040:** The GMRS directory MUST be a separate, optional download
   from the FCC's GMRS license file, built, stored, updated, and removed
   independently of the amateur directory. Every rule above for the amateur
-  file (`CALLDIR-001`–`CALLDIR-015`, `CALLDIR-030`–`CALLDIR-036`) applies to it
-  as well, with its own size stated in the confirmation (`CALLDIR-031`).
+  file (`CALLDIR-001`–`CALLDIR-015`, `CALLDIR-030`–`CALLDIR-037`) applies to it
+  as well, with its own size stated next to its download control (`CALLDIR-031`).
 - **CALLDIR-041:** Which directory answers MUST be decided per call sign, from
   its shape, not by the activity or its type: an activity may mix amateur and
   GMRS stations. After removing spaces and any `/` suffix (portable, mobile,

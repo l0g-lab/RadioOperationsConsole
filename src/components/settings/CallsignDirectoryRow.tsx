@@ -13,7 +13,7 @@ export interface CallsignDirectoryDef {
   title: string;
   infoLabel: string;
   info: ReactNode;
-  /** Shown before the download starts (CALLDIR-031). */
+  /** Shown beside the download button, before it's clicked (CALLDIR-031). */
   sizeWarning: string;
 }
 
@@ -32,7 +32,8 @@ export const CALLSIGN_DIRECTORIES: CallsignDirectoryDef[] = [
         if interrupted, running it again resumes. Source: FCC Universal Licensing System.
       </>
     ),
-    sizeWarning: "About 200 MB and a few minutes — best on Wi-Fi, not a phone hotspot.",
+    sizeWarning:
+      "About 200 MB and a few minutes — best on Wi-Fi, not a phone hotspot. You can cancel and resume later.",
   },
   {
     service: "gmrs",
@@ -49,7 +50,8 @@ export const CALLSIGN_DIRECTORIES: CallsignDirectoryDef[] = [
         resumes. Source: FCC Universal Licensing System.
       </>
     ),
-    sizeWarning: "About 55 MB — a minute or two on a good connection.",
+    sizeWarning:
+      "About 55 MB — a minute or two on a good connection. You can cancel and resume later.",
   },
 ];
 
@@ -73,7 +75,7 @@ function formatUpdated(iso: string): string {
   return Number.isNaN(d.getTime()) ? "unknown" : d.toLocaleDateString();
 }
 
-type Message = { kind: "ok" | "error"; text: string };
+type Message = { kind: "ok" | "info" | "error"; text: string };
 
 /**
  * One offline call-sign directory (amateur or GMRS): its status, and download,
@@ -93,7 +95,6 @@ export default function CallsignDirectoryRow({
   onChanged?: () => void;
 }) {
   const [status, setStatus] = useState<CallsignPackStatus | null>(null);
-  const [confirming, setConfirming] = useState(false);
   const [progress, setProgress] = useState<DatapackProgress | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
 
@@ -120,7 +121,6 @@ export default function CallsignDirectoryRow({
   }, [def.packId]);
 
   async function download() {
-    setConfirming(false);
     setMessage(null);
     setProgress({ id: def.packId, phase: "downloading", done: 0, total: 0 });
     onBusyChange(true);
@@ -130,7 +130,8 @@ export default function CallsignDirectoryRow({
       setMessage({ kind: "ok", text: `Done — ${s.record_count.toLocaleString()} call signs` });
     } catch (e) {
       setMessage({
-        kind: "error",
+        // Cancelling was the operator's choice, not a failure.
+        kind: String(e).startsWith("Cancelled") ? "info" : "error",
         text:
           e === ERR_OFFLINE
             ? offlineMessage("No internet connection — try again when online.")
@@ -176,6 +177,7 @@ export default function CallsignDirectoryRow({
           <span className="qrz-status qrz-status-found"> {message.text}</span>
         )}
         {message?.kind === "error" && <span className="weather-area-error"> {message.text}</span>}
+        {message?.kind === "info" && <span className="settings-hint"> {message.text}</span>}
         {progress && (
           <div>
             <progress
@@ -191,21 +193,18 @@ export default function CallsignDirectoryRow({
             This copy was downloaded before street addresses were included — Update to add them.
           </p>
         )}
-        {confirming && <p className="settings-hint">{def.sizeWarning}</p>}
+        {!progress && <p className="settings-hint">{def.sizeWarning}</p>}
         {otherBusy && !progress && (
           <p className="settings-hint">Waiting for the other call-sign download to finish.</p>
         )}
       </div>
-      {progress ? null : confirming ? (
+      {progress ? (
         <div className="inline-form">
-          <button onClick={download} disabled={otherBusy}>
-            Download
-          </button>
-          <button onClick={() => setConfirming(false)}>Cancel</button>
+          <button onClick={() => api.cancelCallsignDownload()}>Cancel</button>
         </div>
       ) : (
         <div className="inline-form">
-          <button onClick={() => setConfirming(true)} disabled={otherBusy}>
+          <button onClick={download} disabled={otherBusy}>
             {status?.installed ? "Update" : "Download"}
           </button>
           {status?.installed && <button onClick={remove}>Remove</button>}

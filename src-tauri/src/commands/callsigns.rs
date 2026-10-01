@@ -68,6 +68,7 @@ pub async fn update_callsign_pack(
     if state.callsign_update_running.swap(true, Ordering::SeqCst) {
         return Err("A call-sign download is already running. Try again when it finishes.".into());
     }
+    state.callsign_update_cancel.store(false, Ordering::SeqCst);
     let result = run_update(&app, &state, service).await;
     state.callsign_update_running.store(false, Ordering::SeqCst);
     result
@@ -88,13 +89,23 @@ async fn run_update(app: &AppHandle, state: &AppState, service: Service) -> Resu
         let _ = handle.emit("datapack-progress", ProgressEvent { id: service.pack_id(), phase, done, total });
     });
 
-    let db = match callsigns::build_and_install(service, service.url(), &state.datapacks_dir, progress).await {
+    let cancelled = || state.callsign_update_cancel.load(Ordering::SeqCst);
+    let db = match callsigns::build_and_install(service, service.url(), &state.datapacks_dir, progress, &cancelled).await {
         Ok(db) => db,
         Err(FetchError::Offline) => return Err(ERR_OFFLINE.to_string()),
         Err(FetchError::Other(e)) => return Err(e),
     };
     state.callsign_dbs.lock().unwrap().insert(service, Arc::new(db));
     Ok(status_from_disk(state, service))
+}
+
+/// Stops the running call-sign download, keeping what has arrived so the
+/// next download resumes (CALLDIR-037). Does nothing if none is running.
+#[tauri::command]
+pub fn cancel_callsign_download(state: State<'_, AppState>) {
+    if state.callsign_update_running.load(Ordering::SeqCst) {
+        state.callsign_update_cancel.store(true, Ordering::SeqCst);
+    }
 }
 
 #[tauri::command]

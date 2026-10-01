@@ -441,6 +441,9 @@ export const callsignPackStatus = (service: LicenseService) =>
 export const updateCallsignPack = (service: LicenseService) =>
   invoke<CallsignPackStatus>("update_callsign_pack", { service });
 
+/** Stops the running call-sign download; downloading again resumes (CALLDIR-037). */
+export const cancelCallsignDownload = () => invoke<void>("cancel_callsign_download");
+
 export const removeCallsignPack = (service: LicenseService) =>
   invoke<CallsignPackStatus>("remove_callsign_pack", { service });
 

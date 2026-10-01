@@ -64,6 +64,11 @@ regardless of which of those they type.
   on the Weather tab. Unlike QRZ's ambient auto-lookup (`QRZ-030`), fetching
   alerts is an explicit, on-demand operator action, so surfacing the failure
   is correct here rather than staying silent.
+- **NWSA-013:** Opening the alerts section is the operator's request to
+  fetch: it MUST fetch at once, with no second click. Once open, the section
+  MUST offer a Refresh that fetches again and MUST say when alerts were last
+  fetched. Hiding and reopening fetches again. Nothing fetches while the
+  section is closed or in the background.
 
 ## Current forecast
 
@@ -81,7 +86,8 @@ the coverage area is as relevant as active warnings.
   fetch that cannot succeed.
 - **NWSA-022:** Fetching the forecast MUST be an explicit, on-demand
   operator action (mirrors `NWSA-012`'s treatment of alerts), not automatic
-  or backgrounded.
+  or backgrounded. Opening the forecast section is that action, with the same
+  fetch-on-open, Refresh, and last-fetched behavior as alerts (`NWSA-013`).
 - **NWSA-023:** A failed forecast fetch (offline, NWS outage, no area set)
   MUST be reported clearly on the Weather tab rather than failing silently.
 
