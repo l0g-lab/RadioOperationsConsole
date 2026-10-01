@@ -39,7 +39,12 @@ pub fn working_offline() -> bool {
 pub const WORKING_OFFLINE_MESSAGE: &str =
     "Working offline — click \"Working offline\" in the header to go back online.";
 
-pub const USER_AGENT: &str = "RadioOperationsConsole/0.1 (amateur-radio net logger)";
+/// This build's version, from Cargo.toml, so every service we talk to sees
+/// the real release without anyone remembering to update it.
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub const USER_AGENT: &str =
+    concat!("RadioOperationsConsole/", env!("CARGO_PKG_VERSION"), " (amateur-radio net logger)");
 
 /// Why a download-style request failed. `Offline` means "no connection", which
 /// callers turn into the friendly offline message rather than an error.
@@ -79,6 +84,13 @@ pub fn client(connect: Duration, request_timeout: Option<Duration>) -> reqwest::
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identifies_as_this_release() {
+        let version = env!("CARGO_PKG_VERSION");
+        assert_eq!(USER_AGENT, format!("RadioOperationsConsole/{version} (amateur-radio net logger)"));
+        assert_eq!(APP_VERSION, version);
+    }
 
     #[test]
     fn working_offline_is_off_until_turned_on() {

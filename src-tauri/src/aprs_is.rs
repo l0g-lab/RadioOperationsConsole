@@ -174,7 +174,8 @@ pub async fn start_stream(
 /// receiving the entire network's traffic instead.
 fn build_login_line(login_call: &str, lat: f64, lon: f64, radius_km: u32) -> String {
     format!(
-        "user {login_call} pass {READONLY_PASSCODE} vers RadioOpsConsole 0.1 filter r/{lat:.4}/{lon:.4}/{radius_km}\r\n"
+        "user {login_call} pass {READONLY_PASSCODE} vers RadioOpsConsole {} filter r/{lat:.4}/{lon:.4}/{radius_km}\r\n",
+        crate::net::APP_VERSION
     )
 }
 
@@ -302,7 +303,10 @@ mod tests {
         let line = build_login_line("N0CALL", 39.0, -98.0, 3000);
         assert_eq!(
             line,
-            "user N0CALL pass -1 vers RadioOpsConsole 0.1 filter r/39.0000/-98.0000/3000\r\n"
+            format!(
+                "user N0CALL pass -1 vers RadioOpsConsole {} filter r/39.0000/-98.0000/3000\r\n",
+                env!("CARGO_PKG_VERSION")
+            )
         );
     }
 

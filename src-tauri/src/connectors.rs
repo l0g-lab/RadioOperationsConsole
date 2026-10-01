@@ -7,7 +7,7 @@ use std::error::Error;
 use crate::net::{client, is_offline_error, USER_AGENT};
 use std::time::Duration;
 
-const QRZ_AGENT: &str = "RadioOpsConsole1.0";
+const QRZ_AGENT: &str = concat!("RadioOpsConsole", env!("CARGO_PKG_VERSION"));
 const QRZ_BASE_URL: &str = "https://xmldata.qrz.com/xml/current/";
 const NOMINATIM_URL: &str = "https://nominatim.openstreetmap.org/search";
 // Online connectors here are conveniences, not dependencies (VISION-002/005):
