@@ -1,6 +1,7 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { cachingTileLayer } from "../offlineTileLayer";
+import { addExpandControl } from "./expandControl";
 
 // Standard OpenStreetMap tiles (CIMAP-071): free, no API key. A CartoDB
 // dark-tile style was tried here and reverted — CartoDB's public tiles now
@@ -17,7 +18,10 @@ export const ZIP_ATTRIBUTION =
 export const DEFAULT_CENTER: [number, number] = [39.5, -98.35];
 export const DEFAULT_ZOOM = 4;
 
-/** A Leaflet map in `container` with the cached OpenStreetMap basemap already added. */
+/**
+ * A Leaflet map in `container` with the cached OpenStreetMap basemap and
+ * the "Full view" button already added.
+ */
 export function createBaseMap(
   container: HTMLElement,
   center: [number, number] = DEFAULT_CENTER,
@@ -26,5 +30,6 @@ export function createBaseMap(
 ): L.Map {
   const map = L.map(container).setView(center, zoom);
   cachingTileLayer(BASEMAP_URL, { maxZoom: 19, attribution }).addTo(map);
+  addExpandControl(map);
   return map;
 }

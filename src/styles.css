@@ -1071,6 +1071,36 @@ details > summary {
   background: var(--bg-panel);
 }
 
+/* "Full view" map button (map/expandControl.ts). */
+.map-expand-control .map-expand-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.map-expand-control .map-expand-button:hover {
+  background: #f4f4f4;
+}
+
+/* The map filling the whole app window. !important beats each map's own
+   size rules (min-height, flex, border-radius) whatever their selector. */
+.leaflet-container.map-expanded {
+  position: fixed !important;
+  inset: 0;
+  z-index: 3000;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+}
+
 .location-picker-modal {
   width: min(640px, 90vw);
 }
