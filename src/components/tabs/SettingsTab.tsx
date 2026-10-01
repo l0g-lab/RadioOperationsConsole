@@ -2,12 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { AppSettings } from "../../types";
 import { getThemeMode, setThemeMode, type ThemeMode } from "../../theme";
-import {
-  COORD_FORMAT_LABELS,
-  getCoordFormat,
-  setCoordFormat,
-  type CoordFormat,
-} from "../../geo";
+import { COORD_FORMAT_LABELS, getCoordFormat, setCoordFormat, type CoordFormat } from "../../geo";
 import InfoToggle from "../settings/InfoToggle";
 import BackupPanel from "../settings/BackupPanel";
 import OfflineDataPanel from "../settings/OfflineDataPanel";
@@ -31,7 +26,10 @@ export default function SettingsTab() {
   const [themeMode, setThemeModeState] = useState<ThemeMode>(getThemeMode);
 
   useEffect(() => {
-    api.getSettings().then(setSettings).catch(() => setSettings(DEFAULT_SETTINGS));
+    api
+      .getSettings()
+      .then(setSettings)
+      .catch(() => setSettings(DEFAULT_SETTINGS));
   }, []);
 
   function updateField<K extends keyof AppSettings>(field: K, value: AppSettings[K]) {
@@ -52,8 +50,8 @@ export default function SettingsTab() {
         <h2>
           Appearance
           <InfoToggle label="appearance">
-            Theme (light, dark or system) and how coordinates are shown. Changes apply right away and are
-            remembered on this computer.
+            Theme (light, dark or system) and how coordinates are shown. Changes apply right away
+            and are remembered on this computer.
           </InfoToggle>
         </h2>
       </div>
@@ -110,9 +108,9 @@ export default function SettingsTab() {
           QRZ.com Call Sign Lookup
           <InfoToggle label="QRZ.com lookup">
             Auto-fills name, QTH location, grid square, and address when a call sign is entered on
-          the Check-ins tab, and seeds a new operator's default location from their call sign.
-          Requires a QRZ.com subscription with XML/callbook data access. Leave blank to disable —
-          the application works fully without it.
+            the Check-ins tab, and seeds a new operator's default location from their call sign.
+            Requires a QRZ.com subscription with XML/callbook data access. Leave blank to disable —
+            the application works fully without it.
           </InfoToggle>
         </h3>
         <div className="inline-form">
@@ -139,7 +137,7 @@ export default function SettingsTab() {
           Weather Alerts (NWS)
           <InfoToggle label="weather alerts">
             The National Weather Service alerts API is free and works with no key. Only set one if
-          you have a specific reason to (e.g. a higher rate limit).
+            you have a specific reason to (e.g. a higher rate limit).
           </InfoToggle>
         </h3>
         <div className="inline-form">

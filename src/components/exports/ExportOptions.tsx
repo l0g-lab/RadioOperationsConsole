@@ -13,6 +13,7 @@ import {
   activitySummaryToText,
   checkinsToCsv,
   checkinsToJson,
+  exportFilename,
   historyToCsv,
   saveTextFile,
   spotterReportsToCsv,
@@ -26,7 +27,12 @@ import IcsFormDialog from "./IcsFormDialog";
  * `unavailable` is the reason there's nothing to do. The button stays clickable,
  * dimmed, and clicking it says why — a greyed-out button can't explain itself.
  */
-type Action = { label: string; onClick: () => void; unavailable?: string; title?: string };
+type Action = {
+  label: string;
+  onClick: () => void;
+  unavailable?: string;
+  title?: string;
+};
 
 function Row({
   title,
@@ -91,9 +97,11 @@ export default function ExportOptions({
   const [reports, setReports] = useState<SpotterReport[]>([]);
   const [history, setHistory] = useState<HistoryEvent[]>([]);
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
-  const [message, setMessage] = useState<{ text: string; error: boolean; info?: boolean } | null>(
-    null
-  );
+  const [message, setMessage] = useState<{
+    text: string;
+    error: boolean;
+    info?: boolean;
+  } | null>(null);
   const [ics, setIcs] = useState<
     null | { form: "309" } | { form: "213"; initial: GeneralMessage213Input }
   >(null);
@@ -120,7 +128,6 @@ export default function ExportOptions({
     };
   }, [activity.id, activity.state, activity.closed_at]);
 
-  const base = (activity.title.trim() || "activity").replace(/[^a-z0-9]+/gi, "_");
   const operatorName = operator?.display_name ?? "";
   const operatorCall = operator?.call_sign ?? "";
 
@@ -157,7 +164,12 @@ export default function ExportOptions({
               unavailable: noCheckins
                 ? "There are no check-ins yet, so there's nothing to export."
                 : undefined,
-              onClick: () => save(`${base}_checkins.csv`, checkinsToCsv(checkins), "the check-ins"),
+              onClick: () =>
+                save(
+                  exportFilename(activity, "Check-ins", "csv"),
+                  checkinsToCsv(checkins),
+                  "the check-ins"
+                ),
             },
             {
               label: "JSON",
@@ -165,7 +177,11 @@ export default function ExportOptions({
                 ? "There are no check-ins yet, so there's nothing to export."
                 : undefined,
               onClick: () =>
-                save(`${base}_checkins.json`, checkinsToJson(activity, checkins), "the check-ins"),
+                save(
+                  exportFilename(activity, "Check-ins", "json"),
+                  checkinsToJson(activity, checkins),
+                  "the check-ins"
+                ),
             },
           ]}
         />
@@ -180,7 +196,11 @@ export default function ExportOptions({
                 ? "There are no spotter reports yet, so there's nothing to export."
                 : undefined,
               onClick: () =>
-                save(`${base}_spotter_reports.csv`, spotterReportsToCsv(reports), "the reports"),
+                save(
+                  exportFilename(activity, "Spotter reports", "csv"),
+                  spotterReportsToCsv(reports),
+                  "the reports"
+                ),
             },
             {
               label: "JSON",
@@ -189,7 +209,7 @@ export default function ExportOptions({
                 : undefined,
               onClick: () =>
                 save(
-                  `${base}_spotter_reports.json`,
+                  exportFilename(activity, "Spotter reports", "json"),
                   spotterReportsToJson(activity, reports),
                   "the reports"
                 ),
@@ -202,7 +222,7 @@ export default function ExportOptions({
               title: "Readable, for pasting into an email or message",
               onClick: () =>
                 save(
-                  `${base}_spotter_reports.txt`,
+                  exportFilename(activity, "Spotter reports", "txt"),
                   spotterReportsToText(activity, reports),
                   "the report"
                 ),
@@ -221,7 +241,12 @@ export default function ExportOptions({
                 history.length === 0
                   ? "Nothing has been recorded for this activity yet."
                   : undefined,
-              onClick: () => save(`${base}_history.csv`, historyToCsv(history), "the history"),
+              onClick: () =>
+                save(
+                  exportFilename(activity, "History", "csv"),
+                  historyToCsv(history),
+                  "the history"
+                ),
             },
           ]}
         />
@@ -238,7 +263,7 @@ export default function ExportOptions({
               onClick: () =>
                 summary &&
                 save(
-                  `${base}_summary.txt`,
+                  exportFilename(activity, "Summary", "txt"),
                   activitySummaryToText(activity, {
                     ...summary,
                     conclusion: (conclusion ?? summary.conclusion).trim(),
@@ -260,7 +285,7 @@ export default function ExportOptions({
                 : undefined,
               onClick: () =>
                 save(
-                  `${base}_package.json`,
+                  exportFilename(activity, "Package", "json"),
                   activityPackageToJson(activity, summary, checkins, reports, history),
                   "the package"
                 ),

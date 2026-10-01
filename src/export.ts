@@ -2,7 +2,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { mkdir, writeTextFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import type { Activity, ActivitySummary, Checkin, HistoryEvent, SpotterReport } from "./types";
-import { formatTimeLines, pad2 } from "./utils";
+import { formatTimeLines, pad2, splitScheduledAt } from "./utils";
 import { activityTypeLabel } from "./activityTypes";
 import { latLonToGridSquare } from "./grid";
 import { formatCoords } from "./geo";
@@ -20,10 +20,62 @@ export async function saveTextFile(
   defaultFilename: string,
   content: string
 ): Promise<string | null> {
-  const path = await save({ defaultPath: defaultFilename });
-  if (!path) return null;
+  const ext = defaultFilename.match(/\.([a-z0-9]+)$/i)?.[1] ?? "";
+  const chosen = await save({
+    defaultPath: defaultFilename,
+    filters: ext
+      ? [
+          {
+            name: FILE_TYPE_NAMES[ext.toLowerCase()] ?? ext.toUpperCase(),
+            extensions: [ext],
+          },
+        ]
+      : undefined,
+  });
+  if (!chosen) return null;
+  // Some dialogs (GTK in particular) don't add the filter's extension when the
+  // operator types a name without one, which leaves a file nothing will open.
+  const path =
+    ext && !chosen.toLowerCase().endsWith(`.${ext.toLowerCase()}`) ? `${chosen}.${ext}` : chosen;
   await writeTextFile(path, content);
   return path;
+}
+
+const FILE_TYPE_NAMES: Record<string, string> = {
+  csv: "CSV spreadsheet",
+  json: "JSON",
+  txt: "Text",
+  html: "Web page (HTML)",
+  xml: "XML",
+};
+
+/**
+ * The suggested name for an exported file: "Tuesday Net - 2026-09-21 1904 - Check-ins.csv".
+ * The date and time are local: when the activity was started, or its scheduled
+ * time if it hasn't been, and left out if it has neither.
+ */
+export function exportFilename(activity: Activity, kind: string, ext: string): string {
+  const title =
+    activity.title
+      .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/[. ]+$/, "") || "Activity";
+  return [title, activityStamp(activity), kind].filter(Boolean).join(" - ") + `.${ext}`;
+}
+
+/** "2026-09-21 1904" (local), "2026-09-21" for a date-only schedule, or "". */
+function activityStamp(activity: Activity): string {
+  const opened = new Date(activity.opened_at);
+  if (activity.opened_at && !Number.isNaN(opened.getTime())) {
+    return (
+      `${opened.getFullYear()}-${pad2(opened.getMonth() + 1)}-${pad2(opened.getDate())} ` +
+      `${pad2(opened.getHours())}${pad2(opened.getMinutes())}`
+    );
+  }
+  const { date, time } = splitScheduledAt(activity.scheduled_at);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
+  return time ? `${date} ${time.replace(":", "")}` : date;
 }
 
 function csvField(value: string): string {

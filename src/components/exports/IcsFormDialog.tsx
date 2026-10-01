@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as api from "../../api";
 import type { Activity, Checkin } from "../../types";
-import { saveFilesToFolder, saveTextFile } from "../../export";
+import { exportFilename, saveFilesToFolder, saveTextFile } from "../../export";
 import {
   comms309Entries,
   FORM309_ROWS,
@@ -56,9 +56,10 @@ function Text({
  */
 export default function IcsFormDialog(props: Props) {
   const { activity, operatorName, operatorCall, onClose } = props;
-  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
-
-  const fileBase = (activity.title.trim() || "activity").replace(/[^a-z0-9]+/gi, "_");
+  const [message, setMessage] = useState<{
+    text: string;
+    error: boolean;
+  } | null>(null);
 
   const ok = (text: string) => setMessage({ text, error: false });
   const fail = (text: string) => setMessage({ text, error: true });
@@ -106,11 +107,12 @@ export default function IcsFormDialog(props: Props) {
             activity={activity}
             operatorName={operatorName}
             operatorCall={operatorCall}
-            fileBase={fileBase}
             save={save}
             saveFolder={saveFolder}
             copy={copy}
-            onSavePrint={(html) => save(`${fileBase}_ICS309.html`, html, PRINT_HINT)}
+            onSavePrint={(html) =>
+              save(exportFilename(activity, "ICS 309", "html"), html, PRINT_HINT)
+            }
           />
         ) : (
           <Form213
@@ -124,7 +126,9 @@ export default function IcsFormDialog(props: Props) {
                 "Attach this file to a new message in Winlink Express."
               )
             }
-            onSavePrint={(html) => save(`${fileBase}_ICS213.html`, html, PRINT_HINT)}
+            onSavePrint={(html) =>
+              save(exportFilename(activity, "ICS 213", "html"), html, PRINT_HINT)
+            }
           />
         )}
         {message && (
@@ -145,7 +149,6 @@ function Form309({
   activity,
   operatorName,
   operatorCall,
-  fileBase,
   save,
   saveFolder,
   copy,
@@ -154,7 +157,6 @@ function Form309({
   activity: Activity;
   operatorName: string;
   operatorCall: string;
-  fileBase: string;
   save: SaveFn;
   saveFolder: SaveFolderFn;
   copy: CopyFn;
@@ -305,7 +307,11 @@ function Form309({
           disabled={!loaded || empty}
           onClick={() =>
             save(
-              `${fileBase}_Form309${label(page)}.txt`,
+              exportFilename(
+                activity,
+                `Form 309 data${pageCount > 1 ? ` page ${page + 1}` : ""}`,
+                "txt"
+              ),
               current[0].content,
               "In Winlink's Form 309, click Load Form 309 Data and choose it."
             )

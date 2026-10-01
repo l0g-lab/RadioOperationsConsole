@@ -40,6 +40,17 @@ be in one predictable place, complete, and unambiguous about time.
   and, when the operator clicks it, MUST say why nothing was exported (for example
   "there are no check-ins yet"). A disabled control that gives no reason is not
   enough.
+- **EXPORT-007:** The suggested name for a saved export MUST be readable and
+  identify the activity, when it happened, and what the file holds, in the form
+  `<title> - <YYYY-MM-DD HHMM> - <kind>.<ext>` (for example
+  `Tuesday Net - 2026-09-21 1904 - Check-ins.csv`). The date and time MUST be local:
+  when the activity was started, or its scheduled time if it has not been, and
+  left out if it has neither. Characters not allowed in Windows or Linux
+  filenames MUST be removed from the title. Files whose names Winlink Express
+  requires (`ICSF-012`, `ICSF-013`) keep those exact names.
+- **EXPORT-008:** A saved export MUST carry its file type's extension. The save
+  dialog MUST offer that file type, and if the operator's chosen name lacks the
+  extension, it MUST be added.
 
 ## What can be exported
 

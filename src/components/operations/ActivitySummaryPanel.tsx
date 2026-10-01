@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity, ActivitySummary } from "../../types";
-import { activitySummaryToText, formatDuration, saveTextFile } from "../../export";
+import { activitySummaryToText, exportFilename, formatDuration, saveTextFile } from "../../export";
 import { formatTimeLines } from "../../utils";
 import ActivityStatus from "../lifecycle/ActivityStatus";
 import { activityTypeLabel } from "../../activityTypes";
@@ -29,9 +29,8 @@ export default function ActivitySummaryPanel({ activity }: { activity: Activity 
   async function exportSummary() {
     if (!summary) return;
     try {
-      const base = (activity.title.trim() || "net").replace(/[^a-z0-9]+/gi, "_");
       const path = await saveTextFile(
-        `${base}_summary.txt`,
+        exportFilename(activity, "Summary", "txt"),
         activitySummaryToText(activity, summary)
       );
       if (path) setMessage(`Saved to ${path}`);

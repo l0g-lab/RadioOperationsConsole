@@ -41,7 +41,9 @@ describe("SettingsTab save control", () => {
     expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Save settings" }));
-    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ qrz_username: "N0CALL" }));
+    expect(api.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ qrz_username: "N0CALL" })
+    );
     expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
     expect(screen.getByText("Saved")).toBeInTheDocument();
   });
