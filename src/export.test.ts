@@ -45,6 +45,13 @@ function checkin(overrides: Partial<Checkin> = {}): Checkin {
     has_traffic: false,
     traffic: "",
     traffic_handled: false,
+    frequency: "",
+    mode: "",
+    rst_sent: "",
+    rst_received: "",
+    power: "",
+    antenna: "",
+    notes: "",
     ...overrides,
   };
 }
@@ -94,12 +101,28 @@ describe("checkinsToCsv", () => {
     const [header, row] = csv.trim().split("\r\n");
     expect(header).toBe(
       "Call Sign,Name,Location,Grid Square,Address,Latitude,Longitude,Location Label," +
-        "Checked In (Local),Checked In (UTC),Has Traffic,Traffic,Traffic Handled"
+        "Checked In (Local),Checked In (UTC),Has Traffic,Traffic,Traffic Handled," +
+        "Frequency,Mode,RST Sent,RST Received,Power,Antenna,Notes"
     );
     expect(row).toContain("K4ABC");
     expect(row).toContain('"Need ""generator"""'); // quotes are doubled and the field is wrapped
     expect(row).toContain("25.77,-80.19");
     expect(row).toContain("2026-09-21T23:04:00Z");
+  });
+
+  it("includes a contact's radio details", () => {
+    const csv = checkinsToCsv([
+      checkin({
+        frequency: "146.520",
+        mode: "FM",
+        rst_sent: "59",
+        rst_received: "57",
+        power: "5 W",
+        antenna: "J-pole",
+        notes: "Mobile, I-75",
+      }),
+    ]);
+    expect(csv.trim().split("\r\n")[1]).toMatch(/,146\.520,FM,59,57,5 W,J-pole,"Mobile, I-75"$/);
   });
 
   it("uses CRLF line endings and ends with one", () => {

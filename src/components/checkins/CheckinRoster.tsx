@@ -15,7 +15,16 @@ import {
 import { RemoveConfirmBar, RemovedPanel } from "../RemoveControls";
 import { useVoidableList } from "../../hooks/useVoidableList";
 import LocationPicker from "../LocationPicker";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, NotebookPen } from "lucide-react";
+import {
+  contactTimeError,
+  ContactFieldsInputs,
+  draftFromCheckin,
+  EMPTY_CONTACT,
+  rstPair,
+  toContactDetails,
+  type ContactDraft,
+} from "./ContactFields";
 
 interface Props {
   activity: Activity;
@@ -31,6 +40,8 @@ interface Props {
   onSelectCheckin: (id: string | null) => void;
   onCheckinsChanged: () => void;
   onShowMap: () => void;
+  /** A station log: contacts with radio details instead of check-ins with traffic. */
+  log?: boolean;
 }
 
 type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
@@ -48,6 +59,7 @@ export default function CheckinRoster({
   onSelectCheckin,
   onCheckinsChanged,
   onShowMap,
+  log = false,
 }: Props) {
   const [editingCheckinId, setEditingCheckinId] = useState<string | null>(null);
   const [editCallSign, setEditCallSign] = useState("");
@@ -57,6 +69,11 @@ export default function CheckinRoster({
   const [editAddress, setEditAddress] = useState("");
   const [editHasTraffic, setEditHasTraffic] = useState(false);
   const [editTraffic, setEditTraffic] = useState("");
+  const [editContact, setEditContact] = useState<ContactDraft>(EMPTY_CONTACT);
+  const [editSaveRefused, setEditSaveRefused] = useState(false);
+  /** Contacts whose details (power, antenna, notes, address…) are expanded. */
+  const [openDetails, setOpenDetails] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
   const [openTraffic, setOpenTraffic] = useState<Set<string>>(new Set());
   const [checkinLookupStatus, setCheckinLookupStatus] = useState<QrzStatus>("idle");
   const [lookupSource, setLookupSource] = useState<CallsignSource>("qrz");
@@ -83,6 +100,8 @@ export default function CheckinRoster({
   useEffect(() => {
     setEditingCheckinId(null);
     setOpenTraffic(new Set());
+    setOpenDetails(new Set());
+    setSearch("");
   }, [activity.id]);
 
   useEffect(() => {
@@ -98,16 +117,19 @@ export default function CheckinRoster({
     setEditAddress(c.address);
     setEditHasTraffic(c.has_traffic);
     setEditTraffic(c.traffic);
+    setEditContact(draftFromCheckin(c));
+    setEditSaveRefused(false);
     removal.cancelRemove();
   }
 
-  function toggleTraffic(id: string) {
-    setOpenTraffic((prev) => {
+  const toggleIn = (set: typeof setOpenTraffic) => (id: string) =>
+    set((prev) => {
       const next = new Set(prev);
       if (!next.delete(id)) next.add(id);
       return next;
     });
-  }
+  const toggleTraffic = toggleIn(setOpenTraffic);
+  const toggleDetails = toggleIn(setOpenDetails);
 
   async function handleTrafficHandled(id: string, handled: boolean) {
     await api.setCheckinTrafficHandled(id, handled, operatorId);
@@ -122,6 +144,10 @@ export default function CheckinRoster({
     if (!editingCheckinId) return;
     const call = editCallSign.trim();
     if (!call) return;
+    if (log && contactTimeError(editContact)) {
+      setEditSaveRefused(true);
+      return;
+    }
     const trimmedQth = editQthLocation.trim() || null;
     const trimmedGrid = editGridSquare.trim() || null;
     const trimmedAddress = editAddress.trim() || null;
@@ -160,7 +186,8 @@ export default function CheckinRoster({
       locationLon,
       locationLabel,
       editHasTraffic,
-      editHasTraffic ? editTraffic.trim() || null : null
+      editHasTraffic ? editTraffic.trim() || null : null,
+      log ? toContactDetails(editContact) : null
     );
     setEditingCheckinId(null);
     onCheckinsChanged();
@@ -270,21 +297,39 @@ export default function CheckinRoster({
     setEditingCheckinId(null);
   }
 
-  const rosterNewestFirst = [...checkins].reverse();
+  // A log is searched to answer "who's who": call, name, place, or notes.
+  const query = search.trim().toLowerCase();
+  const shown = query
+    ? checkins.filter((c) =>
+        [c.call_sign, c.name, c.qth_location, c.notes].some((v) =>
+          v.toLowerCase().includes(query)
+        )
+      )
+    : checkins;
+  const rosterNewestFirst = [...shown].reverse();
+  const noun = log ? "contacts" : "check-ins";
 
   return (
     <>
       <div className="checkin-roster-panel">
         <div className="checkin-roster-header">
           <h3>
-            <ClipboardCheck className="heading-icon" />
-            Check-ins — {activity.title}
+            {log ? (
+              <NotebookPen className="heading-icon" />
+            ) : (
+              <ClipboardCheck className="heading-icon" />
+            )}
+            {log ? "Contacts" : "Check-ins"} — {activity.title}
             {activity.frequency && (
               <span className="checkin-roster-frequency"> ({activity.frequency})</span>
             )}
           </h3>
           <div className="checkin-roster-header-actions">
-            <span className="checkin-roster-count">{checkins.length} checked in</span>
+            <span className="checkin-roster-count">
+              {log
+                ? `${checkins.length} ${checkins.length === 1 ? "contact" : "contacts"}`
+                : `${checkins.length} checked in`}
+            </span>
             <button onClick={onShowMap}>Show map</button>
             <button
               className="link-button"
@@ -298,7 +343,29 @@ export default function CheckinRoster({
             </button>
           </div>
         </div>
-        {rosterNewestFirst.length > 0 && (
+        {log && checkins.length > 0 && (
+          <input
+            className="checkin-roster-search"
+            type="search"
+            aria-label="Search contacts"
+            placeholder="Search by call sign, name, location, or notes"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        )}
+        {rosterNewestFirst.length > 0 && log && (
+          <div className="checkin-row checkin-row-log checkin-row-columns">
+            <span>Call Sign</span>
+            <span>Name</span>
+            <span>Location</span>
+            <span>Frequency</span>
+            <span>Mode</span>
+            <span title="Signal report sent / received">RST S / R</span>
+            <span className="checkin-row-time">Time</span>
+            <span>Details</span>
+          </div>
+        )}
+        {rosterNewestFirst.length > 0 && !log && (
           <div className="checkin-row checkin-row-columns">
             <span>Call Sign</span>
             <span>Name</span>
@@ -312,11 +379,20 @@ export default function CheckinRoster({
         )}
         <div className="checkin-roster">
           {rosterNewestFirst.length === 0 && (
-            <p className="checkin-empty-state">No check-ins recorded yet.</p>
+            <p className="checkin-empty-state">
+              {query
+                ? `No ${noun} match “${search.trim()}”.`
+                : log
+                  ? "No contacts logged yet."
+                  : "No check-ins recorded yet."}
+            </p>
           )}
           {rosterNewestFirst.map((c) =>
             c.id === editingCheckinId ? (
-              <div key={c.id} className="checkin-row checkin-row-editing">
+              <div
+                key={c.id}
+                className={"checkin-row checkin-row-editing" + (log ? " checkin-row-editing-log" : "")}
+              >
                 <input
                   autoFocus
                   className="checkin-edit-call"
@@ -367,15 +443,26 @@ export default function CheckinRoster({
                     if (e.key === "Escape") cancelEdit();
                   }}
                 />
-                <label className="checkbox-row">
-                  <input
-                    type="checkbox"
-                    checked={editHasTraffic}
-                    onChange={(e) => setEditHasTraffic(e.target.checked)}
+                {log ? (
+                  <ContactFieldsInputs
+                    idPrefix={`checkin-edit-${c.id}`}
+                    value={editContact}
+                    onChange={setEditContact}
+                    onEnter={saveEdit}
+                    frequencyPlaceholder={activity.frequency || undefined}
+                    saveAttempted={editSaveRefused}
                   />
-                  Has traffic
-                </label>
-                {editHasTraffic && (
+                ) : (
+                  <label className="checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={editHasTraffic}
+                      onChange={(e) => setEditHasTraffic(e.target.checked)}
+                    />
+                    Has traffic
+                  </label>
+                )}
+                {!log && editHasTraffic && (
                   <input
                     className="checkin-edit-traffic"
                     placeholder="Traffic"
@@ -396,6 +483,69 @@ export default function CheckinRoster({
               (() => {
                 const t = formatTimeLines(c.checked_in_at);
                 const trafficOpen = c.has_traffic && openTraffic.has(c.id);
+                if (log) {
+                  const detailsOpen = openDetails.has(c.id);
+                  const coords =
+                    c.location_lat != null && c.location_lon != null
+                      ? formatCoords(c.location_lat, c.location_lon)
+                      : "";
+                  const details: [string, string][] = (
+                    [
+                      ["Power", c.power],
+                      ["Antenna", c.antenna],
+                      ["Grid", c.grid_square],
+                      ["Address", c.address],
+                      ["Coordinates", coords],
+                      ["Notes", c.notes],
+                      ["Traffic", c.has_traffic ? c.traffic || "yes" : ""],
+                    ] as [string, string][]
+                  ).filter(([, v]) => v);
+                  return (
+                    <Fragment key={c.id}>
+                      <div
+                        className={
+                          "checkin-row checkin-row-log" +
+                          (selectedCheckinId === c.id ? " selected" : "")
+                        }
+                        onClick={() => onSelectCheckin(c.id)}
+                      >
+                        <span className="checkin-row-call">{c.call_sign}</span>
+                        <span className="checkin-row-name">{c.name}</span>
+                        <span className="checkin-row-location">{c.qth_location}</span>
+                        <span className="checkin-row-mono">{c.frequency}</span>
+                        <span>{c.mode}</span>
+                        <span className="checkin-row-mono">{rstPair(c)}</span>
+                        <span className="checkin-row-time">
+                          <span>{t.local}</span>
+                          <span>{t.utc}</span>
+                        </span>
+                        <span>
+                          {details.length > 0 && (
+                            <button
+                              className="link-button"
+                              aria-expanded={detailsOpen}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleDetails(c.id);
+                              }}
+                            >
+                              {detailsOpen ? "Hide details" : "Show details"}
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                      {detailsOpen && (
+                        <div className="report-notes-detail contact-details">
+                          {details.map(([label, value]) => (
+                            <span key={label}>
+                              <span className="report-notes-label">{label}:</span> {value}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </Fragment>
+                  );
+                }
                 return (
                   <Fragment key={c.id}>
                     <div
@@ -491,19 +641,21 @@ export default function CheckinRoster({
               {checkinLookupStatus === "error" && (
                 <span className="qrz-status qrz-status-muted">QRZ lookup failed</span>
               )}
-              <button
-                onClick={() =>
-                  api.createAuditEvent(
-                    "checkin",
-                    selectedCheckin.id,
-                    "create_report_from_checkin",
-                    null,
-                    operatorId
-                  )
-                }
-              >
-                Create linked report
-              </button>
+              {!log && (
+                <button
+                  onClick={() =>
+                    api.createAuditEvent(
+                      "checkin",
+                      selectedCheckin.id,
+                      "create_report_from_checkin",
+                      null,
+                      operatorId
+                    )
+                  }
+                >
+                  Create linked report
+                </button>
+              )}
               <button onClick={() => onSelectCheckin(null)}>Clear selection</button>
             </div>
           )}

@@ -3,6 +3,7 @@ import {
   ACTIVITY_TYPES,
   activityTypeDef,
   activityTypeLabel,
+  isLog,
   visibleSections,
 } from "./activityTypes";
 import type { ActivitySummary } from "./types";
@@ -78,5 +79,14 @@ describe("visibleSections", () => {
   it("an unrecognized type behaves like 'other' (shows everything it has)", () => {
     const shown = visibleSections("some_future_type", summary({ traffic_items: 1, spotter_reports: 1 }));
     expect(shown).toEqual(new Set(["checkins", "traffic", "spotter"]));
+  });
+});
+
+describe("isLog", () => {
+  it("is true only for the station log", () => {
+    expect(isLog("station_log")).toBe(true);
+    expect(ACTIVITY_TYPES.filter((t) => t.log).map((t) => t.id)).toEqual(["station_log"]);
+    expect(isLog("directed_net")).toBe(false);
+    expect(isLog("something_newer")).toBe(false);
   });
 });

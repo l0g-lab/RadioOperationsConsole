@@ -6,6 +6,7 @@ import CheckinLocationMap from "../CheckinLocationMap";
 import CheckinEntryForm from "../checkins/CheckinEntryForm";
 import CheckinRoster from "../checkins/CheckinRoster";
 import ClosedBanner from "../lifecycle/ClosedBanner";
+import { isLog } from "../../activityTypes";
 
 interface Props {
   activities: Activity[];
@@ -36,6 +37,7 @@ export default function CheckinsTab({
 
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
   const closed = focusedActivity?.state === "closed";
+  const log = focusedActivity ? isLog(focusedActivity.activity_type) : false;
   const focusedOperator = operators.find((o) => o.id === selectedOperatorId) ?? null;
 
   // A per-activity location (e.g. a field site) takes precedence over the
@@ -87,9 +89,10 @@ export default function CheckinsTab({
       .catch(() => setOfflineCallsAvailable(false));
   }, []);
 
-  async function handleCheckinSaved(id: string) {
-    await refreshCheckins();
-    onSelectCheckin(id);
+  // A new entry just appears in the roster; it isn't selected (highlighted),
+  // so the next entry starts clean. Click a row to select it.
+  function handleCheckinSaved() {
+    return refreshCheckins();
   }
 
   return (
@@ -120,7 +123,7 @@ export default function CheckinsTab({
       {!focusedActivity && (
         <p className="checkin-empty-state">
           Choose an activity in the top bar (or create one on the Operations tab) to begin recording
-          check-ins.
+          check-ins or contacts.
         </p>
       )}
 
@@ -137,6 +140,8 @@ export default function CheckinsTab({
               rapidEntryMode={rapidEntryMode}
               focusCallSignSignal={focusCallSignSignal}
               onSaved={handleCheckinSaved}
+              log={log}
+              activityFrequency={focusedActivity.frequency}
             />
           )}
 
@@ -152,6 +157,7 @@ export default function CheckinsTab({
             onSelectCheckin={onSelectCheckin}
             onCheckinsChanged={refreshCheckins}
             onShowMap={() => setShowMap(true)}
+            log={log}
           />
         </>
       )}

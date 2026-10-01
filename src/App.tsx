@@ -14,6 +14,7 @@ import HistoryTab from "./components/tabs/HistoryTab";
 import SettingsTab from "./components/tabs/SettingsTab";
 import type { Activity, Operator, Tab } from "./types";
 import { TABS } from "./types";
+import { isLog } from "./activityTypes";
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
@@ -161,7 +162,15 @@ export default function App() {
           />
         )}
         <main className="app-content">
-          <TabBar current={currentTab} onSelect={setCurrentTab} />
+          <TabBar
+            current={currentTab}
+            onSelect={setCurrentTab}
+            labels={
+              selectedActivity && isLog(selectedActivity.activity_type)
+                ? { "Check-ins": "Contacts" }
+                : undefined
+            }
+          />
           {currentTab === "Operations" && (
             <OperationsTab
               activities={activities}

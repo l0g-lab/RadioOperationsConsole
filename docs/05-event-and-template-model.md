@@ -17,7 +17,7 @@ An activity is the top-level operational container. It owns or references net se
 
 An activity type supplies defaults; it does not limit the records an authorized operator may add.
 
-Implemented so far: simple net, directed net, SKYWARN, and other (see [features/activity-lifecycle-and-wrap-up.md](features/activity-lifecycle-and-wrap-up.md), `LIFE-050`–`056`). The remaining types are added as the features that distinguish them are built.
+Implemented so far: simple net, directed net, SKYWARN, other (see [features/activity-lifecycle-and-wrap-up.md](features/activity-lifecycle-and-wrap-up.md), `LIFE-050`–`056`), and station log, a running contact log with no lifecycle (see [features/station-log.md](features/station-log.md)). The remaining types are added as the features that distinguish them are built.
 
 ## Lifecycle
 

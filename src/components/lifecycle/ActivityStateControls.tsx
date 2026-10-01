@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as api from "../../api";
 import type { Activity, Operator } from "../../types";
+import { isLog } from "../../activityTypes";
 import ActivityStatus from "./ActivityStatus";
 import CloseOutDialog from "./CloseOutDialog";
 import ReopenDialog from "./ReopenDialog";
@@ -32,6 +33,10 @@ export default function ActivityStateControls({
     setDialog(null);
     onChanged();
   }
+
+  // A station log is never started or ended, so it has no lifecycle to
+  // show — unless it was closed (e.g. as another type), which can be undone.
+  if (isLog(activity.activity_type) && activity.state !== "closed") return null;
 
   return (
     <>

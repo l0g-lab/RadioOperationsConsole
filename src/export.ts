@@ -123,6 +123,13 @@ const CSV_COLUMNS = [
   "Has Traffic",
   "Traffic",
   "Traffic Handled",
+  "Frequency",
+  "Mode",
+  "RST Sent",
+  "RST Received",
+  "Power",
+  "Antenna",
+  "Notes",
 ];
 
 /** The active (non-voided) roster as CSV, with everything the roster shows. */
@@ -143,6 +150,13 @@ export function checkinsToCsv(checkins: Checkin[]): string {
       c.has_traffic ? "yes" : "",
       c.traffic,
       c.has_traffic ? (c.traffic_handled ? "yes" : "no") : "",
+      c.frequency,
+      c.mode,
+      c.rst_sent,
+      c.rst_received,
+      c.power,
+      c.antenna,
+      c.notes,
     ]);
   }
   return csv(rows);
@@ -163,6 +177,13 @@ function checkinRecord(c: Checkin) {
     has_traffic: c.has_traffic,
     traffic: c.traffic,
     traffic_handled: c.traffic_handled,
+    frequency: c.frequency,
+    mode: c.mode,
+    rst_sent: c.rst_sent,
+    rst_received: c.rst_received,
+    power: c.power,
+    antenna: c.antenna,
+    notes: c.notes,
   };
 }
 

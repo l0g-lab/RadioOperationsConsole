@@ -58,6 +58,7 @@ fn main() {
             commands::restore_activity,
             commands::create_checkin,
             commands::list_checkins,
+            commands::station_history,
             commands::list_voided_checkins,
             commands::update_checkin,
             commands::set_checkin_traffic_handled,

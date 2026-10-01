@@ -540,21 +540,40 @@ details > summary {
   letter-spacing: 0.04em;
 }
 
-.checkin-entry-labels {
+/* A caption above its box (call sign, name). The 24px font is the box's, so
+   the hint-based width (in ch) is measured at the size the hint is shown. */
+.checkin-entry-field {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 24px;
 }
 
-.checkin-entry-labels label:first-child {
-  flex: 1.2;
+.checkin-entry-field input {
+  width: 100%;
 }
 
-.checkin-entry-labels label:last-child {
-  flex: 1;
+.checkin-entry-field-call {
+  flex: 1.2 1 auto;
+}
+
+.checkin-entry-field-name {
+  flex: 1 1 auto;
+}
+
+/* The save button lines up with the boxes, not their captions. */
+.checkin-entry-row-main {
+  align-items: flex-end;
+}
+
+.checkin-entry-row-main > button {
+  /* As tall as the 24px boxes beside it, on their line or wrapped below. */
+  min-height: calc(24px * 1.2 + 26px);
 }
 
 .checkin-entry-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -564,12 +583,10 @@ details > summary {
 }
 
 .checkin-entry-call {
-  flex: 1.2;
   text-transform: uppercase;
 }
 
 .checkin-entry-name {
-  flex: 1;
   text-transform: none;
 }
 
@@ -1395,6 +1412,61 @@ details > summary {
   flex: 1;
   font-size: 16px;
   padding: 6px 10px;
+}
+
+/* ---- Station log: contact details (ContactFields.tsx) ---- */
+
+.contact-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.contact-fields input {
+  font-size: 14px;
+  padding: 6px 10px;
+}
+
+.contact-field-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.contact-time-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* The edit row puts the contact fields on their own full-width line. */
+.checkin-row-editing-log .contact-fields {
+  flex-basis: 100%;
+  margin-top: 0;
+}
+
+.checkin-row-log {
+  grid-template-columns: 110px minmax(90px, 1fr) minmax(120px, 1fr) 110px 70px 90px 190px 110px;
+}
+
+.checkin-row-mono {
+  font-family: "Consolas", "Menlo", monospace;
+}
+
+.contact-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.checkin-roster-search {
+  width: 100%;
+  margin: 4px 0 8px 0;
+  padding: 6px 10px;
+  font-size: 14px;
 }
 
 .traffic-handled {

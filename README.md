@@ -4,13 +4,14 @@ Status: Foundation draft 0.1
 
 An offline-first desktop app for running amateur-radio nets, emergency communications activities, exercises, and SKYWARN activations. It runs on **Linux and Windows**.
 
-It's an operations logger, not a QSO logbook: one app that handles a relaxed weekly net and a full severe-weather activation, so nobody has to juggle spreadsheets, paper, and a browser full of tabs. Everything core works with **no internet** — online services (QRZ, weather, APRS, map tiles) are add-ons that make it better when you have a connection, never requirements.
+It's an operations logger first, not a contest logbook: one app that handles a relaxed weekly net and a full severe-weather activation, so nobody has to juggle spreadsheets, paper, and a browser full of tabs. Everything core works with **no internet** — online services (QRZ, weather, APRS, map tiles) are add-ons that make it better when you have a connection, never requirements.
 
 ## What it does
 
 - **Run several nets at once.** Pick the active activity from the top bar (or `Ctrl+[` / `Ctrl+]`) and every tab follows it. Templates make a recurring net one click to set up.
 - **Take check-ins fast.** Type a call sign, press Enter. Name, address, and location fill in from QRZ — or, with no QRZ or no internet, from an offline copy of the FCC amateur-license database. GMRS call signs (like WRAB123) fill in from an offline copy of the FCC GMRS database. Export the roster as CSV or JSON, or as an ICS-309 communications log for Winlink Express's own Form-309 (or to print).
 - **Put people on a map.** Check-ins are plotted at their real location when known (QRZ coordinates, a pin you drop, typed coordinates), falling back to ZIP centre, then grid square. Say "mile marker 182 on the turnpike" and it lands on the map, offline.
+- **Keep a station log.** Log your own contacts (say, everyday VHF simplex) with time, frequency, mode, RST both ways, power, antenna, and notes — all optional, no net to start or end. Search it later, and as you type a call sign the app tells you when you last worked them, from any log or net.
 - **Log spotter reports.** Who / what / where, with NWS-style hail and wind scales and a wind-damage guide, and export as CSV, JSON, text, or an ICS-213 for Winlink or print. Reports are plotted at the location of the *damage*, with icons for hail, wind, flooding, tornado, snow/ice.
 - **Watch the weather.** NWS alerts and forecast for your area, plus a radar loop from the nearest NEXRAD station.
 - **See live APRS.** A receive-only APRS-IS feed for a chosen area, on a map. Nothing is ever transmitted.

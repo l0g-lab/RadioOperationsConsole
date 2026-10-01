@@ -4,9 +4,11 @@ import { TAB_ICONS } from "../tabIcons";
 interface TabBarProps {
   current: Tab;
   onSelect: (tab: Tab) => void;
+  /** What a tab is called for the focused activity, where it differs from its name. */
+  labels?: Partial<Record<Tab, string>>;
 }
 
-export default function TabBar({ current, onSelect }: TabBarProps) {
+export default function TabBar({ current, onSelect, labels = {} }: TabBarProps) {
   return (
     <div className="tab-bar">
       {TABS.map((t) => {
@@ -18,7 +20,7 @@ export default function TabBar({ current, onSelect }: TabBarProps) {
             onClick={() => onSelect(t)}
           >
             <Icon className="tab-icon" />
-            {t}
+            {labels[t] ?? t}
           </button>
         );
       })}

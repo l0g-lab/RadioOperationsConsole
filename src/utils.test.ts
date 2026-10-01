@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { combineScheduledAt, formatTimeLines, pad2, splitScheduledAt } from "./utils";
+import {
+  combineScheduledAt,
+  formatTimeLines,
+  formatContactTime,
+  parseContactTime,
+  pad2,
+  splitScheduledAt,
+} from "./utils";
 
 describe("pad2", () => {
   it("pads single digits", () => {
@@ -55,5 +62,30 @@ describe("formatTimeLines", () => {
   it("falls back to the raw string for unparseable input, with an empty UTC line", () => {
     const lines = formatTimeLines("not a date");
     expect(lines).toEqual({ local: "not a date", utc: "" });
+  });
+});
+
+describe("parseContactTime / formatContactTime", () => {
+  const local = (y: number, mo: number, d: number, h: number, mi: number) =>
+    new Date(y, mo - 1, d, h, mi).toISOString();
+
+  it("reads a local date and time and round-trips it", () => {
+    const t = parseContactTime("2026-09-14 10:05");
+    expect(t).toEqual({ kind: "ok", iso: local(2026, 9, 14, 10, 5) });
+    expect(parseContactTime(" 2026-9-4T7:05 ")).toEqual({ kind: "ok", iso: local(2026, 9, 4, 7, 5) });
+    expect(formatContactTime(local(2026, 9, 4, 7, 5))).toBe("2026-09-04 07:05");
+  });
+
+  it("takes a time alone as today", () => {
+    const today = new Date(2026, 9, 1, 18, 0);
+    expect(parseContactTime("9:30", today)).toEqual({ kind: "ok", iso: local(2026, 10, 1, 9, 30) });
+  });
+
+  it("tells blank apart from unreadable", () => {
+    expect(parseContactTime("  ")).toEqual({ kind: "blank" });
+    for (const bad of ["yesterday", "2026-09-14", "2026-02-30 10:00", "25:00", "10:5", "14/09/2026 10:05"]) {
+      expect(parseContactTime(bad), bad).toEqual({ kind: "invalid" });
+    }
+    expect(formatContactTime("not a date")).toBe("");
   });
 });

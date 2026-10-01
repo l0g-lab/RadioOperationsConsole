@@ -85,3 +85,46 @@ export function formatTimeLines(s: string): TimeLines {
   }
   return { local: s, utc: "" };
 }
+
+export type ContactTime = { kind: "blank" } | { kind: "ok"; iso: string } | { kind: "invalid" };
+
+/**
+ * A typed contact time, in this computer's time: "YYYY-MM-DD HH:MM" (a "T"
+ * instead of the space is fine too), or just "HH:MM" for today. Blank means
+ * "not given"; anything else unreadable is "invalid", so a typo is caught
+ * rather than silently logged as now. A plain text box, not a date picker:
+ * the desktop webviews' native pickers don't reliably close.
+ */
+export function parseContactTime(text: string, today: Date = new Date()): ContactTime {
+  const v = text.trim();
+  if (!v) return { kind: "blank" };
+  let m = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})$/);
+  let parts: number[] | null = m ? m.slice(1).map(Number) : null;
+  if (!parts) {
+    m = v.match(/^(\d{1,2}):(\d{2})$/);
+    if (m) parts = [today.getFullYear(), today.getMonth() + 1, today.getDate(), +m[1], +m[2]];
+  }
+  if (!parts) return { kind: "invalid" };
+  const [y, mo, d, h, mi] = parts;
+  const date = new Date(y, mo - 1, d, h, mi);
+  // Reject roll-overs like 2026-02-30 or 25:00 rather than "correcting" them.
+  if (
+    date.getFullYear() !== y ||
+    date.getMonth() !== mo - 1 ||
+    date.getDate() !== d ||
+    date.getHours() !== h ||
+    date.getMinutes() !== mi
+  ) {
+    return { kind: "invalid" };
+  }
+  return { kind: "ok", iso: date.toISOString() };
+}
+
+/** A stored timestamp as "YYYY-MM-DD HH:MM" in this computer's time ("" if unreadable). */
+export function formatContactTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(
+    d.getHours()
+  )}:${pad2(d.getMinutes())}`;
+}

@@ -1,6 +1,6 @@
 use chrono::Utc;
 use rusqlite::{params, Connection};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub struct Repository {
@@ -97,7 +97,63 @@ pub struct Checkin {
     pub has_traffic: bool,
     pub traffic: String,
     pub traffic_handled: bool,
+    /// Radio details of a contact (station logs); empty when not recorded.
+    pub frequency: String,
+    pub mode: String,
+    pub rst_sent: String,
+    pub rst_received: String,
+    pub power: String,
+    pub antenna: String,
+    pub notes: String,
 }
+
+/// The radio details of a contact, as entered. Every field is optional.
+#[derive(Deserialize, Serialize, Debug, Clone, Default, PartialEq)]
+pub struct ContactDetails {
+    /// When the contact was made (RFC 3339). None means "now" on create and
+    /// "unchanged" on update.
+    pub contacted_at: Option<String>,
+    pub frequency: Option<String>,
+    pub mode: Option<String>,
+    pub rst_sent: Option<String>,
+    pub rst_received: Option<String>,
+    pub power: Option<String>,
+    pub antenna: Option<String>,
+    pub notes: Option<String>,
+}
+
+impl ContactDetails {
+    /// Blank fields are stored as nothing, not as empty text.
+    fn field(v: &Option<String>) -> Option<&str> {
+        v.as_deref().map(str::trim).filter(|t| !t.is_empty())
+    }
+}
+
+/// What's known about a call sign from earlier records, across every
+/// activity: the "worked before" line.
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct StationHistory {
+    /// Earlier contacts/check-ins with this call sign (not counting removed ones).
+    pub count: u32,
+    /// The most recent one, if any.
+    pub last: Option<PastContact>,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct PastContact {
+    pub activity_id: String,
+    pub activity_title: String,
+    pub at: String,
+    /// The most recent name and QTH on record for the call, even when the
+    /// latest contact left them blank.
+    pub name: String,
+    pub qth_location: String,
+    /// The contact's own frequency, else its activity's.
+    pub frequency: String,
+}
+
+/// Columns `map_checkin` reads, in order.
+const CHECKIN_COLUMNS: &str = "id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled, coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,'')";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SpotterReport {
@@ -564,12 +620,18 @@ impl Repository {
         location_label: Option<&str>,
         has_traffic: bool,
         traffic: Option<&str>,
+        contact: &ContactDetails,
     ) -> rusqlite::Result<String> {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
+        // The contact's own time when given (logged after the fact); when it
+        // was entered is always now.
+        let at = ContactDetails::field(&contact.contacted_at).unwrap_or(&now);
+        let f = ContactDetails::field;
         self.conn.execute(
-            "INSERT INTO checkins(id, activity_id, call_sign, name, qth_location, grid_square, address, checked_in_at, entered_at, operator_id, location_lat, location_lon, location_label, has_traffic, traffic) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
-            params![id, activity_id, call_sign, name, qth_location, grid_square, address, now, now, operator_id, location_lat, location_lon, location_label, has_traffic, if has_traffic { traffic } else { None }],
+            "INSERT INTO checkins(id, activity_id, call_sign, name, qth_location, grid_square, address, checked_in_at, entered_at, operator_id, location_lat, location_lon, location_label, has_traffic, traffic, frequency, mode, rst_sent, rst_received, power, antenna, notes) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
+            params![id, activity_id, call_sign, name, qth_location, grid_square, address, at, now, operator_id, location_lat, location_lon, location_label, has_traffic, if has_traffic { traffic } else { None },
+                f(&contact.frequency), f(&contact.mode), f(&contact.rst_sent), f(&contact.rst_received), f(&contact.power), f(&contact.antenna), f(&contact.notes)],
         )?;
         Ok(id)
     }
@@ -589,11 +651,18 @@ impl Repository {
             has_traffic: r.get(10)?,
             traffic: r.get(11)?,
             traffic_handled: r.get(12)?,
+            frequency: r.get(13)?,
+            mode: r.get(14)?,
+            rst_sent: r.get(15)?,
+            rst_received: r.get(16)?,
+            power: r.get(17)?,
+            antenna: r.get(18)?,
+            notes: r.get(19)?,
         })
     }
 
     pub fn list_checkins(&self, activity_id: &str) -> rusqlite::Result<Vec<Checkin>> {
-        let mut stmt = self.conn.prepare("SELECT id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL ORDER BY checked_in_at DESC")?;
+        let mut stmt = self.conn.prepare(&format!("SELECT {CHECKIN_COLUMNS} FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL ORDER BY checked_in_at DESC"))?;
         let rows = stmt.query_map(params![activity_id], Self::map_checkin)?;
         let mut v = Vec::new();
         for r in rows {
@@ -603,7 +672,7 @@ impl Repository {
     }
 
     pub fn list_voided_checkins(&self, activity_id: &str) -> rusqlite::Result<Vec<Checkin>> {
-        let mut stmt = self.conn.prepare("SELECT id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled FROM checkins WHERE activity_id = ?1 AND voided_at IS NOT NULL ORDER BY voided_at DESC")?;
+        let mut stmt = self.conn.prepare(&format!("SELECT {CHECKIN_COLUMNS} FROM checkins WHERE activity_id = ?1 AND voided_at IS NOT NULL ORDER BY voided_at DESC"))?;
         let rows = stmt.query_map(params![activity_id], Self::map_checkin)?;
         let mut v = Vec::new();
         for r in rows {
@@ -614,7 +683,7 @@ impl Repository {
 
     pub fn get_checkin(&self, id: &str) -> rusqlite::Result<Checkin> {
         self.conn.query_row(
-            "SELECT id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled FROM checkins WHERE id = ?1",
+            &format!("SELECT {CHECKIN_COLUMNS} FROM checkins WHERE id = ?1"),
             params![id],
             Self::map_checkin,
         )
@@ -634,13 +703,61 @@ impl Repository {
         location_label: Option<&str>,
         has_traffic: bool,
         traffic: Option<&str>,
+        contact: Option<&ContactDetails>,
     ) -> rusqlite::Result<()> {
         // Clearing "has traffic" also clears its details and handled mark.
         self.conn.execute(
             "UPDATE checkins SET call_sign = ?1, name = ?2, qth_location = ?3, grid_square = ?4, address = ?5, location_lat = ?6, location_lon = ?7, location_label = ?8, has_traffic = ?9, traffic = ?10, traffic_handled = CASE WHEN ?9 THEN traffic_handled ELSE 0 END WHERE id = ?11",
             params![call_sign, name, qth_location, grid_square, address, location_lat, location_lon, location_label, has_traffic, if has_traffic { traffic } else { None }, id],
         )?;
+        // No contact details given (e.g. a call-sign lookup filling in a
+        // name) leaves them as they are; given, they replace what's there.
+        if let Some(c) = contact {
+            let f = ContactDetails::field;
+            self.conn.execute(
+                "UPDATE checkins SET frequency = ?1, mode = ?2, rst_sent = ?3, rst_received = ?4, power = ?5, antenna = ?6, notes = ?7, checked_in_at = coalesce(?8, checked_in_at) WHERE id = ?9",
+                params![f(&c.frequency), f(&c.mode), f(&c.rst_sent), f(&c.rst_received), f(&c.power), f(&c.antenna), f(&c.notes), f(&c.contacted_at), id],
+            )?;
+        }
         Ok(())
+    }
+
+    /// Earlier records of a call sign across every activity, newest first
+    /// (removed ones don't count). Case-insensitive.
+    pub fn station_history(&self, call_sign: &str) -> rusqlite::Result<StationHistory> {
+        let call = call_sign.trim();
+        if call.is_empty() {
+            return Ok(StationHistory { count: 0, last: None });
+        }
+        let mut stmt = self.conn.prepare(
+            "SELECT c.activity_id, a.title, c.checked_in_at, coalesce(c.name,''), coalesce(c.qth_location,''), \
+                    coalesce(nullif(c.frequency,''), a.frequency, '') \
+             FROM checkins c JOIN activities a ON a.id = c.activity_id \
+             WHERE UPPER(c.call_sign) = UPPER(?1) AND c.voided_at IS NULL \
+             ORDER BY c.checked_in_at DESC",
+        )?;
+        let rows: Vec<PastContact> = stmt
+            .query_map(params![call], |r| {
+                Ok(PastContact {
+                    activity_id: r.get(0)?,
+                    activity_title: r.get(1)?,
+                    at: r.get(2)?,
+                    name: r.get(3)?,
+                    qth_location: r.get(4)?,
+                    frequency: r.get(5)?,
+                })
+            })?
+            .collect::<rusqlite::Result<_>>()?;
+        let count = rows.len() as u32;
+        let last = rows.first().cloned().map(|mut last| {
+            let latest = |get: fn(&PastContact) -> &str| {
+                rows.iter().map(get).find(|v| !v.trim().is_empty()).unwrap_or("").to_string()
+            };
+            last.name = latest(|p| &p.name);
+            last.qth_location = latest(|p| &p.qth_location);
+            last
+        });
+        Ok(StationHistory { count, last })
     }
 
     pub fn set_checkin_traffic_handled(&self, id: &str, handled: bool) -> rusqlite::Result<()> {
@@ -1141,14 +1258,14 @@ mod lifecycle_tests {
         let r = repo();
         let id = r.create_activity("Net", "weekly_net", None, None).unwrap();
         for call in ["K4ABC", "k4abc", "W1XYZ"] {
-            r.create_checkin(&id, call, None, None, None, None, None, None, None, None, false, None).unwrap();
+            r.create_checkin(&id, call, None, None, None, None, None, None, None, None, false, None, &ContactDetails::default()).unwrap();
         }
-        let gone = r.create_checkin(&id, "N0BAD", None, None, None, None, None, None, None, None, true, Some("voided")).unwrap();
+        let gone = r.create_checkin(&id, "N0BAD", None, None, None, None, None, None, None, None, true, Some("voided"), &ContactDetails::default()).unwrap();
         r.void_checkin(&gone, None).unwrap();
 
         // Two stations with traffic (one handled), plus one with none.
-        let t1 = r.create_checkin(&id, "W2TRF", None, None, None, None, None, None, None, None, true, Some("Need generator")).unwrap();
-        r.create_checkin(&id, "W3TRF", None, None, None, None, None, None, None, None, true, None).unwrap();
+        let t1 = r.create_checkin(&id, "W2TRF", None, None, None, None, None, None, None, None, true, Some("Need generator"), &ContactDetails::default()).unwrap();
+        r.create_checkin(&id, "W3TRF", None, None, None, None, None, None, None, None, true, None, &ContactDetails::default()).unwrap();
         r.set_checkin_traffic_handled(&t1, true).unwrap();
         r.create_audit_event("activity", &id, "activity_entry", Some("Net opened"), None).unwrap();
 
@@ -1167,8 +1284,8 @@ mod lifecycle_tests {
         let op = r.create_operator("Bob Nelson", Some("K4NCS")).unwrap();
         let a = r.create_activity("Net", "directed_net", None, None).unwrap();
         let other = r.create_activity("Other net", "directed_net", None, None).unwrap();
-        let c = r.create_checkin(&a, "W1XYZ", None, None, None, None, None, None, None, None, false, None).unwrap();
-        let c_other = r.create_checkin(&other, "W9OTH", None, None, None, None, None, None, None, None, false, None).unwrap();
+        let c = r.create_checkin(&a, "W1XYZ", None, None, None, None, None, None, None, None, false, None, &ContactDetails::default()).unwrap();
+        let c_other = r.create_checkin(&other, "W9OTH", None, None, None, None, None, None, None, None, false, None, &ContactDetails::default()).unwrap();
 
         r.transition_activity(&a, "active", None, None, Some(&op)).unwrap();
         r.create_audit_event("checkin", &c, "correct", Some("{}"), Some(&op)).unwrap();
@@ -1224,9 +1341,9 @@ mod deletion_tests {
     fn populated(r: &Repository, op: &str) -> (String, String, String) {
         let a = r.create_activity("Storm Net", "skywarn", None, None).unwrap();
         let c = r
-            .create_checkin(&a, "ZZ9SECRET", Some("Secret Person"), None, None, Some("99 Hidden Lane"), Some(op), None, None, None, false, None)
+            .create_checkin(&a, "ZZ9SECRET", Some("Secret Person"), None, None, Some("99 Hidden Lane"), Some(op), None, None, None, false, None, &ContactDetails::default())
             .unwrap();
-        let c2 = r.create_checkin(&a, "W1AW", None, None, None, None, Some(op), None, None, None, false, None).unwrap();
+        let c2 = r.create_checkin(&a, "W1AW", None, None, None, None, Some(op), None, None, None, false, None, &ContactDetails::default()).unwrap();
         r.void_checkin(&c2, Some("dup")).unwrap();
         let s = r
             .create_spotter_report(&a, "2026-09-21T19:00", None, None, None, None, Some("ZZ9SECRET"), "hail", None, None, Some("Secret notes"), Some(&c), Some(op))
@@ -1255,7 +1372,7 @@ mod deletion_tests {
         let op = r.create_operator("Pat", Some("K8ABC")).unwrap();
         let (a, c, s) = populated(&r, &op);
         let other = r.create_activity("Other Net", "simple_net", None, None).unwrap();
-        let kept = r.create_checkin(&other, "N0KEEP", None, None, None, None, Some(&op), None, None, None, false, None).unwrap();
+        let kept = r.create_checkin(&other, "N0KEEP", None, None, None, None, Some(&op), None, None, None, false, None, &ContactDetails::default()).unwrap();
 
         let counts = r.delete_activity_permanently(&a, Some(&op)).unwrap();
         assert_eq!(counts, DeletedCounts { checkins: 2, spotter_reports: 1 });
@@ -1328,7 +1445,7 @@ mod deletion_tests {
         let r = repo();
         let op = r.create_operator("Pat", Some("K8ABC")).unwrap();
         let a = r.create_activity("Net", "simple_net", None, None).unwrap();
-        r.create_checkin(&a, "W1AW", None, None, None, None, Some(&op), None, None, None, false, None).unwrap();
+        r.create_checkin(&a, "W1AW", None, None, None, None, Some(&op), None, None, None, false, None, &ContactDetails::default()).unwrap();
         assert!(r.operator_has_records(&op).unwrap());
         assert!(r.delete_operator(&op).is_err());
         assert!(r.get_operator(&op).is_ok());
@@ -1368,5 +1485,102 @@ mod deletion_tests {
         assert!(!r.operator_has_records(&op).unwrap());
         r.delete_operator(&op).unwrap();
         assert_eq!(count(&r, "SELECT count(*) FROM audit_events WHERE entity_id = ?1", &op), 0);
+    }
+}
+
+#[cfg(test)]
+mod contact_tests {
+    use super::*;
+
+    fn repo() -> Repository {
+        let path = std::env::temp_dir().join(format!("roc-contact-{}.db", Uuid::new_v4()));
+        Repository::new(crate::db::open_db(&path).unwrap())
+    }
+
+    fn contact(r: &Repository, activity: &str, call: &str, name: Option<&str>, details: &ContactDetails) -> String {
+        r.create_checkin(activity, call, name, None, None, None, None, None, None, None, false, None, details)
+            .unwrap()
+    }
+
+    #[test]
+    fn contact_details_are_stored_and_blank_ones_left_empty() {
+        let r = repo();
+        let log = r.create_activity("Simplex log", "station_log", None, Some("146.520")).unwrap();
+        let details = ContactDetails {
+            contacted_at: Some("2026-09-14T14:05:00+00:00".into()),
+            frequency: Some(" 146.520 ".into()),
+            mode: Some("FM".into()),
+            rst_sent: Some("59".into()),
+            rst_received: Some("57".into()),
+            power: Some("5 W".into()),
+            antenna: Some("".into()),
+            notes: Some("Mobile on I-75".into()),
+        };
+        let id = contact(&r, &log, "KD4ABC", None, &details);
+        let c = r.get_checkin(&id).unwrap();
+        assert_eq!(c.checked_in_at, "2026-09-14T14:05:00+00:00", "the contact's own time");
+        assert_eq!((c.frequency.as_str(), c.mode.as_str()), ("146.520", "FM"));
+        assert_eq!((c.rst_sent.as_str(), c.rst_received.as_str()), ("59", "57"));
+        assert_eq!((c.power.as_str(), c.antenna.as_str(), c.notes.as_str()), ("5 W", "", "Mobile on I-75"));
+
+        // Nothing given: stamped now, nothing else set.
+        let bare = r.get_checkin(&contact(&r, &log, "W1AW", None, &ContactDetails::default())).unwrap();
+        assert!(bare.checked_in_at > c.checked_in_at);
+        assert!(bare.frequency.is_empty() && bare.notes.is_empty());
+    }
+
+    #[test]
+    fn corrections_replace_contact_details_only_when_given() {
+        let r = repo();
+        let log = r.create_activity("Simplex log", "station_log", None, None).unwrap();
+        let id = contact(&r, &log, "KD4ABC", None, &ContactDetails { mode: Some("FM".into()), rst_sent: Some("59".into()), ..Default::default() });
+        let upd = |c: Option<&ContactDetails>| {
+            r.update_checkin(&id, "KD4ABC", Some("Pat"), None, None, None, None, None, None, false, None, c).unwrap()
+        };
+
+        // A name filled in by a lookup leaves the contact details alone.
+        upd(None);
+        let c = r.get_checkin(&id).unwrap();
+        assert_eq!((c.name.as_str(), c.mode.as_str(), c.rst_sent.as_str()), ("Pat", "FM", "59"));
+
+        // An edit replaces them (clearing what was blanked) and can move the time.
+        let at = "2026-01-02T03:04:05+00:00";
+        upd(Some(&ContactDetails { contacted_at: Some(at.into()), mode: Some("SSB".into()), ..Default::default() }));
+        let c = r.get_checkin(&id).unwrap();
+        assert_eq!((c.mode.as_str(), c.rst_sent.as_str(), c.checked_in_at.as_str()), ("SSB", "", at));
+
+        // Given details without a time keep the time.
+        upd(Some(&ContactDetails::default()));
+        assert_eq!(r.get_checkin(&id).unwrap().checked_in_at, at);
+    }
+
+    #[test]
+    fn station_history_spans_activities_and_ignores_removed_records() {
+        let r = repo();
+        let net = r.create_activity("Tuesday Net", "directed_net", None, Some("147.000")).unwrap();
+        let log = r.create_activity("Simplex log", "station_log", None, None).unwrap();
+        let at = |t: &str| ContactDetails { contacted_at: Some(t.into()), ..Default::default() };
+
+        assert_eq!(r.station_history("KD4ABC").unwrap(), StationHistory { count: 0, last: None });
+
+        r.create_checkin(&net, "KD4ABC", Some("Pat"), Some("Orlando"), None, None, None, None, None, None, false, None, &at("2026-09-01T00:00:00+00:00")).unwrap();
+        contact(&r, &log, "kd4abc", None, &ContactDetails { frequency: Some("146.520".into()), ..at("2026-09-14T00:00:00+00:00") });
+        let removed = contact(&r, &log, "KD4ABC", Some("Wrong"), &at("2026-09-20T00:00:00+00:00"));
+        r.void_checkin(&removed, None).unwrap();
+        contact(&r, &log, "W1AW", Some("Hiram"), &ContactDetails::default());
+
+        let h = r.station_history(" Kd4Abc ").unwrap();
+        assert_eq!(h.count, 2, "case-insensitive, removed one not counted");
+        let last = h.last.unwrap();
+        assert_eq!(last.activity_title, "Simplex log");
+        assert_eq!(last.frequency, "146.520");
+        assert!(last.at.starts_with("2026-09-14"));
+        // The latest contact had no name/QTH: the most recent known ones are shown.
+        assert_eq!((last.name.as_str(), last.qth_location.as_str()), ("Pat", "Orlando"));
+
+        // A contact with no frequency of its own falls back to its activity's.
+        r.void_checkin(&r.list_checkins(&log).unwrap().iter().find(|c| c.call_sign == "kd4abc").unwrap().id, None).unwrap();
+        let only_net = r.station_history("KD4ABC").unwrap().last.unwrap();
+        assert_eq!((only_net.activity_id, only_net.frequency.as_str()), (net, "147.000"));
     }
 }

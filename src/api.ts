@@ -13,6 +13,7 @@ import type {
   AppSettings,
   AuditEvent,
   Checkin,
+  ContactDetails,
   DataPackInfo,
   GeocodeResult,
   MileMarkerHit,
@@ -21,6 +22,7 @@ import type {
   SpotterReport,
   StorageItem,
   StorageItemId,
+  StationHistory,
 } from "./types";
 
 export const listOperators = () => invoke<Operator[]>("list_operators");
@@ -200,7 +202,8 @@ export const createCheckin = (
   location_lon: number | null,
   location_label: string | null,
   has_traffic: boolean,
-  traffic: string | null
+  traffic: string | null,
+  contact: ContactDetails | null = null
 ) =>
   invoke<string>("create_checkin", {
     activityId: activity_id,
@@ -215,7 +218,12 @@ export const createCheckin = (
     locationLabel: location_label,
     hasTraffic: has_traffic,
     traffic,
+    contact,
   });
+
+/** Earlier records of a call sign across every activity. */
+export const stationHistory = (call_sign: string) =>
+  invoke<StationHistory>("station_history", { callSign: call_sign });
 
 export const listCheckins = (activity_id: string) =>
   invoke<Checkin[]>("list_checkins", { activityId: activity_id });
@@ -235,7 +243,9 @@ export const updateCheckin = (
   location_lon: number | null,
   location_label: string | null,
   has_traffic: boolean,
-  traffic: string | null
+  traffic: string | null,
+  /** Left out, the contact's details and time stay as they are. */
+  contact: ContactDetails | null = null
 ) =>
   invoke<void>("update_checkin", {
     checkinId: checkin_id,
@@ -250,6 +260,7 @@ export const updateCheckin = (
     locationLabel: location_label,
     hasTraffic: has_traffic,
     traffic,
+    contact,
   });
 
 export const setCheckinTrafficHandled = (

@@ -18,6 +18,12 @@ export interface ActivityTypeDef {
   description: string;
   /** Sections shown in summaries even when they're empty. */
   sections: SummarySection[];
+  /**
+   * A running log rather than a net: never started or ended, and its records
+   * are contacts with radio details (frequency, mode, RST, power, antenna,
+   * notes) instead of check-ins with traffic.
+   */
+  log?: boolean;
 }
 
 export const ACTIVITY_TYPES: ActivityTypeDef[] = [
@@ -40,6 +46,14 @@ export const ACTIVITY_TYPES: ActivityTypeDef[] = [
     sections: ["checkins", "spotter", "traffic"],
   },
   {
+    id: "station_log",
+    label: "Station log",
+    description:
+      "An ongoing log of your own contacts (e.g. VHF simplex), with no start or end: frequency, mode, signal reports, power, antenna, and notes.",
+    sections: ["checkins"],
+    log: true,
+  },
+  {
     id: "other",
     label: "Other",
     description: "Anything else. Shows everything.",
@@ -56,6 +70,11 @@ export function activityTypeDef(id: string): ActivityTypeDef {
   if (known) return known;
   const other = ACTIVITY_TYPES.find((t) => t.id === "other") as ActivityTypeDef;
   return { ...other, id, label: id.replace(/_/g, " ") || other.label };
+}
+
+/** Whether this type is a running contact log rather than a net. */
+export function isLog(id: string): boolean {
+  return activityTypeDef(id).log === true;
 }
 
 export function activityTypeLabel(id: string): string {

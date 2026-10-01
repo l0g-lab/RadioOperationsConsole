@@ -10,7 +10,18 @@ import {
 } from "../../callsignLookup";
 import { resolveOfflineLocationAsync } from "../../locationResolution";
 import { formatCoords, parseCoords } from "../../geo";
+import { hintWidth } from "../hintWidth";
 import type { MileMarkerHit } from "../../types";
+import {
+  contactTimeError,
+  ContactFieldsInputs,
+  EMPTY_CONTACT,
+  nextContact,
+  toContactDetails,
+  useStationHistory,
+  WorkedBefore,
+  type ContactDraft,
+} from "./ContactFields";
 
 interface Props {
   activityId: string;
@@ -21,9 +32,24 @@ interface Props {
   rapidEntryMode: boolean;
   focusCallSignSignal: number;
   onSaved: (checkinId: string) => void;
+  /** A station log: records are contacts with radio details, and there's no traffic. */
+  log?: boolean;
+  /** The activity's frequency, suggested when a contact's is left blank. */
+  activityFrequency?: string;
 }
 
 type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
+
+/** Input hints, each shown in full (the inputs are sized to fit them). */
+const HINTS = {
+  call: "Call sign, then Enter",
+  name: "Name (optional, auto-filled by lookup)",
+  qth: "QTH location (optional, auto-filled from QRZ)",
+  grid: "Grid square",
+  address: "Full address (optional, auto-filled from QRZ)",
+  coords: "Coordinates, or e.g. MM 182 turnpike",
+  traffic: "Traffic — what they have to pass (optional, can be added later)",
+};
 
 // Long enough that a pause mid-call ("KR4H…GY") doesn't look up the partial
 // call, short enough that the result is there by the time the name is needed.
@@ -39,6 +65,8 @@ export default function CheckinEntryForm({
   rapidEntryMode,
   focusCallSignSignal,
   onSaved,
+  log = false,
+  activityFrequency = "",
 }: Props) {
   const [callSign, setCallSign] = useState("");
   const [name, setName] = useState("");
@@ -47,6 +75,9 @@ export default function CheckinEntryForm({
   const [address, setAddress] = useState("");
   const [hasTraffic, setHasTraffic] = useState(false);
   const [traffic, setTraffic] = useState("");
+  const [contact, setContact] = useState<ContactDraft>(EMPTY_CONTACT);
+  const [contactSaveRefused, setContactSaveRefused] = useState(false);
+  const history = useStationHistory(callSign);
   // QRZ's exact point for the call sign currently being entered — held here
   // (not in a visible field) until the check-in is saved.
   const [qrzExact, setQrzExact] = useState<{ lat: number; lon: number } | null>(null);
@@ -264,6 +295,11 @@ export default function CheckinEntryForm({
   async function handleSaveCheckin() {
     const call = callSign.trim();
     if (!call) return;
+    if (log && contactTimeError(contact)) {
+      setContactSaveRefused(true);
+      return;
+    }
+    setContactSaveRefused(false);
     const trimmedQth = qthLocation.trim() || null;
     const trimmedGrid = gridSquare.trim() || null;
     const trimmedAddress = address.trim() || null;
@@ -302,8 +338,11 @@ export default function CheckinEntryForm({
       resolved?.lon ?? null,
       reportedLabel || trimmedQth || trimmedAddress || resolved?.sourceText || null,
       hasTraffic,
-      hasTraffic ? traffic.trim() || null : null
+      hasTraffic ? traffic.trim() || null : null,
+      log ? toContactDetails(contact) : null
     );
+    // The station setup carries over to the next contact.
+    setContact(nextContact(contact));
     setHasTraffic(false);
     setTraffic("");
     setCallSign("");
@@ -321,58 +360,68 @@ export default function CheckinEntryForm({
 
   return (
     <div className="checkin-entry">
-      <div className="checkin-entry-labels">
-        <label htmlFor="checkin-callsign">Call sign</label>
-        <label htmlFor="checkin-name">
-          Name{" "}
-          {qrzStatus === "loading" && (
-            <span className="qrz-status qrz-status-loading">looking up…</span>
-          )}
-          {qrzStatus === "found" && (
-            <span className="qrz-status qrz-status-found">{sourceLabels(lookupSource).found}</span>
-          )}
-          {qrzStatus === "not_found" && (
-            <span className="qrz-status qrz-status-muted">
-              {sourceLabels(lookupSource).notFound}
-            </span>
-          )}
-          {qrzStatus === "missing_file" && (
-            <span className="qrz-status qrz-status-muted">{GMRS_FILE_MISSING}</span>
-          )}
-          {qrzStatus === "error" && (
-            <span className="qrz-status qrz-status-muted">QRZ lookup failed</span>
-          )}
-        </label>
-      </div>
-      <div className="checkin-entry-row">
-        <input
-          id="checkin-callsign"
-          ref={callSignRef}
-          autoFocus
-          className="checkin-entry-call"
-          placeholder="Enter call sign and press Enter"
-          value={callSign}
-          onChange={(e) => setCallSign(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSaveCheckin();
-          }}
-        />
-        <input
-          id="checkin-name"
-          className="checkin-entry-name"
-          placeholder="Name (optional, auto-filled from QRZ if configured)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSaveCheckin();
-          }}
-        />
-        <button onClick={handleSaveCheckin}>Save check-in</button>
+      {/* Each caption sits with its box, so they stay together when the row wraps. */}
+      <div className="checkin-entry-row checkin-entry-row-main">
+        <div
+          className="checkin-entry-field checkin-entry-field-call"
+          style={hintWidth(HINTS.call, { uppercase: true })}
+        >
+          <label htmlFor="checkin-callsign">Call sign</label>
+          <input
+            id="checkin-callsign"
+            ref={callSignRef}
+            autoFocus
+            className="checkin-entry-call"
+            placeholder={HINTS.call}
+            value={callSign}
+            onChange={(e) => setCallSign(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveCheckin();
+            }}
+          />
+        </div>
+        <div
+          className="checkin-entry-field checkin-entry-field-name"
+          style={hintWidth(HINTS.name)}
+        >
+          <label htmlFor="checkin-name">
+            Name{" "}
+            {qrzStatus === "loading" && (
+              <span className="qrz-status qrz-status-loading">looking up…</span>
+            )}
+            {qrzStatus === "found" && (
+              <span className="qrz-status qrz-status-found">{sourceLabels(lookupSource).found}</span>
+            )}
+            {qrzStatus === "not_found" && (
+              <span className="qrz-status qrz-status-muted">
+                {sourceLabels(lookupSource).notFound}
+              </span>
+            )}
+            {qrzStatus === "missing_file" && (
+              <span className="qrz-status qrz-status-muted">{GMRS_FILE_MISSING}</span>
+            )}
+            {qrzStatus === "error" && (
+              <span className="qrz-status qrz-status-muted">QRZ lookup failed</span>
+            )}
+          </label>
+          <input
+            id="checkin-name"
+            className="checkin-entry-name"
+            placeholder={HINTS.name}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveCheckin();
+            }}
+          />
+        </div>
+        <button onClick={handleSaveCheckin}>{log ? "Save contact" : "Save check-in"}</button>
       </div>
       <div className="checkin-entry-row checkin-entry-row-secondary">
         <input
           className="checkin-entry-qth"
-          placeholder="QTH location (optional, auto-filled from QRZ)"
+          placeholder={HINTS.qth}
+          style={hintWidth(HINTS.qth)}
           value={qthLocation}
           onChange={(e) => setQthLocation(e.target.value)}
           onKeyDown={(e) => {
@@ -381,7 +430,8 @@ export default function CheckinEntryForm({
         />
         <input
           className="checkin-entry-grid"
-          placeholder="Grid square"
+          placeholder={HINTS.grid}
+          style={hintWidth(HINTS.grid, { uppercase: true })}
           value={gridSquare}
           onChange={(e) => setGridSquare(e.target.value)}
           onKeyDown={(e) => {
@@ -390,7 +440,8 @@ export default function CheckinEntryForm({
         />
         <input
           className="checkin-entry-address"
-          placeholder="Full address (optional, auto-filled from QRZ)"
+          placeholder={HINTS.address}
+          style={hintWidth(HINTS.address)}
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           onKeyDown={(e) => {
@@ -399,7 +450,8 @@ export default function CheckinEntryForm({
         />
         <input
           className="checkin-entry-coords"
-          placeholder="Coordinates, or e.g. MM 182 turnpike"
+          placeholder={HINTS.coords}
+          style={hintWidth(HINTS.coords)}
           title="Auto-filled from QRZ / ZIP / grid square — type over it with lat, lon or a mile marker (e.g. 'mile marker 182 on I-95')"
           aria-invalid={
             coordsText.trim() !== "" && parseCoords(coordsText) == null && phrase.status === "miss"
@@ -423,27 +475,41 @@ export default function CheckinEntryForm({
           Clear
         </button>
       </div>
-      <div className="checkin-entry-row checkin-entry-row-traffic">
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={hasTraffic}
-            onChange={(e) => setHasTraffic(e.target.checked)}
-          />
-          Has traffic
-        </label>
-        {hasTraffic && (
-          <input
-            className="checkin-entry-traffic"
-            placeholder="Traffic — what they have to pass (optional, can be added later)"
-            value={traffic}
-            onChange={(e) => setTraffic(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveCheckin();
-            }}
-          />
-        )}
-      </div>
+      {log && (
+        <ContactFieldsInputs
+          idPrefix="checkin-entry"
+          value={contact}
+          onChange={setContact}
+          onEnter={handleSaveCheckin}
+          frequencyPlaceholder={activityFrequency || undefined}
+          saveAttempted={contactSaveRefused}
+        />
+      )}
+      <WorkedBefore history={history} label={log ? "Worked before" : "Checked in before"} />
+      {!log && (
+        <div className="checkin-entry-row checkin-entry-row-traffic">
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={hasTraffic}
+              onChange={(e) => setHasTraffic(e.target.checked)}
+            />
+            Has traffic
+          </label>
+          {hasTraffic && (
+            <input
+              className="checkin-entry-traffic"
+              placeholder={HINTS.traffic}
+              style={hintWidth(HINTS.traffic)}
+              value={traffic}
+              onChange={(e) => setTraffic(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveCheckin();
+              }}
+            />
+          )}
+        </div>
+      )}
       {qrzStatus === "found" && lookupSource !== "qrz" && fileLacksStreet && (
         <p className="settings-hint checkin-entry-hint">
           Street address not filled in: the call-sign file on this computer was downloaded before

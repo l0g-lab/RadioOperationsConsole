@@ -61,6 +61,44 @@ export interface Checkin {
   has_traffic: boolean;
   traffic: string;
   traffic_handled: boolean;
+  /** Radio details of a contact (station logs); "" when not recorded. */
+  frequency: string;
+  mode: string;
+  rst_sent: string;
+  rst_received: string;
+  power: string;
+  antenna: string;
+  notes: string;
+}
+
+/**
+ * A contact's radio details as entered. Every field is optional; the keys
+ * are the backend's own names. `contacted_at` (RFC 3339) left out means "now"
+ * when logging and "unchanged" when correcting.
+ */
+export interface ContactDetails {
+  contacted_at?: string | null;
+  frequency?: string | null;
+  mode?: string | null;
+  rst_sent?: string | null;
+  rst_received?: string | null;
+  power?: string | null;
+  antenna?: string | null;
+  notes?: string | null;
+}
+
+/** Earlier records of a call sign across every activity ("worked before"). */
+export interface StationHistory {
+  count: number;
+  last: {
+    activity_id: string;
+    activity_title: string;
+    at: string;
+    /** Most recent name/QTH on record, even if the latest contact left them blank. */
+    name: string;
+    qth_location: string;
+    frequency: string;
+  } | null;
 }
 
 export const HAZARD_TYPES = [
