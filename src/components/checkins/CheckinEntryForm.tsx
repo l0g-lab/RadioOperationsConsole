@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import * as api from "../../api";
 import { QRZ_ERR_NOT_CONFIGURED, ERR_OFFLINE } from "../../types";
-import { lookupCallsign, type CallsignSource } from "../../callsignLookup";
+import {
+  callSignService,
+  GMRS_FILE_MISSING,
+  lookupCallsign,
+  sourceLabels,
+  type CallsignSource,
+} from "../../callsignLookup";
 import { resolveOfflineLocationAsync } from "../../locationResolution";
 import { formatCoords, parseCoords } from "../../geo";
 import type { MileMarkerHit } from "../../types";
@@ -17,7 +23,7 @@ interface Props {
   onSaved: (checkinId: string) => void;
 }
 
-type QrzStatus = "idle" | "loading" | "found" | "not_found" | "error";
+type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
 
 const QRZ_LOOKUP_DEBOUNCE_MS = 400;
 const QRZ_LOOKUP_MIN_LENGTH = 3;
@@ -146,7 +152,8 @@ export default function CheckinEntryForm({
       return;
     }
     if (
-      !(qrzConfigured || offlineCallsAvailable) ||
+      // A GMRS call sign is always looked up, so a missing GMRS file can be pointed out.
+      !(qrzConfigured || offlineCallsAvailable || callSignService(call) === "gmrs") ||
       name.trim() ||
       call.length < QRZ_LOOKUP_MIN_LENGTH
     ) {
@@ -156,7 +163,8 @@ export default function CheckinEntryForm({
     const timer = setTimeout(() => {
       qrzRequestedForRef.current = call;
       setQrzStatus("loading");
-      // QRZ first; the offline FCC directory only when QRZ isn't available.
+      // GMRS: the GMRS file. Otherwise QRZ first, the amateur file only when
+      // QRZ isn't available.
       lookupCallsign(call, qrzConfigured).then((outcome) => {
         if (qrzRequestedForRef.current !== call || callSign.trim().toUpperCase() !== call) {
           return;
@@ -176,6 +184,8 @@ export default function CheckinEntryForm({
         } else if (outcome.kind === "not_found") {
           setLookupSource(outcome.source);
           setQrzStatus("not_found");
+        } else if (outcome.kind === "missing_file") {
+          setQrzStatus("missing_file");
         } else {
           // No network, or QRZ isn't configured (and no offline directory):
           // an expected, uninteresting state — the app works fully offline —
@@ -271,14 +281,15 @@ export default function CheckinEntryForm({
             <span className="qrz-status qrz-status-loading">looking up…</span>
           )}
           {qrzStatus === "found" && (
-            <span className="qrz-status qrz-status-found">
-              {lookupSource === "fcc" ? "FCC record (offline)" : "QRZ match"}
-            </span>
+            <span className="qrz-status qrz-status-found">{sourceLabels(lookupSource).found}</span>
           )}
           {qrzStatus === "not_found" && (
             <span className="qrz-status qrz-status-muted">
-              {lookupSource === "fcc" ? "not in FCC file" : "no QRZ match"}
+              {sourceLabels(lookupSource).notFound}
             </span>
+          )}
+          {qrzStatus === "missing_file" && (
+            <span className="qrz-status qrz-status-muted">{GMRS_FILE_MISSING}</span>
           )}
           {qrzStatus === "error" && (
             <span className="qrz-status qrz-status-muted">QRZ lookup failed</span>
@@ -385,7 +396,7 @@ export default function CheckinEntryForm({
           />
         )}
       </div>
-      {qrzStatus === "found" && lookupSource === "fcc" && fileLacksStreet && (
+      {qrzStatus === "found" && lookupSource !== "qrz" && fileLacksStreet && (
         <p className="settings-hint checkin-entry-hint">
           Street address not filled in: the call-sign file on this computer was downloaded before
           street addresses were included. Update it in Settings → Offline Data.

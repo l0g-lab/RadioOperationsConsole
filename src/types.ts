@@ -253,6 +253,9 @@ export interface CallsignPackStatus {
   has_street_addresses: boolean;
 }
 
+/** Which FCC license file an offline directory is built from. */
+export type LicenseService = "amateur" | "gmrs";
+
 export interface OfflineCallRecord {
   call: string;
   name: string;

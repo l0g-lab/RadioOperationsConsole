@@ -8,6 +8,7 @@ import type {
   ActivityTemplate,
   CallsignPackStatus,
   OfflineCallLookup,
+  LicenseService,
   AppSettings,
   AuditEvent,
   Checkin,
@@ -396,16 +397,20 @@ export const updateDataPack = (id: string) => invoke<DataPackInfo>("update_data_
 export const resolveMileMarker = (text: string) =>
   invoke<MileMarkerHit | null>("resolve_mile_marker", { text });
 
-// Offline call-sign directory (FCC amateur licenses). Status and lookup are
-// local; updating downloads the FCC's database (large) and needs internet.
-export const callsignPackStatus = () => invoke<CallsignPackStatus>("callsign_pack_status");
+// Offline call-sign directories (FCC amateur and GMRS licenses), one file per
+// service. Status and lookup are local; updating downloads the FCC's database
+// (large) and needs internet.
+export const callsignPackStatus = (service: LicenseService) =>
+  invoke<CallsignPackStatus>("callsign_pack_status", { service });
 
-export const updateCallsignPack = () => invoke<CallsignPackStatus>("update_callsign_pack");
+export const updateCallsignPack = (service: LicenseService) =>
+  invoke<CallsignPackStatus>("update_callsign_pack", { service });
 
-export const removeCallsignPack = () => invoke<CallsignPackStatus>("remove_callsign_pack");
+export const removeCallsignPack = (service: LicenseService) =>
+  invoke<CallsignPackStatus>("remove_callsign_pack", { service });
 
-export const lookupCallsignOffline = (call_sign: string) =>
-  invoke<OfflineCallLookup>("lookup_callsign_offline", { callSign: call_sign });
+export const lookupCallsignOffline = (call_sign: string, service: LicenseService) =>
+  invoke<OfflineCallLookup>("lookup_callsign_offline", { callSign: call_sign, service });
 
 export const backupDatabase = (path: string) => invoke<BackupSummary>("backup_database", { path });
 

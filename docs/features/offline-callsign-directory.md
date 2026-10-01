@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft — implemented for U.S. call signs, from the FCC.
+Draft — implemented for U.S. amateur and GMRS call signs, from the FCC.
 
 ## Purpose
 
@@ -66,8 +66,8 @@ rapid check-in still works.
   (`street, City, ST ZIP`), and the QTH as `City, ST`, but MUST NOT overwrite
   fields the operator has already filled.
 - **CALLDIR-022:** The interface MUST label where the values came from
-  ("FCC record (offline)") and MUST say when the call sign is not in the
-  file.
+  ("FCC amateur record (offline)" or "FCC GMRS record (offline)") and MUST say
+  when the call sign is not in the file.
 - **CALLDIR-023:** When the installed file predates street addresses, the
   check-in form MUST say so, rather than silently showing a shorter address.
 - **CALLDIR-024:** The check-in's map location from this source MUST be the
@@ -95,9 +95,48 @@ rapid check-in still works.
 - **CALLDIR-036:** A failed or offline update MUST leave any installed file
   unchanged.
 
+## GMRS licenses
+
+GMRS (General Mobile Radio Service) operators often take part in the same
+events as amateurs — SKYWARN, ARES and CERT activations in particular — and
+check in with a GMRS call sign. The FCC publishes GMRS licenses in the same
+bulk format as amateur ones (`l_gmrs.zip`, about 55 MB, updated weekly), so
+GMRS gets its own directory built the same way.
+
+- **CALLDIR-040:** The GMRS directory MUST be a separate, optional download
+  from the FCC's GMRS license file, built, stored, updated, and removed
+  independently of the amateur directory. Every rule above for the amateur
+  file (`CALLDIR-001`–`CALLDIR-015`, `CALLDIR-030`–`CALLDIR-036`) applies to it
+  as well, with its own size stated in the confirmation (`CALLDIR-031`).
+- **CALLDIR-041:** Which directory answers MUST be decided per call sign, from
+  its shape, not by the activity or its type: an activity may mix amateur and
+  GMRS stations. After removing spaces and any `/` suffix (portable, mobile,
+  or unit numbers such as `WRAB123/2`):
+  - **GMRS:** three or four letters followed by three or four digits
+    (`WRAB123`, `KAE1234`). U.S. GMRS call signs always end in digits.
+  - **Amateur:** one or two letters, one digit, and one to three letters
+    (`W1AW`, `KD8XYZ`). U.S. amateur call signs always end in a letter.
+  - **Unknown:** anything else.
+- **CALLDIR-042:** A GMRS call sign MUST be looked up only in the GMRS
+  directory. QRZ and the amateur directory MUST NOT be consulted for it, since
+  they hold amateur licenses only.
+- **CALLDIR-043:** Amateur and unknown call signs MUST keep the existing order:
+  QRZ, then the amateur directory (`CALLDIR-020`).
+- **CALLDIR-044:** When a GMRS call sign is entered and the GMRS directory is
+  not installed, the check-in form MUST say that GMRS lookup needs the GMRS
+  file from Settings, rather than reporting the call sign as not found.
+- **CALLDIR-045:** One GMRS license covers the licensee's immediate family, so
+  the person checking in may not be the licensee. The interface MUST label a
+  GMRS name as the licensee's, and MUST NOT overwrite a name the operator has
+  already entered (`CALLDIR-021`).
+- **CALLDIR-046:** Location from a GMRS record follows the same ZIP-level rule
+  as an amateur record (`CALLDIR-024`).
+
 ## Non-goals
 
 - Non-U.S. call signs.
+- A per-activity radio service (amateur, GMRS, mixed). Lookups don't need it
+  (`CALLDIR-041`); it may be added later for labelling and exports.
 - Daily incremental FCC updates (the full file is re-downloaded to update).
 - Geocoding street addresses to coordinates.
 
@@ -115,6 +154,18 @@ Scenario: QRZ wins when it works
   Given QRZ is configured and reachable and the FCC file is installed
   When the operator enters a call sign
   Then the QRZ result is used
+
+Scenario: A GMRS check-in
+  Given the GMRS file is installed and QRZ is configured
+  When the operator enters "WRAB123"
+  Then the GMRS file is searched and QRZ is not
+  And the name is labelled as the licensee's
+  And the source is shown as "FCC GMRS record (offline)"
+
+Scenario: GMRS file not installed
+  Given the GMRS file is not installed
+  When the operator enters "WRAB123"
+  Then the form says GMRS lookup needs the GMRS file from Settings
 
 Scenario: An old-format file
   Given the installed file was built before street addresses were included

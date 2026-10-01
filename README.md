@@ -9,7 +9,7 @@ It's an operations logger, not a QSO logbook: one app that handles a relaxed wee
 ## What it does
 
 - **Run several nets at once.** Pick the active activity from the top bar (or `Ctrl+[` / `Ctrl+]`) and every tab follows it. Templates make a recurring net one click to set up.
-- **Take check-ins fast.** Type a call sign, press Enter. Name, address, and location fill in from QRZ — or, with no QRZ or no internet, from an offline copy of the FCC amateur-license database. Export the roster as CSV or JSON, or as an ICS-309 communications log for Winlink Express's own Form-309 (or to print).
+- **Take check-ins fast.** Type a call sign, press Enter. Name, address, and location fill in from QRZ — or, with no QRZ or no internet, from an offline copy of the FCC amateur-license database. GMRS call signs (like WRAB123) fill in from an offline copy of the FCC GMRS database. Export the roster as CSV or JSON, or as an ICS-309 communications log for Winlink Express's own Form-309 (or to print).
 - **Put people on a map.** Check-ins are plotted at their real location when known (QRZ coordinates, a pin you drop, typed coordinates), falling back to ZIP centre, then grid square. Say "mile marker 182 on the turnpike" and it lands on the map, offline.
 - **Log spotter reports.** Who / what / where, with NWS-style hail and wind scales and a wind-damage guide, and export as CSV, JSON, text, or an ICS-213 for Winlink or print. Reports are plotted at the location of the *damage*, with icons for hail, wind, flooding, tornado, snow/ice.
 - **Watch the weather.** NWS alerts and forecast for your area, plus a radar loop from the nearest NEXRAD station.
@@ -114,7 +114,7 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 The app is built to be taken into the field. To prepare, spend a few minutes online first:
 
 - **Map tiles** are cached as you look at them. Browse your operating area (check-in map, spotter map, location picker) at the zooms you'll need. Tiles you've never viewed stay blank offline, but pins still appear.
-- **Settings → Offline data** downloads mile-marker data for Florida's Turnpike, I-95, I-75, and US-1 (Keys) from the Florida DOT, and the FCC's U.S. call-sign database (about 200 MB, best on Wi-Fi; an interrupted download resumes). The call-sign file is only used when QRZ isn't available.
+- **Settings → Offline data** downloads mile-marker data for Florida's Turnpike, I-95, I-75, and US-1 (Keys) from the Florida DOT, and the FCC's U.S. call-sign databases: amateur (about 200 MB, best on Wi-Fi) and GMRS (about 55 MB). An interrupted download resumes. The amateur file is only used when QRZ isn't available; GMRS call signs are looked up only in the GMRS file, since QRZ covers amateur licenses only.
 - **Settings → Backup & Restore** saves everything you've entered to one file. Restoring replaces the current data — a safety copy is kept first, so it can be undone.
 
 | Works with no internet | Needs internet |

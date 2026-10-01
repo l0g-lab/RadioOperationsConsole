@@ -82,7 +82,7 @@ export default function CheckinsTab({
       .then((s) => setQrzConfigured(Boolean(s.qrz_username && s.qrz_password)))
       .catch(() => setQrzConfigured(false));
     api
-      .callsignPackStatus()
+      .callsignPackStatus("amateur")
       .then((s) => setOfflineCallsAvailable(s.installed))
       .catch(() => setOfflineCallsAvailable(false));
   }, []);

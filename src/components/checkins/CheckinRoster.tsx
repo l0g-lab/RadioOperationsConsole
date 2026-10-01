@@ -5,7 +5,13 @@ import { QRZ_ERR_NOT_CONFIGURED, ERR_OFFLINE } from "../../types";
 import { formatTimeLines } from "../../utils";
 import { formatCoords } from "../../geo";
 import { resolveOfflineLocationAsync } from "../../locationResolution";
-import { lookupCallsign, type CallsignSource } from "../../callsignLookup";
+import {
+  callSignService,
+  GMRS_FILE_MISSING,
+  lookupCallsign,
+  sourceLabels,
+  type CallsignSource,
+} from "../../callsignLookup";
 import { RemoveConfirmBar, RemovedPanel } from "../RemoveControls";
 import { useVoidableList } from "../../hooks/useVoidableList";
 import LocationPicker from "../LocationPicker";
@@ -26,7 +32,7 @@ interface Props {
   onShowMap: () => void;
 }
 
-type QrzStatus = "idle" | "loading" | "found" | "not_found" | "error";
+type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
 
 /** The check-in roster: list, inline edit, remove/restore, and QRZ retry. */
 export default function CheckinRoster({
@@ -57,6 +63,9 @@ export default function CheckinRoster({
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const selectedCheckin = checkins.find((c) => c.id === selectedCheckinId) ?? null;
+  const selectedIsGmrs = selectedCheckin
+    ? callSignService(selectedCheckin.call_sign) === "gmrs"
+    : false;
 
   const removal = useVoidableList<Checkin>({
     scopeKey: activity.id,
@@ -166,11 +175,16 @@ export default function CheckinRoster({
     if (!selectedCheckin) return;
     setCheckinLookupStatus("loading");
     try {
-      // QRZ first; the offline FCC directory only when QRZ isn't available.
+      // GMRS: the GMRS file. Otherwise QRZ first, the amateur file only when
+      // QRZ isn't available.
       const outcome = await lookupCallsign(selectedCheckin.call_sign, qrzConfigured);
       if (outcome.kind === "not_found") {
         setLookupSource(outcome.source);
         setCheckinLookupStatus("not_found");
+        return;
+      }
+      if (outcome.kind === "missing_file") {
+        setCheckinLookupStatus("missing_file");
         return;
       }
       if (outcome.kind === "unavailable") {
@@ -449,27 +463,28 @@ export default function CheckinRoster({
                 {selectedCheckin.location_lat != null ? "Edit location" : "Set location"}
               </button>
               <button onClick={() => startRemove(selectedCheckin.id)}>Remove</button>
-              {(qrzConfigured || offlineCallsAvailable) && (
+              {(qrzConfigured || offlineCallsAvailable || selectedIsGmrs) && (
                 <button
                   onClick={handleLookupSelectedCheckin}
                   disabled={checkinLookupStatus === "loading"}
                 >
                   {checkinLookupStatus === "loading"
                     ? "Looking up…"
-                    : qrzConfigured
-                      ? "Lookup QRZ"
-                      : "Lookup (FCC file)"}
+                    : sourceLabels(selectedIsGmrs ? "gmrs" : qrzConfigured ? "qrz" : "fcc").button}
                 </button>
               )}
               {checkinLookupStatus === "found" && (
                 <span className="qrz-status qrz-status-found">
-                  {lookupSource === "fcc" ? "Updated from FCC file" : "Updated from QRZ"}
+                  {sourceLabels(lookupSource).updated}
                 </span>
               )}
               {checkinLookupStatus === "not_found" && (
                 <span className="qrz-status qrz-status-muted">
-                  {lookupSource === "fcc" ? "Not in FCC file" : "No QRZ match"}
+                  {sourceLabels(lookupSource).notFound.replace(/^./, (c) => c.toUpperCase())}
                 </span>
+              )}
+              {checkinLookupStatus === "missing_file" && (
+                <span className="qrz-status qrz-status-muted">{GMRS_FILE_MISSING}</span>
               )}
               {checkinLookupStatus === "error" && (
                 <span className="qrz-status qrz-status-muted">QRZ lookup failed</span>

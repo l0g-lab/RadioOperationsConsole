@@ -1,7 +1,8 @@
 use super::{AppState, ERR_OFFLINE};
-use crate::callsigns::{self, CallRecord};
+use crate::callsigns::{self, CallRecord, Service};
 use crate::net::FetchError;
 use serde::Serialize;
+use std::collections::hash_map::Entry;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
@@ -25,10 +26,8 @@ struct ProgressEvent {
     total: u64,
 }
 
-const PACK_ID: &str = "callsigns-us";
-
-fn status_from_disk(state: &AppState) -> CallPackStatus {
-    let path = state.datapacks_dir.join(callsigns::PACK_FILE);
+fn status_from_disk(state: &AppState, service: Service) -> CallPackStatus {
+    let path = state.datapacks_dir.join(service.pack_file());
     match callsigns::read_info(&path) {
         Some(info) => CallPackStatus {
             installed: true,
@@ -49,28 +48,32 @@ fn status_from_disk(state: &AppState) -> CallPackStatus {
     }
 }
 
-/// Is the offline directory downloaded, and how big/new is it? Reads only the
-/// file's header, so this is instant.
+/// Is this service's offline directory downloaded, and how big/new is it?
+/// Reads only the file's header, so this is instant.
 #[tauri::command]
-pub fn callsign_pack_status(state: State<'_, AppState>) -> Result<CallPackStatus, String> {
-    Ok(status_from_disk(&state))
+pub fn callsign_pack_status(state: State<'_, AppState>, service: Service) -> Result<CallPackStatus, String> {
+    Ok(status_from_disk(&state, service))
 }
 
-/// Downloads the FCC's amateur license database (a large file — it says so
-/// in Settings first) and builds the offline call-sign directory from it.
+/// Downloads the FCC's license database for one service (a large file — it
+/// says so in Settings first) and builds that offline directory from it.
 /// Progress arrives as `datapack-progress` events. A download that's cut off
 /// keeps what it got, and running this again resumes it.
 #[tauri::command]
-pub async fn update_callsign_pack(app: AppHandle, state: State<'_, AppState>) -> Result<CallPackStatus, String> {
+pub async fn update_callsign_pack(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    service: Service,
+) -> Result<CallPackStatus, String> {
     if state.callsign_update_running.swap(true, Ordering::SeqCst) {
-        return Err("A call-sign update is already running.".into());
+        return Err("A call-sign download is already running. Try again when it finishes.".into());
     }
-    let result = run_update(&app, &state).await;
+    let result = run_update(&app, &state, service).await;
     state.callsign_update_running.store(false, Ordering::SeqCst);
     result
 }
 
-async fn run_update(app: &AppHandle, state: &AppState) -> Result<CallPackStatus, String> {
+async fn run_update(app: &AppHandle, state: &AppState, service: Service) -> Result<CallPackStatus, String> {
     // Emit at most ~5 times a second so a fast download doesn't flood the UI.
     let last_emit = Arc::new(AtomicU64::new(0));
     let started = std::time::Instant::now();
@@ -82,23 +85,23 @@ async fn run_update(app: &AppHandle, state: &AppState) -> Result<CallPackStatus,
             return;
         }
         last_emit.store(now, Ordering::Relaxed);
-        let _ = handle.emit("datapack-progress", ProgressEvent { id: PACK_ID, phase, done, total });
+        let _ = handle.emit("datapack-progress", ProgressEvent { id: service.pack_id(), phase, done, total });
     });
 
-    let db = match callsigns::build_and_install(callsigns::FCC_URL, &state.datapacks_dir, progress).await {
+    let db = match callsigns::build_and_install(service, service.url(), &state.datapacks_dir, progress).await {
         Ok(db) => db,
         Err(FetchError::Offline) => return Err(ERR_OFFLINE.to_string()),
         Err(FetchError::Other(e)) => return Err(e),
     };
-    *state.callsign_db.lock().unwrap() = Some(Arc::new(db));
-    Ok(status_from_disk(state))
+    state.callsign_dbs.lock().unwrap().insert(service, Arc::new(db));
+    Ok(status_from_disk(state, service))
 }
 
 #[tauri::command]
-pub fn remove_callsign_pack(state: State<'_, AppState>) -> Result<CallPackStatus, String> {
-    let _ = std::fs::remove_file(state.datapacks_dir.join(callsigns::PACK_FILE));
-    *state.callsign_db.lock().unwrap() = None;
-    Ok(status_from_disk(&state))
+pub fn remove_callsign_pack(state: State<'_, AppState>, service: Service) -> Result<CallPackStatus, String> {
+    let _ = std::fs::remove_file(state.datapacks_dir.join(service.pack_file()));
+    state.callsign_dbs.lock().unwrap().remove(&service);
+    Ok(status_from_disk(&state, service))
 }
 
 #[derive(Serialize)]
@@ -112,18 +115,24 @@ pub struct OfflineCallLookup {
     pub has_street_addresses: bool,
 }
 
-/// Looks a call sign up in the offline directory. Loads the file on first
-/// use (a fraction of a second), then it's just a search in memory.
+/// Looks a call sign up in one service's offline directory. Loads the file
+/// on first use (a fraction of a second), then it's just a search in memory.
 #[tauri::command]
-pub fn lookup_callsign_offline(state: State<'_, AppState>, call_sign: String) -> Result<OfflineCallLookup, String> {
-    let mut slot = state.callsign_db.lock().unwrap();
-    if slot.is_none() {
-        let path = state.datapacks_dir.join(callsigns::PACK_FILE);
-        if path.exists() {
-            *slot = callsigns::load_file(&path).ok().map(Arc::new);
+pub fn lookup_callsign_offline(
+    state: State<'_, AppState>,
+    call_sign: String,
+    service: Service,
+) -> Result<OfflineCallLookup, String> {
+    let mut dbs = state.callsign_dbs.lock().unwrap();
+    let db = match dbs.entry(service) {
+        Entry::Occupied(e) => Some(e.into_mut()),
+        Entry::Vacant(e) => {
+            let path = state.datapacks_dir.join(service.pack_file());
+            let loaded = path.exists().then(|| callsigns::load_file(&path).ok()).flatten();
+            loaded.map(|db| e.insert(Arc::new(db)))
         }
-    }
-    Ok(match slot.as_ref() {
+    };
+    Ok(match db {
         Some(db) => OfflineCallLookup {
             installed: true,
             record: db.lookup(&call_sign),

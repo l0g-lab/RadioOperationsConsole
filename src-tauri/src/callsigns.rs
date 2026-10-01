@@ -1,5 +1,6 @@
-//! Offline U.S. call-sign directory, built from the FCC's public amateur
-//! license database. Each record holds a call sign with its licensee's name,
+//! Offline U.S. call-sign directories, built from the FCC's public license
+//! databases: one file for amateur licenses and one for GMRS, each
+//! downloaded, built and removed on its own (see `Service`). Each record holds a call sign with its licensee's name,
 //! street address, city, state and ZIP — enough to fill in a check-in when
 //! QRZ isn't available (offline, or not configured). Map pins are still
 //! placed by ZIP area: the street address is stored as text for the
@@ -17,18 +18,62 @@
 
 use crate::net::{self, FetchError, USER_AGENT};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-pub const FCC_URL: &str = "https://data.fcc.gov/download/pub/uls/complete/l_amat.zip";
-pub const PACK_FILE: &str = "callsigns-us.bin.gz";
-const PART_FILE: &str = "fcc-l_amat.zip.part";
-const PART_META_FILE: &str = "fcc-l_amat.zip.part.meta";
-const SOURCE_CREDIT: &str = "FCC Universal Licensing System — amateur radio licenses (public)";
+/// Which FCC license file a directory is built from. Both use the same ULS
+/// record layout (HD for status, EN for the licensee), so they share the
+/// download, build and lookup code and differ only in these names.
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum Service {
+    Amateur,
+    Gmrs,
+}
+
+impl Service {
+    pub fn url(self) -> &'static str {
+        match self {
+            Service::Amateur => "https://data.fcc.gov/download/pub/uls/complete/l_amat.zip",
+            Service::Gmrs => "https://data.fcc.gov/download/pub/uls/complete/l_gmrs.zip",
+        }
+    }
+
+    /// The built directory. The amateur name predates GMRS and must not change,
+    /// or existing installs would look missing.
+    pub fn pack_file(self) -> &'static str {
+        match self {
+            Service::Amateur => "callsigns-us.bin.gz",
+            Service::Gmrs => "callsigns-us-gmrs.bin.gz",
+        }
+    }
+
+    /// Names the directory in `datapack-progress` events.
+    pub fn pack_id(self) -> &'static str {
+        match self {
+            Service::Amateur => "callsigns-us",
+            Service::Gmrs => "callsigns-us-gmrs",
+        }
+    }
+
+    fn part_file(self) -> &'static str {
+        match self {
+            Service::Amateur => "fcc-l_amat.zip.part",
+            Service::Gmrs => "fcc-l_gmrs.zip.part",
+        }
+    }
+
+    fn source_credit(self) -> &'static str {
+        match self {
+            Service::Amateur => "FCC Universal Licensing System — amateur radio licenses (public)",
+            Service::Gmrs => "FCC Universal Licensing System — GMRS licenses (public)",
+        }
+    }
+}
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 /// A big download is fine; a download that stops moving is not. If no data
 /// arrives for this long the attempt fails (and can be resumed).
@@ -76,11 +121,11 @@ fn push_str16(out: &mut Vec<u8>, s: &str) {
 
 /// Serializes records (which must be sorted by call sign, one per call) into
 /// the pack format: a small header, an offset index, then the record data.
-pub fn encode(records: &[CallRecord], generated_at: &str) -> Vec<u8> {
-    encode_versioned(records, generated_at, FORMAT_VERSION)
+pub fn encode(records: &[CallRecord], generated_at: &str, service: Service) -> Vec<u8> {
+    encode_versioned(records, generated_at, FORMAT_VERSION, service)
 }
 
-fn encode_versioned(records: &[CallRecord], generated_at: &str, version: u8) -> Vec<u8> {
+fn encode_versioned(records: &[CallRecord], generated_at: &str, version: u8, service: Service) -> Vec<u8> {
     let mut blob: Vec<u8> = Vec::with_capacity(records.len() * 40);
     let mut offsets: Vec<u32> = Vec::with_capacity(records.len());
     for r in records {
@@ -108,7 +153,7 @@ fn encode_versioned(records: &[CallRecord], generated_at: &str, version: u8) -> 
     out.push(version);
     out.extend_from_slice(&(records.len() as u32).to_le_bytes());
     push_str16(&mut out, generated_at);
-    push_str16(&mut out, SOURCE_CREDIT);
+    push_str16(&mut out, service.source_credit());
     for o in &offsets {
         out.extend_from_slice(&o.to_le_bytes());
     }
@@ -461,12 +506,12 @@ pub fn parse_fcc<H: BufRead, E: BufRead>(
 
 // ----------------------------------------------------------------- download
 
-fn part_path(dir: &Path) -> PathBuf {
-    dir.join(PART_FILE)
+fn part_path(dir: &Path, service: Service) -> PathBuf {
+    dir.join(service.part_file())
 }
 
-fn meta_path(dir: &Path) -> PathBuf {
-    dir.join(PART_META_FILE)
+fn meta_path(dir: &Path, service: Service) -> PathBuf {
+    dir.join(format!("{}.meta", service.part_file()))
 }
 
 const TIMED_OUT_MESSAGE: &str =
@@ -485,6 +530,7 @@ fn map_send_error(e: reqwest::Error) -> FetchError {
 /// file (checked with `If-Range`, so half of last week's file is never glued
 /// onto this week's). `progress` gets (bytes so far, total bytes).
 pub async fn download_fcc(
+    service: Service,
     url: &str,
     dir: &Path,
     stall: Duration,
@@ -492,8 +538,8 @@ pub async fn download_fcc(
 ) -> Result<PathBuf, FetchError> {
     use tokio::io::AsyncWriteExt;
     std::fs::create_dir_all(dir).map_err(|e| FetchError::Other(e.to_string()))?;
-    let part = part_path(dir);
-    let meta = meta_path(dir);
+    let part = part_path(dir, service);
+    let meta = meta_path(dir, service);
     let client = net::client(CONNECT_TIMEOUT, None).map_err(|e| FetchError::Other(e.to_string()))?;
 
     for attempt in 0..2 {
@@ -608,9 +654,14 @@ pub type ProgressFn = Arc<dyn Fn(&'static str, u64, u64) + Send + Sync>;
 
 /// The whole update: download the FCC database, boil it down, save it. The
 /// finished file replaces the old one only once it's complete and valid.
-pub async fn build_and_install(url: &str, dir: &Path, progress: ProgressFn) -> Result<CallDb, FetchError> {
+pub async fn build_and_install(
+    service: Service,
+    url: &str,
+    dir: &Path,
+    progress: ProgressFn,
+) -> Result<CallDb, FetchError> {
     let p = progress.clone();
-    let zip_path = download_fcc(url, dir, STALL_TIMEOUT, &move |d, t| p("downloading", d, t)).await?;
+    let zip_path = download_fcc(service, url, dir, STALL_TIMEOUT, &move |d, t| p("downloading", d, t)).await?;
 
     let p = progress.clone();
     let zp = zip_path.clone();
@@ -626,9 +677,9 @@ pub async fn build_and_install(url: &str, dir: &Path, progress: ProgressFn) -> R
     progress("saving", 0, 0);
     let dir = dir.to_path_buf();
     let db = tauri::async_runtime::spawn_blocking(move || -> Result<CallDb, String> {
-        let raw = encode(&records, &chrono::Utc::now().to_rfc3339());
-        save_file(&dir.join(PACK_FILE), &raw)?;
-        let _ = std::fs::remove_file(part_path(&dir));
+        let raw = encode(&records, &chrono::Utc::now().to_rfc3339(), service);
+        save_file(&dir.join(service.pack_file()), &raw)?;
+        let _ = std::fs::remove_file(part_path(&dir, service));
         CallDb::from_bytes(raw)
     })
     .await
@@ -674,7 +725,7 @@ mod tests {
 
     #[test]
     fn round_trips_and_looks_up() {
-        let db = CallDb::from_bytes(encode(&sample(), "2026-09-20T00:00:00Z")).unwrap();
+        let db = CallDb::from_bytes(encode(&sample(), "2026-09-20T00:00:00Z", Service::Amateur)).unwrap();
         assert_eq!(db.info.record_count, 4);
         assert_eq!(db.info.generated_at, "2026-09-20T00:00:00Z");
         assert_eq!(db.lookup("W4TST").unwrap(), sample()[3]);
@@ -689,7 +740,7 @@ mod tests {
 
     #[test]
     fn portable_and_mobile_suffixes_still_find_the_license() {
-        let db = CallDb::from_bytes(encode(&sample(), "t")).unwrap();
+        let db = CallDb::from_bytes(encode(&sample(), "t", Service::Amateur)).unwrap();
         assert_eq!(db.lookup("W4TST/M").unwrap().call, "W4TST");
         assert_eq!(db.lookup("kc1tst/p").unwrap().call, "KC1TST");
         assert_eq!(db.lookup("VE3/W4TST").unwrap().call, "W4TST");
@@ -699,7 +750,7 @@ mod tests {
     #[test]
     fn a_missing_zip_and_unicode_survive() {
         let r = vec![rec("W1AB", "José Peña", "Añasco", "PR", "")];
-        let db = CallDb::from_bytes(encode(&r, "t")).unwrap();
+        let db = CallDb::from_bytes(encode(&r, "t", Service::Amateur)).unwrap();
         assert_eq!(db.lookup("W1AB").unwrap(), r[0]);
     }
 
@@ -709,7 +760,7 @@ mod tests {
         // file would look like, and it must load with the same lookup code.
         let mut with = sample();
         with[1].coords = Some((25.61510, -80.33986));
-        let db = CallDb::from_bytes(encode(&with, "t")).unwrap();
+        let db = CallDb::from_bytes(encode(&with, "t", Service::Amateur)).unwrap();
         let got = db.lookup("KC1TST").unwrap();
         let (lat, lon) = got.coords.unwrap();
         assert!((lat - 25.61510).abs() < 1e-5 && (lon - -80.33986).abs() < 1e-5);
@@ -719,7 +770,7 @@ mod tests {
     #[test]
     fn corrupt_files_are_rejected_not_trusted() {
         assert!(CallDb::from_bytes(b"nonsense".to_vec()).is_err());
-        let good = encode(&sample(), "t");
+        let good = encode(&sample(), "t", Service::Amateur);
         assert!(CallDb::from_bytes(good[..20].to_vec()).is_err(), "truncated");
         let mut future = good.clone();
         future[8] = 99;
@@ -737,8 +788,8 @@ mod tests {
     #[test]
     fn saved_files_reload_and_report_their_info_quickly() {
         let dir = temp_dir("save");
-        let path = dir.join(PACK_FILE);
-        let size = save_file(&path, &encode(&sample(), "2026-01-02T03:04:05Z")).unwrap();
+        let path = dir.join(Service::Amateur.pack_file());
+        let size = save_file(&path, &encode(&sample(), "2026-01-02T03:04:05Z", Service::Amateur)).unwrap();
         assert!(size > 0 && path.exists());
         let info = read_info(&path).unwrap();
         assert_eq!((info.record_count, info.generated_at.as_str()), (4, "2026-01-02T03:04:05Z"));
@@ -829,12 +880,12 @@ HD|5|||KC1TST|C
     fn files_from_before_street_addresses_still_load() {
         // A version-1 file (an earlier download) has no street field.
         let recs = sample();
-        let db = CallDb::from_bytes(encode_versioned(&recs, "2026-01-01T00:00:00Z", 1)).unwrap();
+        let db = CallDb::from_bytes(encode_versioned(&recs, "2026-01-01T00:00:00Z", 1, Service::Amateur)).unwrap();
         assert_eq!(db.info.version, 1);
         let got = db.lookup("W4TST").unwrap();
         assert_eq!(got.street, "", "no street in an old file");
         assert_eq!((got.name.as_str(), got.city.as_str(), got.zip.as_str()), ("Chris Tester", "Rivertown", "33055"));
-        let db2 = CallDb::from_bytes(encode(&recs, "t")).unwrap();
+        let db2 = CallDb::from_bytes(encode(&recs, "t", Service::Amateur)).unwrap();
         assert_eq!(db2.info.version, 2);
         assert_eq!(db2.lookup("W4TST").unwrap().street, recs[3].street);
     }
@@ -963,7 +1014,7 @@ HD|5|||KC1TST|C
     }
 
     fn get(url: &str, dir: &Path, stall: Duration) -> Result<PathBuf, String> {
-        run(download_fcc(url, dir, stall, &|_, _| {})).map_err(|e| match e {
+        run(download_fcc(Service::Amateur, url, dir, stall, &|_, _| {})).map_err(|e| match e {
             FetchError::Offline => "offline".into(),
             FetchError::Other(s) => s,
         })
@@ -976,7 +1027,7 @@ HD|5|||KC1TST|C
         let d = data.clone();
         let url = run(serve(move |_| Resp::ok(d.clone(), "\"v1\"")));
         let seen = std::sync::Mutex::new(Vec::new());
-        let path = run(download_fcc(&url, &dir, Duration::from_secs(5), &|d, t| seen.lock().unwrap().push((d, t)))).ok().unwrap();
+        let path = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|d, t| seen.lock().unwrap().push((d, t)))).ok().unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), data);
         let seen = seen.lock().unwrap();
         assert_eq!(seen.last().unwrap(), &(200_000, 200_000));
@@ -989,8 +1040,8 @@ HD|5|||KC1TST|C
         let dir = temp_dir("resume");
         std::fs::create_dir_all(&dir).unwrap();
         let data = payload();
-        std::fs::write(part_path(&dir), &data[..80_000]).unwrap();
-        std::fs::write(meta_path(&dir), "\"v1\"").unwrap();
+        std::fs::write(part_path(&dir, Service::Amateur), &data[..80_000]).unwrap();
+        std::fs::write(meta_path(&dir, Service::Amateur), "\"v1\"").unwrap();
         let d = data.clone();
         let url = run(serve(move |req| {
             match (header_value(req, "range"), header_value(req, "if-range")) {
@@ -1013,8 +1064,8 @@ HD|5|||KC1TST|C
     fn a_changed_file_restarts_instead_of_gluing_versions_together() {
         let dir = temp_dir("changed");
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(part_path(&dir), vec![7u8; 50_000]).unwrap();
-        std::fs::write(meta_path(&dir), "\"last-weeks-version\"").unwrap();
+        std::fs::write(part_path(&dir, Service::Amateur), vec![7u8; 50_000]).unwrap();
+        std::fs::write(meta_path(&dir, Service::Amateur), "\"last-weeks-version\"").unwrap();
         let data = payload();
         let d = data.clone();
         // The server ignores the stale If-Range and sends the new file whole.
@@ -1032,8 +1083,8 @@ HD|5|||KC1TST|C
         let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![("ETag", "\"v1\"".into())], body: half.clone(), claim_len: Some(200_000), hang: false }));
         let err = get(&url, &dir, Duration::from_secs(5)).unwrap_err();
         assert!(err.contains("again"), "{err}");
-        assert_eq!(std::fs::metadata(part_path(&dir)).unwrap().len(), 90_000, "progress kept");
-        assert_eq!(std::fs::read_to_string(meta_path(&dir)).unwrap(), "\"v1\"", "so it can resume the same version");
+        assert_eq!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len(), 90_000, "progress kept");
+        assert_eq!(std::fs::read_to_string(meta_path(&dir, Service::Amateur)).unwrap(), "\"v1\"", "so it can resume the same version");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1063,6 +1114,81 @@ HD|5|||KC1TST|C
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    // ---- GMRS (CALLDIR-040) ----
+
+    #[test]
+    fn each_service_has_its_own_files_and_the_amateur_names_are_unchanged() {
+        assert_eq!(Service::Amateur.pack_file(), "callsigns-us.bin.gz", "existing installs keep loading");
+        assert_ne!(Service::Gmrs.pack_file(), Service::Amateur.pack_file());
+        assert_ne!(part_path(Path::new("d"), Service::Gmrs), part_path(Path::new("d"), Service::Amateur));
+        assert_ne!(meta_path(Path::new("d"), Service::Gmrs), meta_path(Path::new("d"), Service::Amateur));
+        assert!(Service::Gmrs.url().ends_with("/l_gmrs.zip"));
+        assert!(Service::Amateur.url().ends_with("/l_amat.zip"));
+    }
+
+    #[test]
+    fn services_are_named_as_the_interface_sends_them() {
+        assert_eq!(serde_json::from_str::<Service>("\"gmrs\"").unwrap(), Service::Gmrs);
+        assert_eq!(serde_json::from_str::<Service>("\"amateur\"").unwrap(), Service::Amateur);
+        assert!(serde_json::from_str::<Service>("\"cb\"").is_err());
+    }
+
+    #[test]
+    fn a_built_file_says_which_licenses_it_holds() {
+        let gmrs = CallDb::from_bytes(encode(&sample(), "t", Service::Gmrs)).unwrap();
+        assert!(gmrs.info.source.contains("GMRS"), "{}", gmrs.info.source);
+        let ham = CallDb::from_bytes(encode(&sample(), "t", Service::Amateur)).unwrap();
+        assert!(ham.info.source.contains("amateur"), "{}", ham.info.source);
+    }
+
+    #[test]
+    fn reads_the_gmrs_file_which_has_no_operator_class_records() {
+        // The GMRS zip has HD and EN like the amateur one, service code ZA, no AM.dat.
+        let hd = "HD|10|||WRAB123|A|ZA|01/02/2024\nHD|11|||KAE1234|A|ZA|01/02/2020\nHD|12|||WROX999|E|ZA|01/02/2015\n";
+        let en = [
+            "EN|10|||WRAB123|L|L10|EXAMPLE, PAT|PAT||EXAMPLE||||| 1 Main St|ROSCOMMON|MI|486530000|",
+            "EN|11|||KAE1234|L|L11|SAMPLE, LEE|LEE||SAMPLE||||| 2 Oak Ave|FLORENCE|AL|35630|",
+            "EN|12|||WROX999|L|L12|GONE, OLD|OLD||GONE||||| 3 Elm|NOWHERE|TX|75001|",
+        ]
+        .join("\n");
+        let recs = parse_fcc(hd.as_bytes(), en.as_bytes(), |_| {}).unwrap();
+        let calls: Vec<&str> = recs.iter().map(|r| r.call.as_str()).collect();
+        assert_eq!(calls, vec!["KAE1234", "WRAB123"], "expired license dropped");
+        let pat = &recs[1];
+        assert_eq!((pat.name.as_str(), pat.street.as_str(), pat.city.as_str(), pat.zip.as_str()),
+                   ("Pat Example", "1 Main St", "Roscommon", "48653"));
+    }
+
+    #[test]
+    fn a_gmrs_download_leaves_a_half_finished_amateur_download_alone() {
+        let dir = temp_dir("gmrs-separate");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(part_path(&dir, Service::Amateur), vec![7u8; 1_000]).unwrap();
+        std::fs::write(meta_path(&dir, Service::Amateur), "\"amat-v1\"").unwrap();
+        let data = payload();
+        let body = data.clone();
+        let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![], body: body.clone(), claim_len: None, hang: false }));
+        let path = run(download_fcc(Service::Gmrs, &url, &dir, Duration::from_secs(5), &|_, _| {})).ok().unwrap();
+        assert_eq!(std::fs::read(path).unwrap(), data);
+        assert_eq!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len(), 1_000, "amateur partial kept");
+        assert_eq!(std::fs::read_to_string(meta_path(&dir, Service::Amateur)).unwrap(), "\"amat-v1\"");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Not a real test: builds the GMRS directory from a downloaded
+    /// `l_gmrs.zip` named by `ROC_GMRS_ZIP`, with no network involved.
+    #[test]
+    #[ignore]
+    fn real_gmrs_zip() {
+        let path = std::env::var("ROC_GMRS_ZIP").expect("set ROC_GMRS_ZIP to a downloaded l_gmrs.zip");
+        let records = read_fcc_zip(Path::new(&path), |_, _| {}).expect("read failed");
+        let db = CallDb::from_bytes(encode(&records, "t", Service::Gmrs)).unwrap();
+        println!("{} GMRS licensees", db.info.record_count);
+        assert!(db.info.record_count > 300_000);
+        let first = &records[0];
+        assert_eq!(db.lookup(&format!("{}/2", first.call)).as_ref(), Some(first), "unit suffix ignored");
+    }
+
     // ---- against the real FCC (needs internet; run by hand) ----
 
     /// Not a real test: the full update against the live FCC database —
@@ -1077,8 +1203,10 @@ HD|5|||KC1TST|C
                 println!("  {phase}: {} / {} MB", d / 1_000_000, t / 1_000_000);
             }
         });
-        let db = run(build_and_install(FCC_URL, &dir, progress)).ok().expect("update failed");
-        let size = std::fs::metadata(dir.join(PACK_FILE)).unwrap().len();
+        let db = run(build_and_install(Service::Amateur, Service::Amateur.url(), &dir, progress))
+            .ok()
+            .expect("update failed");
+        let size = std::fs::metadata(dir.join(Service::Amateur.pack_file())).unwrap().len();
         println!("{} records, {:.1} MB on disk, {:.0}s total", db.info.record_count, size as f64 / 1e6, started.elapsed().as_secs_f32());
         for call in ["W1AW", "N0CALL"] {
             println!("  {call}: {:?}", db.lookup(call));

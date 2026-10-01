@@ -68,10 +68,11 @@ pub struct AppState {
     pub datapacks_dir: PathBuf,
     /// Loaded route packs (flag: true = a downloaded copy, false = bundled).
     pub route_packs: Mutex<Vec<(crate::routes::RoutePack, bool)>>,
-    /// The offline call-sign directory, loaded on first use (it's tens of MB
-    /// once unpacked, so it isn't read at startup).
-    pub callsign_db: Mutex<Option<std::sync::Arc<crate::callsigns::CallDb>>>,
-    /// Guards against two overlapping downloads of the same big file.
+    /// The offline call-sign directories (amateur, GMRS), each loaded on first
+    /// use (tens of MB once unpacked, so they aren't read at startup).
+    pub callsign_dbs:
+        Mutex<std::collections::HashMap<crate::callsigns::Service, std::sync::Arc<crate::callsigns::CallDb>>>,
+    /// One FCC download at a time, whichever directory it's for.
     pub callsign_update_running: std::sync::atomic::AtomicBool,
 }
 
@@ -93,7 +94,7 @@ impl AppState {
             aprs_is_stream: Mutex::new(None),
             route_packs: Mutex::new(crate::datapacks::load_all(&datapacks_dir)),
             datapacks_dir,
-            callsign_db: Mutex::new(None),
+            callsign_dbs: Mutex::new(std::collections::HashMap::new()),
             callsign_update_running: std::sync::atomic::AtomicBool::new(false),
         }
     }
