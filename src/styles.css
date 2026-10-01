@@ -1071,6 +1071,15 @@ details > summary {
   background: var(--bg-panel);
 }
 
+/* Where a stored item lives on disk (Settings → Storage). Selectable so it
+   can be copied into a file manager. */
+.storage-location code {
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 /* "Full view" map button (map/expandControl.ts). */
 .map-expand-control .map-expand-button {
   display: inline-flex;

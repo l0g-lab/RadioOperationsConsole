@@ -2,7 +2,7 @@ use super::AppState;
 use crate::callsigns::Service;
 use crate::storage::{self, StorageItem};
 use std::sync::atomic::Ordering;
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 
 fn dirs_of(state: &AppState) -> Result<(std::path::PathBuf, std::path::PathBuf), String> {
     let restore_copies = super::backup::safety_dir(&state.repo.lock().unwrap())?;
@@ -46,4 +46,22 @@ pub fn clear_storage(state: State<'_, AppState>, id: String) -> Result<Vec<Stora
         _ => {}
     }
     Ok(storage::usage(&dirs))
+}
+
+/// Where the webview keeps the map tile cache. The tiles are stored by the
+/// webview itself (browser Cache Storage), so this is the webview's own data
+/// folder rather than one of ours: WebKitGTK on Linux keeps it in
+/// `CacheStorage` in the app's data folder, WebView2 on Windows in its
+/// `EBWebView` folder.
+#[tauri::command]
+pub fn tile_cache_location(app: AppHandle) -> Result<String, String> {
+    let paths = app.path();
+    let dir = if cfg!(target_os = "windows") {
+        paths.app_local_data_dir().map(|d| d.join("EBWebView"))
+    } else if cfg!(target_os = "linux") {
+        paths.app_data_dir().map(|d| d.join("CacheStorage"))
+    } else {
+        paths.app_local_data_dir()
+    };
+    dir.map(|d| d.display().to_string()).map_err(|e| e.to_string())
 }

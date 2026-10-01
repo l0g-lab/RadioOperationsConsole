@@ -14,6 +14,8 @@ pub struct StorageItem {
     pub id: &'static str,
     pub files: u32,
     pub bytes: u64,
+    /// The folder the item's files are kept in, so people can find them.
+    pub location: String,
 }
 
 /// Where each kind of item lives.
@@ -52,6 +54,14 @@ fn files_for(id: &str, dirs: &Dirs) -> Option<Vec<PathBuf>> {
     })
 }
 
+/// The folder an item's files live in.
+fn folder_for<'a>(id: &str, dirs: &Dirs<'a>) -> &'a Path {
+    match id {
+        "restore-copies" => dirs.restore_copies,
+        _ => dirs.datapacks,
+    }
+}
+
 /// Every item, in a fixed order, including empty ones (STORE-002).
 pub fn usage(dirs: &Dirs) -> Vec<StorageItem> {
     ITEM_IDS
@@ -62,6 +72,7 @@ pub fn usage(dirs: &Dirs) -> Vec<StorageItem> {
                 id,
                 files: files.len() as u32,
                 bytes: files.iter().filter_map(|f| std::fs::metadata(f).ok()).map(|m| m.len()).sum(),
+                location: folder_for(id, dirs).display().to_string(),
             }
         })
         .collect()
@@ -124,6 +135,11 @@ mod tests {
         assert_eq!(item(&items, "road-data"), (2, 100));
         assert_eq!(item(&items, "partial-downloads"), (2, 505));
         assert_eq!(item(&items, "restore-copies"), (2, 4500));
+        let location = |id: &str| items.iter().find(|i| i.id == id).unwrap().location.clone();
+        assert_eq!(location("callsigns-amateur"), packs.display().to_string());
+        assert_eq!(location("road-data"), packs.display().to_string());
+        assert_eq!(location("partial-downloads"), packs.display().to_string());
+        assert_eq!(location("restore-copies"), backups.display().to_string());
 
         let empty = temp("empty");
         let none = usage(&Dirs { datapacks: &empty, restore_copies: &empty.join("missing") });

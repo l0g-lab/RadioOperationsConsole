@@ -397,4 +397,6 @@ export interface StorageItem {
   id: StorageItemId;
   files: number;
   bytes: number;
+  /** The folder its files are kept in. */
+  location: string;
 }

@@ -74,16 +74,20 @@ type Usage = { files: number; bytes: number };
  */
 export default function StoragePanel({ onCleared }: { onCleared: () => void }) {
   const [usage, setUsage] = useState<Partial<Record<RowId, Usage | null>>>({});
+  /** The folder each item is kept in, so people can find it on disk. */
+  const [locations, setLocations] = useState<Partial<Record<RowId, string>>>({});
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState<RowId | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const applyItems = (items: StorageItem[]) =>
+  const applyItems = (items: StorageItem[]) => {
     setUsage((u) => ({
       ...u,
       ...Object.fromEntries(items.map((i) => [i.id, { files: i.files, bytes: i.bytes }])),
     }));
+    setLocations((l) => ({ ...l, ...Object.fromEntries(items.map((i) => [i.id, i.location])) }));
+  };
 
   const measure = useCallback(async () => {
     setLoading(true);
@@ -102,6 +106,13 @@ export default function StoragePanel({ onCleared }: { onCleared: () => void }) {
   useEffect(() => {
     measure();
   }, [measure]);
+
+  useEffect(() => {
+    api
+      .tileCacheLocation()
+      .then((dir) => setLocations((l) => ({ ...l, "map-tiles": dir })))
+      .catch(() => {});
+  }, []);
 
   async function clear(id: RowId) {
     setBusy(true);
@@ -155,6 +166,12 @@ export default function StoragePanel({ onCleared }: { onCleared: () => void }) {
                       : `${u.files.toLocaleString()} ${u.files === 1 ? row.unit[0] : row.unit[1]} · ${formatSize(u.bytes)}`}
               </span>
               <div className="settings-hint">{row.about}</div>
+              {locations[row.id] && (
+                <div className="settings-hint storage-location">
+                  {row.id === "map-tiles" ? "Kept by the map view in: " : "Folder: "}
+                  <code>{locations[row.id]}</code>
+                </div>
+              )}
               {confirming === row.id && (
                 <div className="confirm-row">
                   <p>

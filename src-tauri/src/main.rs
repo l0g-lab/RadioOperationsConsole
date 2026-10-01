@@ -104,6 +104,7 @@ fn main() {
             commands::lookup_callsign_offline,
             commands::storage_usage,
             commands::clear_storage,
+            commands::tile_cache_location,
             commands::lookup_qrz_callsign,
             commands::geocode_location,
         ])

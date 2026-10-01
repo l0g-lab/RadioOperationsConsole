@@ -452,9 +452,10 @@ export const lookupCallsignOffline = (call_sign: string, service: LicenseService
 
 // What's kept on this computer besides the records (STORE-001), and clearing it.
 export const storageUsage = () => invoke<StorageItem[]>("storage_usage");
-
 export const clearStorage = (id: StorageItemId) =>
   invoke<StorageItem[]>("clear_storage", { id });
+/** The folder the webview keeps cached map tiles in. */
+export const tileCacheLocation = () => invoke<string>("tile_cache_location");
 
 export const backupDatabase = (path: string) => invoke<BackupSummary>("backup_database", { path });
 
