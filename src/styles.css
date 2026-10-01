@@ -71,6 +71,24 @@ button:hover {
   color: var(--accent);
 }
 
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  padding: 6px 16px;
+}
+
+button.primary:hover {
+  color: var(--on-accent);
+  filter: brightness(1.12);
+}
+
+.unsaved-status {
+  color: var(--warning, #e8a33d);
+  font-weight: 600;
+}
+
 input,
 select {
   background: var(--bg-input);

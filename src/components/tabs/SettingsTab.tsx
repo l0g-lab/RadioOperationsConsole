@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 export default function SettingsTab() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [coordFormat, setCoordFormatState] = useState<CoordFormat>(getCoordFormat);
   const [themeMode, setThemeModeState] = useState<ThemeMode>(getThemeMode);
 
@@ -36,11 +37,13 @@ export default function SettingsTab() {
   function updateField<K extends keyof AppSettings>(field: K, value: AppSettings[K]) {
     setSettings((s) => ({ ...s, [field]: value }));
     setSaved(false);
+    setDirty(true);
   }
 
   async function handleSave() {
     await api.saveSettings(settings);
     setSaved(true);
+    setDirty(false);
   }
 
   return (
@@ -115,6 +118,7 @@ export default function SettingsTab() {
         <div className="inline-form">
           <label>Username:</label>
           <input
+            aria-label="QRZ username"
             value={settings.qrz_username}
             onChange={(e) => updateField("qrz_username", e.target.value)}
           />
@@ -123,6 +127,7 @@ export default function SettingsTab() {
           <label>Password:</label>
           <input
             type="password"
+            aria-label="QRZ password"
             value={settings.qrz_password}
             onChange={(e) => updateField("qrz_password", e.target.value)}
           />
@@ -140,6 +145,7 @@ export default function SettingsTab() {
         <div className="inline-form">
           <label>API key (optional):</label>
           <input
+            aria-label="NWS API key"
             value={settings.nws_api_key}
             onChange={(e) => updateField("nws_api_key", e.target.value)}
           />
@@ -148,15 +154,19 @@ export default function SettingsTab() {
 
       <div className="panel">
         <div className="inline-form">
-          <button onClick={handleSave}>Save settings</button>
+          <button className="primary" onClick={handleSave}>
+            Save settings
+          </button>
           <button
             onClick={() => {
               setSettings(DEFAULT_SETTINGS);
               setSaved(false);
+              setDirty(true);
             }}
           >
             Reset to defaults
           </button>
+          {dirty && <span className="unsaved-status">Unsaved changes</span>}
           {saved && <span className="qrz-status qrz-status-found">Saved</span>}
         </div>
       </div>
