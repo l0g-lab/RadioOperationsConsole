@@ -483,6 +483,7 @@ export default function CheckinEntryForm({
           onEnter={handleSaveCheckin}
           frequencyPlaceholder={activityFrequency || undefined}
           saveAttempted={contactSaveRefused}
+          liveTime
         />
       )}
       <WorkedBefore history={history} label={log ? "Worked before" : "Checked in before"} />

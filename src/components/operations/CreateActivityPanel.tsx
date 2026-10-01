@@ -5,7 +5,7 @@ import { formatCoords } from "../../geo";
 import LocationPicker from "../LocationPicker";
 import SaveTemplateBar from "./SaveTemplateBar";
 import ActivityTypeSelect from "./ActivityTypeSelect";
-import { DEFAULT_ACTIVITY_TYPE } from "../../activityTypes";
+import { DEFAULT_ACTIVITY_TYPE, isLog } from "../../activityTypes";
 import { combineScheduledAt, todayIso } from "../../utils";
 import { CirclePlus } from "lucide-react";
 
@@ -138,7 +138,8 @@ export default function CreateActivityPanel({
     const id = await api.createActivity(
       activityTitle.trim(),
       activityType,
-      combineScheduledAt(activityDate, activityTime) || null,
+      // A station log is ongoing: it has no date.
+      isLog(activityType) ? null : combineScheduledAt(activityDate, activityTime) || null,
       activityFrequency.trim() || null
     );
     const where = location ?? operatorLocation;
@@ -197,21 +198,26 @@ export default function CreateActivityPanel({
             }}
           />
           <ActivityTypeSelect value={activityType} onChange={setActivityType} />
-          <label>
-            Date (YYYY-MM-DD):
-            <input value={activityDate} onChange={(e) => setActivityDate(e.target.value)} />
-          </label>
-          <label>
-            Time (HH:MM, optional):
-            <input
-              placeholder="e.g. 19:00"
-              value={activityTime}
-              onChange={(e) => setActivityTime(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddActivity();
-              }}
-            />
-          </label>
+          {/* A station log is ongoing, so it has no date or time. */}
+          {!isLog(activityType) && (
+            <>
+              <label>
+                Date (YYYY-MM-DD):
+                <input value={activityDate} onChange={(e) => setActivityDate(e.target.value)} />
+              </label>
+              <label>
+                Time (HH:MM, optional):
+                <input
+                  placeholder="e.g. 19:00"
+                  value={activityTime}
+                  onChange={(e) => setActivityTime(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddActivity();
+                  }}
+                />
+              </label>
+            </>
+          )}
           <label>
             Frequency:
             <input

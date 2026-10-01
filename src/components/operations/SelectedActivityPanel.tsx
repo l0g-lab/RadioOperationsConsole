@@ -4,7 +4,7 @@ import type { Activity, ActivityTemplate } from "../../types";
 import SaveTemplateBar from "./SaveTemplateBar";
 import ActivitySummaryPanel from "./ActivitySummaryPanel";
 import ActivityTypeSelect from "./ActivityTypeSelect";
-import { activityTypeLabel } from "../../activityTypes";
+import { activityTypeLabel, isLog } from "../../activityTypes";
 import LocationPicker from "../LocationPicker";
 import DeleteActivityDialog from "../lifecycle/DeleteActivityDialog";
 import { formatCoordsWithGrid } from "../../geo";
@@ -112,7 +112,8 @@ export default function SelectedActivityPanel({
       focusedActivity.id,
       title,
       editType,
-      combineScheduledAt(editDate, editTime) || null,
+      // A station log is ongoing: it has no date (the earlier one stays in its history).
+      isLog(editType) ? null : combineScheduledAt(editDate, editTime) || null,
       editFrequency.trim() || null,
       selectedOperatorId
     );
@@ -268,29 +269,33 @@ export default function SelectedActivityPanel({
             }}
           />
           <ActivityTypeSelect value={editType} onChange={setEditType} />
-          <label>
-            Date (YYYY-MM-DD):
-            <input
-              value={editDate}
-              onChange={(e) => setEditDate(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveEditFocused();
-                if (e.key === "Escape") cancelEditFocused();
-              }}
-            />
-          </label>
-          <label>
-            Time (HH:MM, optional):
-            <input
-              placeholder="e.g. 19:00"
-              value={editTime}
-              onChange={(e) => setEditTime(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveEditFocused();
-                if (e.key === "Escape") cancelEditFocused();
-              }}
-            />
-          </label>
+          {!isLog(editType) && (
+            <>
+              <label>
+                Date (YYYY-MM-DD):
+                <input
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveEditFocused();
+                    if (e.key === "Escape") cancelEditFocused();
+                  }}
+                />
+              </label>
+              <label>
+                Time (HH:MM, optional):
+                <input
+                  placeholder="e.g. 19:00"
+                  value={editTime}
+                  onChange={(e) => setEditTime(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveEditFocused();
+                    if (e.key === "Escape") cancelEditFocused();
+                  }}
+                />
+              </label>
+            </>
+          )}
           <label>
             Frequency:
             <input

@@ -6,7 +6,7 @@ import { hintWidth } from "../hintWidth";
 
 /** A contact's radio details as typed (station logs). Every field is optional. */
 export interface ContactDraft {
-  /** Typed local time ("YYYY-MM-DD HH:MM" or "HH:MM"); blank means "now" when logging. */
+  /** Typed local time ("YYYY-MM-DD HH:MM[:SS]" or "HH:MM"); blank means "now" when logging. */
   at: string;
   frequency: string;
   mode: string;
@@ -58,7 +58,7 @@ export function draftFromCheckin(c: Checkin): ContactDraft {
 /** Why the typed time can't be used, or null if it's fine (or blank). */
 export function contactTimeError(d: ContactDraft): string | null {
   return parseContactTime(d.at).kind === "invalid"
-    ? `"${d.at.trim()}" isn't a time. Use YYYY-MM-DD HH:MM, or HH:MM for today — or leave it blank for now.`
+    ? `"${d.at.trim()}" isn't a time. Use YYYY-MM-DD HH:MM (seconds optional), or HH:MM for today — or leave it blank for now.`
     : null;
 }
 
@@ -91,9 +91,124 @@ export function rstPair(c: Pick<Checkin, "rst_sent" | "rst_received">): string {
   return `${c.rst_sent || "–"} / ${c.rst_received || "–"}`;
 }
 
-const MODES = ["FM", "SSB", "USB", "LSB", "AM", "CW", "DMR", "D-STAR", "C4FM", "FT8", "Packet"];
+export const MODES = ["FM", "SSB", "USB", "LSB", "AM", "CW", "DMR", "D-STAR", "C4FM", "FT8", "Packet"];
 
-const TIME_HINT = "Now, or YYYY-MM-DD HH:MM";
+/** Modes starting with what's typed (ignoring case); nothing for an empty box or an exact match. */
+export function modeSuggestions(typed: string): string[] {
+  const t = typed.trim().toLowerCase();
+  if (!t) return [];
+  const matches = MODES.filter((m) => m.toLowerCase().startsWith(t));
+  return matches.length === 1 && matches[0].toLowerCase() === t ? [] : matches;
+}
+
+/**
+ * The mode box: free text, with common modes suggested as you type. The
+ * webview's own suggestion list (a datalist) can't be accepted with Tab, so
+ * this is a small one of our own: the first match is highlighted, Tab takes
+ * it and moves on as Tab normally does, Enter takes it (a second Enter then
+ * saves), arrows move the highlight, Escape closes the list.
+ */
+function ModeInput({
+  value,
+  onChange,
+  onEnter,
+  idPrefix,
+}: {
+  value: string;
+  onChange: (mode: string) => void;
+  onEnter: () => void;
+  idPrefix: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const suggestions = open ? modeSuggestions(value) : [];
+  const shown = suggestions.length > 0;
+  const listId = `${idPrefix}-modes`;
+  const optionId = (i: number) => `${listId}-${i}`;
+
+  function take(mode: string) {
+    onChange(mode);
+    setOpen(false);
+  }
+
+  return (
+    <span className="mode-input">
+      <input
+        role="combobox"
+        aria-label="Mode"
+        aria-autocomplete="list"
+        aria-expanded={shown}
+        aria-controls={listId}
+        aria-activedescendant={shown ? optionId(active) : undefined}
+        placeholder="Mode"
+        className="contact-field contact-field-mode"
+        style={hintWidth("Mode", { minChars: 8 })}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setActive(0);
+          setOpen(true);
+        }}
+        onBlur={() => setOpen(false)}
+        onKeyDown={(e) => {
+          if (shown && e.key === "Tab" && !e.shiftKey) {
+            // Not prevented: focus still moves on to the next field.
+            take(suggestions[active]);
+          } else if (shown && e.key === "Enter") {
+            e.preventDefault();
+            take(suggestions[active]);
+          } else if (shown && e.key === "ArrowDown") {
+            e.preventDefault();
+            setActive((i) => (i + 1) % suggestions.length);
+          } else if (shown && e.key === "ArrowUp") {
+            e.preventDefault();
+            setActive((i) => (i - 1 + suggestions.length) % suggestions.length);
+          } else if (shown && e.key === "Escape") {
+            e.stopPropagation();
+            setOpen(false);
+          } else if (e.key === "Enter") {
+            onEnter();
+          }
+        }}
+      />
+      {shown && (
+        <ul id={listId} role="listbox" aria-label="Modes" className="mode-suggestions">
+          {suggestions.map((m, i) => (
+            <li
+              key={m}
+              id={optionId(i)}
+              role="option"
+              aria-selected={i === active}
+              className={i === active ? "active" : undefined}
+              // Before the input's blur closes the list.
+              onMouseDown={(e) => {
+                e.preventDefault();
+                take(m);
+              }}
+            >
+              {m}
+            </li>
+          ))}
+        </ul>
+      )}
+    </span>
+  );
+}
+
+/** The time box's hint when it isn't showing the running clock; also sizes the box. */
+const TIME_HINT = "YYYY-MM-DD HH:MM:SS";
+
+/** The current time, updated every second while `running`. */
+function useClock(running: boolean): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!running) return;
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+  return now;
+}
 
 /** The contact-detail inputs, used both when logging and when correcting a contact. */
 export function ContactFieldsInputs({
@@ -103,6 +218,7 @@ export function ContactFieldsInputs({
   frequencyPlaceholder,
   idPrefix,
   saveAttempted = false,
+  liveTime = false,
 }: {
   value: ContactDraft;
   onChange: (d: ContactDraft) => void;
@@ -112,7 +228,14 @@ export function ContactFieldsInputs({
   idPrefix: string;
   /** A save was refused (bad time): show why even if the time box still has focus. */
   saveAttempted?: boolean;
+  /**
+   * Logging a new contact: the empty time box shows the current time,
+   * running, since that's what a blank time logs. Not when correcting one,
+   * where blank means "keep its time".
+   */
+  liveTime?: boolean;
 }) {
+  const now = useClock(liveTime && !value.at);
   // A half-typed time ("10:") isn't an error yet: say so once the operator
   // leaves the box or tries to save.
   const [timeLeft, setTimeLeft] = useState(false);
@@ -142,7 +265,10 @@ export function ContactFieldsInputs({
       <label className="contact-field-time">
         <span>Time</span>
         {field("at", "Contact time", TIME_HINT, 0, {
-          title: "When the contact was made, in this computer's time. Leave blank for now.",
+          ...(liveTime ? { placeholder: formatContactTime(now) } : {}),
+          title: liveTime
+            ? "When the contact was made, in this computer's time. Leave blank to log the time shown, the moment you save."
+            : "When the contact was made, in this computer's time: YYYY-MM-DD HH:MM, seconds optional.",
           "aria-invalid": timeError != null,
           onFocus: () => setTimeLeft(false),
           onBlur: () => setTimeLeft(true),
@@ -153,12 +279,12 @@ export function ContactFieldsInputs({
         "Frequency",
         frequencyPlaceholder ? `Frequency (${frequencyPlaceholder})` : "Frequency"
       )}
-      {field("mode", "Mode", "Mode", 8, { list: `${idPrefix}-modes` })}
-      <datalist id={`${idPrefix}-modes`}>
-        {MODES.map((m) => (
-          <option key={m} value={m} />
-        ))}
-      </datalist>
+      <ModeInput
+        value={value.mode}
+        onChange={(mode) => onChange({ ...value, mode })}
+        onEnter={onEnter}
+        idPrefix={idPrefix}
+      />
       {field("rstSent", "RST sent")}
       {field("rstReceived", "RST received")}
       {field("power", "Power", "Power", 8)}

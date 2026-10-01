@@ -73,17 +73,34 @@ describe("parseContactTime / formatContactTime", () => {
     const t = parseContactTime("2026-09-14 10:05");
     expect(t).toEqual({ kind: "ok", iso: local(2026, 9, 14, 10, 5) });
     expect(parseContactTime(" 2026-9-4T7:05 ")).toEqual({ kind: "ok", iso: local(2026, 9, 4, 7, 5) });
-    expect(formatContactTime(local(2026, 9, 4, 7, 5))).toBe("2026-09-04 07:05");
+    expect(formatContactTime(local(2026, 9, 4, 7, 5))).toBe("2026-09-04 07:05:00");
+    expect(parseContactTime("2026-09-04 07:05:30")).toEqual({
+      kind: "ok",
+      iso: new Date(2026, 8, 4, 7, 5, 30).toISOString(),
+    });
+    expect(formatContactTime(new Date(2026, 8, 4, 7, 5, 30))).toBe("2026-09-04 07:05:30");
   });
 
   it("takes a time alone as today", () => {
     const today = new Date(2026, 9, 1, 18, 0);
     expect(parseContactTime("9:30", today)).toEqual({ kind: "ok", iso: local(2026, 10, 1, 9, 30) });
+    expect(parseContactTime("9:30:15", today)).toEqual({
+      kind: "ok",
+      iso: new Date(2026, 9, 1, 9, 30, 15).toISOString(),
+    });
   });
 
   it("tells blank apart from unreadable", () => {
     expect(parseContactTime("  ")).toEqual({ kind: "blank" });
-    for (const bad of ["yesterday", "2026-09-14", "2026-02-30 10:00", "25:00", "10:5", "14/09/2026 10:05"]) {
+    for (const bad of [
+      "yesterday",
+      "2026-09-14",
+      "2026-02-30 10:00",
+      "25:00",
+      "10:5",
+      "10:05:61",
+      "14/09/2026 10:05",
+    ]) {
       expect(parseContactTime(bad), bad).toEqual({ kind: "invalid" });
     }
     expect(formatContactTime("not a date")).toBe("");

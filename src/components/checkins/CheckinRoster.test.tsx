@@ -12,7 +12,7 @@ vi.mock("../../locationResolution", () => ({
 }));
 
 import * as api from "../../api";
-import CheckinRoster from "./CheckinRoster";
+import CheckinRoster, { shortMiles } from "./CheckinRoster";
 
 const LOG: Activity = {
   id: "log1",
@@ -93,23 +93,71 @@ function renderRoster(selectedCheckinId: string | null = null) {
 describe("CheckinRoster as a station log", () => {
   beforeEach(() => vi.mocked(api.updateCheckin).mockClear());
 
-  it("lists contacts with frequency, mode, and signal reports", () => {
+  it("lists contacts with frequency, mode, signal reports, power, antenna, and notes", () => {
     renderRoster();
     expect(screen.getByRole("heading", { name: /Contacts — Simplex log/ })).toBeInTheDocument();
     expect(screen.getByText("2 contacts")).toBeInTheDocument();
+    for (const header of ["Frequency", "Mode", "RST S / R", "Power", "Antenna", "Notes"]) {
+      expect(screen.getByText(header)).toBeInTheDocument();
+    }
     expect(screen.getByText("146.550")).toBeInTheDocument();
     expect(screen.getByText("59 / 57")).toBeInTheDocument();
+    expect(screen.getByText("5 W")).toBeInTheDocument();
+    expect(screen.getByText("J-pole")).toBeInTheDocument();
+    // Long text may be cut off in its column; the full text is on hover.
+    expect(screen.getByText("Mobile on I-75")).toHaveAttribute("title", "Mobile on I-75");
     expect(screen.queryByText("Create linked report")).not.toBeInTheDocument();
   });
 
-  it("shows power, antenna, and notes on request, only for contacts that have details", async () => {
+  it("shows each contact's distance from the log's (or operator's) location", () => {
+    const withCoords = [
+      { ...CONTACTS[0], location_lat: 28.5383, location_lon: -81.3792 }, // Orlando
+      CONTACTS[1], // no location: no distance
+    ];
+    render(
+      <CheckinRoster
+        activity={LOG}
+        operatorId={null}
+        onOpenExports={() => {}}
+        checkins={withCoords}
+        qrzConfigured={false}
+        offlineCallsAvailable={false}
+        selectedCheckinId={null}
+        onSelectCheckin={() => {}}
+        onCheckinsChanged={() => {}}
+        onShowMap={() => {}}
+        log
+        distanceFrom={{ lat: 27.9506, lon: -82.4572, label: "Tampa EOC" }}
+      />
+    );
+    const cell = screen.getByText("77.2 mi");
+    expect(cell).toHaveAttribute("title", "124.2 km (77.2 mi) from Tampa EOC");
+    expect(screen.getAllByText(/ mi$/)).toHaveLength(1);
+    expect(screen.getByText("Distance")).toHaveAttribute(
+      "title",
+      "Straight-line distance from Tampa EOC"
+    );
+  });
+
+  it("rounds long distances to whole miles", () => {
+    expect(shortMiles(124.2)).toBe("77.2 mi");
+    expect(shortMiles(331.2)).toBe("206 mi");
+  });
+
+  it("says how to get distances when there's nothing to measure from", () => {
+    renderRoster();
+    expect(screen.getByText("Distance").getAttribute("title")).toMatch(/Set a location/);
+    expect(screen.queryByText(/ mi$/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the rest (address, grid, full notes) under Show details, for contacts that have any", async () => {
     const user = userEvent.setup();
     renderRoster();
     const buttons = screen.getAllByRole("button", { name: "Show details" });
     expect(buttons).toHaveLength(1);
     await user.click(buttons[0]);
-    expect(screen.getByText("J-pole")).toBeInTheDocument();
-    expect(screen.getByText("Mobile on I-75")).toBeInTheDocument();
+    expect(screen.getAllByText("Mobile on I-75")).toHaveLength(2);
+    expect(screen.getByText("Notes:")).toBeInTheDocument();
   });
 
   it("searches by call sign, name, location, or notes", async () => {
@@ -137,6 +185,11 @@ describe("CheckinRoster as a station log", () => {
     await user.type(mode, "SSB");
     await user.clear(screen.getByLabelText("Notes"));
     const time = screen.getByLabelText("Contact time");
+    // Correcting, the time is the contact's own (seconds kept), not a running clock.
+    expect(time).toHaveValue(
+      `${new Date("2026-09-14T14:05:00Z").toLocaleString("sv-SE").slice(0, 19)}`
+    );
+    expect(time).toHaveAttribute("placeholder", "YYYY-MM-DD HH:MM:SS");
     await user.clear(time);
     await user.type(time, "2026-09-15T08:30");
     await user.click(within(mode.closest(".checkin-row")! as HTMLElement).getByRole("button", { name: "Save" }));

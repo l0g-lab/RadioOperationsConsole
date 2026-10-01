@@ -695,10 +695,34 @@ details > summary {
   gap: 14px;
 }
 
+/* Holds the roster, so on a window too narrow for every column it scrolls
+   sideways inside the panel rather than pushing the page wider. The
+   minimum is the columns' own minimum widths plus gaps and padding (both
+   the net and the log layout come to about 1214px), plus room for the
+   roster's vertical scrollbar. */
+.checkin-roster-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+}
+
+.checkin-roster-scroll > .checkin-roster {
+  min-width: 1232px;
+}
+
+/* The log's columns: 1170px of minimums + 11 gaps + padding + scrollbar. */
+.checkin-roster-scroll-log > .checkin-roster {
+  min-width: 1340px;
+}
+
 .checkin-roster {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Sideways scrolling is the wrapper's job (above), never a second bar here. */
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -716,6 +740,12 @@ details > summary {
 }
 
 .checkin-row-columns {
+  /* Inside the scrolling roster, so it's always exactly as wide as the rows
+     (their scrollbar included); pinned so it stays put as they scroll. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-panel);
   cursor: default;
   color: var(--text-dim);
   font-size: 11px;
@@ -1437,6 +1467,42 @@ details > summary {
   font-size: 13px;
 }
 
+/* The mode box's own suggestion list (ModeInput). */
+.mode-input {
+  position: relative;
+  display: inline-block;
+}
+
+.mode-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  min-width: 100%;
+  margin: 2px 0 0 0;
+  padding: 2px 0;
+  list-style: none;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.mode-suggestions li {
+  padding: 4px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Highlighted: an outline and bold text rather than a filled background,
+   so it reads clearly in both themes. */
+.mode-suggestions li.active {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  font-weight: 600;
+}
+
 .contact-time-error {
   flex-basis: 100%;
   margin: 0;
@@ -1449,7 +1515,23 @@ details > summary {
 }
 
 .checkin-row-log {
-  grid-template-columns: 110px minmax(90px, 1fr) minmax(120px, 1fr) 110px 70px 90px 190px 110px;
+  /* Call, name, location, distance, frequency, mode, RST, power, antenna,
+     notes, time, details. RST is wide enough for "599 / 599". */
+  grid-template-columns:
+    100px minmax(80px, 1fr) minmax(100px, 1fr) 80px 90px 64px 96px 70px minmax(90px, 1fr)
+    minmax(120px, 1.5fr) 180px 100px;
+}
+
+.checkin-row-nowrap {
+  white-space: nowrap;
+}
+
+/* Text that may not fit its column: cut off with "…", full text on hover. */
+.checkin-row-clip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .checkin-row-mono {

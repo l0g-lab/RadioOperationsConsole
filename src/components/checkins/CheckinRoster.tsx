@@ -3,7 +3,7 @@ import * as api from "../../api";
 import type { Activity, Checkin } from "../../types";
 import { QRZ_ERR_NOT_CONFIGURED, ERR_OFFLINE } from "../../types";
 import { formatTimeLines } from "../../utils";
-import { formatCoords } from "../../geo";
+import { formatCoords, formatDistance, haversineKm, kmToMiles } from "../../geo";
 import { resolveOfflineLocationAsync } from "../../locationResolution";
 import {
   callSignService,
@@ -42,6 +42,17 @@ interface Props {
   onShowMap: () => void;
   /** A station log: contacts with radio details instead of check-ins with traffic. */
   log?: boolean;
+  /**
+   * Where distances are measured from in a log: the activity's location,
+   * else the operator's (the same point the map uses). None, no distances.
+   */
+  distanceFrom?: { lat: number; lon: number; label: string } | null;
+}
+
+/** "77.2 mi", or "206 mi" from 100 miles up, to fit a narrow column. */
+export function shortMiles(km: number): string {
+  const mi = kmToMiles(km);
+  return `${mi < 100 ? mi.toFixed(1) : Math.round(mi)} mi`;
 }
 
 type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
@@ -60,6 +71,7 @@ export default function CheckinRoster({
   onCheckinsChanged,
   onShowMap,
   log = false,
+  distanceFrom = null,
 }: Props) {
   const [editingCheckinId, setEditingCheckinId] = useState<string | null>(null);
   const [editCallSign, setEditCallSign] = useState("");
@@ -353,256 +365,297 @@ export default function CheckinRoster({
             onChange={(e) => setSearch(e.target.value)}
           />
         )}
-        {rosterNewestFirst.length > 0 && log && (
-          <div className="checkin-row checkin-row-log checkin-row-columns">
-            <span>Call Sign</span>
-            <span>Name</span>
-            <span>Location</span>
-            <span>Frequency</span>
-            <span>Mode</span>
-            <span title="Signal report sent / received">RST S / R</span>
-            <span className="checkin-row-time">Time</span>
-            <span>Details</span>
-          </div>
-        )}
-        {rosterNewestFirst.length > 0 && !log && (
-          <div className="checkin-row checkin-row-columns">
-            <span>Call Sign</span>
-            <span>Name</span>
-            <span>Location</span>
-            <span>Grid Square</span>
-            <span>Coordinates</span>
-            <span>Address</span>
-            <span className="checkin-row-time">Time</span>
-            <span>Traffic</span>
-          </div>
-        )}
-        <div className="checkin-roster">
-          {rosterNewestFirst.length === 0 && (
-            <p className="checkin-empty-state">
-              {query
-                ? `No ${noun} match “${search.trim()}”.`
-                : log
-                  ? "No contacts logged yet."
-                  : "No check-ins recorded yet."}
-            </p>
-          )}
-          {rosterNewestFirst.map((c) =>
-            c.id === editingCheckinId ? (
-              <div
-                key={c.id}
-                className={"checkin-row checkin-row-editing" + (log ? " checkin-row-editing-log" : "")}
-              >
-                <input
-                  autoFocus
-                  className="checkin-edit-call"
-                  value={editCallSign}
-                  onChange={(e) => setEditCallSign(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEdit();
-                    if (e.key === "Escape") cancelEdit();
-                  }}
-                />
-                <input
-                  className="checkin-edit-name"
-                  placeholder="Name"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEdit();
-                    if (e.key === "Escape") cancelEdit();
-                  }}
-                />
-                <input
-                  className="checkin-edit-qth"
-                  placeholder="QTH location"
-                  value={editQthLocation}
-                  onChange={(e) => setEditQthLocation(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEdit();
-                    if (e.key === "Escape") cancelEdit();
-                  }}
-                />
-                <input
-                  className="checkin-edit-grid"
-                  placeholder="Grid"
-                  value={editGridSquare}
-                  onChange={(e) => setEditGridSquare(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEdit();
-                    if (e.key === "Escape") cancelEdit();
-                  }}
-                />
-                <input
-                  className="checkin-edit-address"
-                  placeholder="Full address"
-                  value={editAddress}
-                  onChange={(e) => setEditAddress(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEdit();
-                    if (e.key === "Escape") cancelEdit();
-                  }}
-                />
-                {log ? (
-                  <ContactFieldsInputs
-                    idPrefix={`checkin-edit-${c.id}`}
-                    value={editContact}
-                    onChange={setEditContact}
-                    onEnter={saveEdit}
-                    frequencyPlaceholder={activity.frequency || undefined}
-                    saveAttempted={editSaveRefused}
-                  />
-                ) : (
-                  <label className="checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={editHasTraffic}
-                      onChange={(e) => setEditHasTraffic(e.target.checked)}
-                    />
-                    Has traffic
-                  </label>
-                )}
-                {!log && editHasTraffic && (
+        {/* Column headings and rows scroll sideways together when the window is
+            too narrow for every column, keeping them lined up. */}
+        <div className={"checkin-roster-scroll" + (log ? " checkin-roster-scroll-log" : "")}>
+          <div className="checkin-roster">
+            {rosterNewestFirst.length > 0 && log && (
+              <div className="checkin-row checkin-row-log checkin-row-columns">
+                <span>Call Sign</span>
+                <span>Name</span>
+                <span>Location</span>
+                <span
+                  title={
+                    distanceFrom
+                      ? `Straight-line distance from ${distanceFrom.label}`
+                      : "Set a location on this log (Operations tab) or on your operator to see distances"
+                  }
+                >
+                  Distance
+                </span>
+                <span>Frequency</span>
+                <span>Mode</span>
+                <span className="checkin-row-nowrap" title="Signal report sent / received">
+                  RST S / R
+                </span>
+                <span>Power</span>
+                <span>Antenna</span>
+                <span>Notes</span>
+                <span className="checkin-row-time">Time</span>
+                <span>Details</span>
+              </div>
+            )}
+            {rosterNewestFirst.length > 0 && !log && (
+              <div className="checkin-row checkin-row-columns">
+                <span>Call Sign</span>
+                <span>Name</span>
+                <span>Location</span>
+                <span>Grid Square</span>
+                <span>Coordinates</span>
+                <span>Address</span>
+                <span className="checkin-row-time">Time</span>
+                <span>Traffic</span>
+              </div>
+            )}
+            {rosterNewestFirst.length === 0 && (
+              <p className="checkin-empty-state">
+                {query
+                  ? `No ${noun} match “${search.trim()}”.`
+                  : log
+                    ? "No contacts logged yet."
+                    : "No check-ins recorded yet."}
+              </p>
+            )}
+            {rosterNewestFirst.map((c) =>
+              c.id === editingCheckinId ? (
+                <div
+                  key={c.id}
+                  className={"checkin-row checkin-row-editing" + (log ? " checkin-row-editing-log" : "")}
+                >
                   <input
-                    className="checkin-edit-traffic"
-                    placeholder="Traffic"
-                    value={editTraffic}
-                    onChange={(e) => setEditTraffic(e.target.value)}
+                    autoFocus
+                    className="checkin-edit-call"
+                    value={editCallSign}
+                    onChange={(e) => setEditCallSign(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") saveEdit();
                       if (e.key === "Escape") cancelEdit();
                     }}
                   />
-                )}
-                <div className="checkin-edit-actions">
-                  <button onClick={saveEdit}>Save</button>
-                  <button onClick={cancelEdit}>Cancel</button>
+                  <input
+                    className="checkin-edit-name"
+                    placeholder="Name"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                  />
+                  <input
+                    className="checkin-edit-qth"
+                    placeholder="QTH location"
+                    value={editQthLocation}
+                    onChange={(e) => setEditQthLocation(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                  />
+                  <input
+                    className="checkin-edit-grid"
+                    placeholder="Grid"
+                    value={editGridSquare}
+                    onChange={(e) => setEditGridSquare(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                  />
+                  <input
+                    className="checkin-edit-address"
+                    placeholder="Full address"
+                    value={editAddress}
+                    onChange={(e) => setEditAddress(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                  />
+                  {log ? (
+                    <ContactFieldsInputs
+                      idPrefix={`checkin-edit-${c.id}`}
+                      value={editContact}
+                      onChange={setEditContact}
+                      onEnter={saveEdit}
+                      frequencyPlaceholder={activity.frequency || undefined}
+                      saveAttempted={editSaveRefused}
+                    />
+                  ) : (
+                    <label className="checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={editHasTraffic}
+                        onChange={(e) => setEditHasTraffic(e.target.checked)}
+                      />
+                      Has traffic
+                    </label>
+                  )}
+                  {!log && editHasTraffic && (
+                    <input
+                      className="checkin-edit-traffic"
+                      placeholder="Traffic"
+                      value={editTraffic}
+                      onChange={(e) => setEditTraffic(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveEdit();
+                        if (e.key === "Escape") cancelEdit();
+                      }}
+                    />
+                  )}
+                  <div className="checkin-edit-actions">
+                    <button onClick={saveEdit}>Save</button>
+                    <button onClick={cancelEdit}>Cancel</button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              (() => {
-                const t = formatTimeLines(c.checked_in_at);
-                const trafficOpen = c.has_traffic && openTraffic.has(c.id);
-                if (log) {
-                  const detailsOpen = openDetails.has(c.id);
-                  const coords =
-                    c.location_lat != null && c.location_lon != null
-                      ? formatCoords(c.location_lat, c.location_lon)
-                      : "";
-                  const details: [string, string][] = (
-                    [
-                      ["Power", c.power],
-                      ["Antenna", c.antenna],
-                      ["Grid", c.grid_square],
-                      ["Address", c.address],
-                      ["Coordinates", coords],
-                      ["Notes", c.notes],
-                      ["Traffic", c.has_traffic ? c.traffic || "yes" : ""],
-                    ] as [string, string][]
-                  ).filter(([, v]) => v);
+              ) : (
+                (() => {
+                  const t = formatTimeLines(c.checked_in_at);
+                  const trafficOpen = c.has_traffic && openTraffic.has(c.id);
+                  if (log) {
+                    const detailsOpen = openDetails.has(c.id);
+                    const coords =
+                      c.location_lat != null && c.location_lon != null
+                        ? formatCoords(c.location_lat, c.location_lon)
+                        : "";
+                    const distanceKm =
+                      distanceFrom && c.location_lat != null && c.location_lon != null
+                        ? haversineKm(distanceFrom.lat, distanceFrom.lon, c.location_lat, c.location_lon)
+                        : null;
+                    // Power, antenna and notes have columns; the rest (and
+                    // notes in full) are here.
+                    const details: [string, string][] = (
+                      [
+                        ["Grid", c.grid_square],
+                        ["Address", c.address],
+                        ["Coordinates", coords],
+                        ["Notes", c.notes],
+                        ["Traffic", c.has_traffic ? c.traffic || "yes" : ""],
+                      ] as [string, string][]
+                    ).filter(([, v]) => v);
+                    return (
+                      <Fragment key={c.id}>
+                        <div
+                          className={
+                            "checkin-row checkin-row-log" +
+                            (selectedCheckinId === c.id ? " selected" : "")
+                          }
+                          onClick={() => onSelectCheckin(c.id)}
+                        >
+                          <span className="checkin-row-call">{c.call_sign}</span>
+                          <span className="checkin-row-name">{c.name}</span>
+                          <span className="checkin-row-location">{c.qth_location}</span>
+                          {distanceKm == null ? (
+                            <span />
+                          ) : (
+                            <span
+                              className="checkin-row-mono checkin-row-nowrap"
+                              title={`${formatDistance(distanceKm)} from ${distanceFrom!.label}`}
+                            >
+                              {shortMiles(distanceKm)}
+                            </span>
+                          )}
+                          <span className="checkin-row-mono">{c.frequency}</span>
+                          <span>{c.mode}</span>
+                          <span className="checkin-row-mono checkin-row-nowrap">{rstPair(c)}</span>
+                          <span className="checkin-row-clip" title={c.power || undefined}>
+                            {c.power}
+                          </span>
+                          <span className="checkin-row-clip" title={c.antenna || undefined}>
+                            {c.antenna}
+                          </span>
+                          <span className="checkin-row-clip" title={c.notes || undefined}>
+                            {c.notes}
+                          </span>
+                          <span className="checkin-row-time">
+                            <span>{t.local}</span>
+                            <span>{t.utc}</span>
+                          </span>
+                          <span>
+                            {details.length > 0 && (
+                              <button
+                                className="link-button"
+                                aria-expanded={detailsOpen}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleDetails(c.id);
+                                }}
+                              >
+                                {detailsOpen ? "Hide details" : "Show details"}
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                        {detailsOpen && (
+                          <div className="report-notes-detail contact-details">
+                            {details.map(([label, value]) => (
+                              <span key={label}>
+                                <span className="report-notes-label">{label}:</span> {value}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </Fragment>
+                    );
+                  }
                   return (
                     <Fragment key={c.id}>
                       <div
-                        className={
-                          "checkin-row checkin-row-log" +
-                          (selectedCheckinId === c.id ? " selected" : "")
-                        }
+                        className={"checkin-row" + (selectedCheckinId === c.id ? " selected" : "")}
                         onClick={() => onSelectCheckin(c.id)}
                       >
                         <span className="checkin-row-call">{c.call_sign}</span>
-                        <span className="checkin-row-name">{c.name}</span>
+                        <span className="checkin-row-name">{c.name || ""}</span>
                         <span className="checkin-row-location">{c.qth_location}</span>
-                        <span className="checkin-row-mono">{c.frequency}</span>
-                        <span>{c.mode}</span>
-                        <span className="checkin-row-mono">{rstPair(c)}</span>
+                        <span className="checkin-row-grid">{c.grid_square}</span>
+                        <span className="checkin-row-coords" title={c.location_label || undefined}>
+                          {c.location_lat != null && c.location_lon != null
+                            ? formatCoords(c.location_lat, c.location_lon)
+                            : ""}
+                        </span>
+                        <span className="checkin-row-address" title={c.address || undefined}>
+                          {c.address}
+                        </span>
                         <span className="checkin-row-time">
                           <span>{t.local}</span>
                           <span>{t.utc}</span>
                         </span>
-                        <span>
-                          {details.length > 0 && (
+                        <span className="checkin-row-traffic">
+                          {c.has_traffic && (
                             <button
                               className="link-button"
-                              aria-expanded={detailsOpen}
+                              aria-expanded={trafficOpen}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                toggleDetails(c.id);
+                                toggleTraffic(c.id);
                               }}
                             >
-                              {detailsOpen ? "Hide details" : "Show details"}
+                              {trafficOpen ? "Hide traffic" : "Show traffic"}
                             </button>
                           )}
                         </span>
                       </div>
-                      {detailsOpen && (
-                        <div className="report-notes-detail contact-details">
-                          {details.map(([label, value]) => (
-                            <span key={label}>
-                              <span className="report-notes-label">{label}:</span> {value}
-                            </span>
-                          ))}
+                      {trafficOpen && (
+                        <div className="report-notes-detail">
+                          <span className="report-notes-label">Traffic:</span>{" "}
+                          {c.traffic || <em>No details recorded yet.</em>}
+                          <label className="checkbox-row traffic-handled">
+                            <input
+                              type="checkbox"
+                              checked={c.traffic_handled}
+                              disabled={readOnly}
+                              onChange={(e) => handleTrafficHandled(c.id, e.target.checked)}
+                            />
+                            Handled
+                          </label>
                         </div>
                       )}
                     </Fragment>
                   );
-                }
-                return (
-                  <Fragment key={c.id}>
-                    <div
-                      className={"checkin-row" + (selectedCheckinId === c.id ? " selected" : "")}
-                      onClick={() => onSelectCheckin(c.id)}
-                    >
-                      <span className="checkin-row-call">{c.call_sign}</span>
-                      <span className="checkin-row-name">{c.name || ""}</span>
-                      <span className="checkin-row-location">{c.qth_location}</span>
-                      <span className="checkin-row-grid">{c.grid_square}</span>
-                      <span className="checkin-row-coords" title={c.location_label || undefined}>
-                        {c.location_lat != null && c.location_lon != null
-                          ? formatCoords(c.location_lat, c.location_lon)
-                          : ""}
-                      </span>
-                      <span className="checkin-row-address" title={c.address || undefined}>
-                        {c.address}
-                      </span>
-                      <span className="checkin-row-time">
-                        <span>{t.local}</span>
-                        <span>{t.utc}</span>
-                      </span>
-                      <span className="checkin-row-traffic">
-                        {c.has_traffic && (
-                          <button
-                            className="link-button"
-                            aria-expanded={trafficOpen}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleTraffic(c.id);
-                            }}
-                          >
-                            {trafficOpen ? "Hide traffic" : "Show traffic"}
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                    {trafficOpen && (
-                      <div className="report-notes-detail">
-                        <span className="report-notes-label">Traffic:</span>{" "}
-                        {c.traffic || <em>No details recorded yet.</em>}
-                        <label className="checkbox-row traffic-handled">
-                          <input
-                            type="checkbox"
-                            checked={c.traffic_handled}
-                            disabled={readOnly}
-                            onChange={(e) => handleTrafficHandled(c.id, e.target.checked)}
-                          />
-                          Handled
-                        </label>
-                      </div>
-                    )}
-                  </Fragment>
-                );
-              })()
-            )
-          )}
+                })()
+              )
+            )}
+          </div>
         </div>
 
         {!readOnly &&

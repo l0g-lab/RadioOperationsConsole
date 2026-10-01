@@ -40,6 +40,13 @@ or end, and each record is a contact carrying its radio details.
   roster heading, count, and empty state MUST call its records contacts. The
   tab keeps its keyboard shortcut and position.
 
+- **LOG-004:** A station log MUST NOT ask for a date or time, when created
+  or edited; it is saved with none. Changing an activity's type to station
+  log clears its date (the earlier date stays in its history).
+- **LOG-005:** The activity sidebar MUST list station logs in their own
+  "Station logs" group, first and alphabetically, apart from the nets, which
+  stay grouped by date (newest first) with undated ones last.
+
 ## Contacts
 
 - **LOG-010:** A contact MAY record, besides the usual call sign, name, QTH,
@@ -50,9 +57,12 @@ or end, and each record is a contact carrying its radio details.
 - **LOG-012:** The time of the contact MUST default to now and MAY be set to
   any other date and time, when logging or when correcting a contact, so
   contacts can be written up after the fact. It is typed in this computer's
-  time as `YYYY-MM-DD HH:MM`, or `HH:MM` for today (a text box, not a date
-  picker: the desktop webviews' native pickers don't reliably close). It is
-  stored in UTC. An unreadable time MUST be refused with a message saying the
+  time as `YYYY-MM-DD HH:MM`, seconds optional, or `HH:MM` for today (a text
+  box, not a date picker: the desktop webviews' native pickers don't reliably
+  close). While logging, the empty box MUST show the current date and time,
+  running, as its hint, since that is what a blank time logs; when correcting
+  a contact it shows the contact's own time, seconds included. It is stored
+  in UTC. An unreadable time MUST be refused with a message saying the
   expected format, once the operator leaves the box or tries to save — not
   while they are still typing — and nothing typed is lost.
 - **LOG-017:** Every input's hint MUST be shown in full; boxes are sized to
@@ -63,7 +73,10 @@ or end, and each record is a contact carrying its radio details.
   MUST carry over to the next one; the time, signal reports, and notes MUST
   start blank.
 - **LOG-015:** Mode MUST be free text, with common modes (FM, SSB, AM, CW,
-  digital voice and data modes) offered as suggestions.
+  digital voice and data modes) suggested as it's typed, the first match
+  highlighted. Tab MUST take the highlighted mode and move to the next field;
+  the arrow keys move the highlight; Enter takes it (a second Enter saves);
+  Escape closes the suggestions.
 - **LOG-016:** Correcting a contact MUST record its contact details before and
   after in the audit trail (`AUDIT-*`). A correction that doesn't concern the
   contact details (such as a call-sign lookup filling in a name) MUST leave
@@ -72,9 +85,19 @@ or end, and each record is a contact carrying its radio details.
 ## The log
 
 - **LOG-020:** The roster MUST show each contact's call sign, name, location,
-  frequency, mode, signal reports (sent / received), and time; power, antenna,
-  grid, address, coordinates, and notes MUST be available on request for
-  contacts that have any.
+  frequency, mode, signal reports (sent / received), power, antenna, notes,
+  and time as columns. Text too long for its column is cut off with the full
+  text on hover. Signal reports stay on one line (room for "599 / 599").
+  Grid, address, coordinates, and the notes in full MUST be
+  available on request for contacts that have any. On a window too narrow for
+  every column, the roster scrolls sideways within its panel, headings and
+  rows together.
+- **LOG-023:** The roster MUST show each contact's straight-line distance in
+  miles (kilometers too on hover) from the log's own location, else the
+  operator's — the same point the check-in map measures from (`CIMAP-060`,
+  `CIMAP-064`) — whole miles from 100 up. A contact with no location, or a
+  log and operator with none, shows no distance, and the column's hover text
+  says how to set one.
 - **LOG-021:** The log MUST be searchable by call sign, name, location, and
   notes, saying so when nothing matches.
 - **LOG-022:** Roster exports (CSV and JSON) MUST include the contact fields.

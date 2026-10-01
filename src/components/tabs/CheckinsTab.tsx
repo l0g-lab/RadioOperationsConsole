@@ -158,6 +158,7 @@ export default function CheckinsTab({
             onCheckinsChanged={refreshCheckins}
             onShowMap={() => setShowMap(true)}
             log={log}
+            distanceFrom={mapReferenceLocation}
           />
         </>
       )}

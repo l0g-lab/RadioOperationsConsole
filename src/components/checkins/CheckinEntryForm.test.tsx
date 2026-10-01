@@ -191,6 +191,16 @@ describe("CheckinEntryForm in a station log", { timeout: 10_000 }, () => {
     expect(new Date(at!).getTime()).toBe(new Date(2026, 8, 14, 10, 5).getTime());
   });
 
+  it("shows the current time, running, in the empty time box", async () => {
+    renderLog();
+    const time = screen.getByLabelText("Contact time");
+    const shown = time.getAttribute("placeholder")!;
+    expect(shown).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(Math.abs(new Date(shown.replace(" ", "T")).getTime() - Date.now())).toBeLessThan(2000);
+    await pause(1100);
+    expect(time.getAttribute("placeholder")).not.toBe(shown);
+  });
+
   it("refuses an unreadable time, saying why, and keeps what was typed", async () => {
     const user = userEvent.setup();
     renderLog();
@@ -207,6 +217,48 @@ describe("CheckinEntryForm in a station log", { timeout: 10_000 }, () => {
     await user.type(time, "05");
     await user.click(screen.getByRole("button", { name: "Save contact" }));
     expect(api.createCheckin).toHaveBeenCalledTimes(1);
+  });
+
+  it("suggests a mode as it's typed; Tab takes the highlighted one and moves on", async () => {
+    const user = userEvent.setup();
+    renderLog();
+    const mode = screen.getByRole("combobox", { name: "Mode" });
+    await user.type(mode, "f");
+    const options = screen.getAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual(["FM", "FT8"]);
+    expect(options[0]).toHaveAttribute("aria-selected", "true");
+
+    await user.tab();
+    expect(mode).toHaveValue("FM");
+    expect(screen.getByLabelText("RST sent")).toHaveFocus();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  it("moves the highlight with the arrows; Enter takes it, and a second Enter saves", async () => {
+    const user = userEvent.setup();
+    renderLog();
+    await user.type(screen.getByLabelText("Call sign"), "W1AW");
+    const mode = screen.getByRole("combobox", { name: "Mode" });
+    await user.type(mode, "f{ArrowDown}{Enter}");
+    expect(mode).toHaveValue("FT8");
+    expect(api.createCheckin).not.toHaveBeenCalled();
+    await user.type(mode, "{Enter}");
+    expect(vi.mocked(api.createCheckin).mock.calls[0][12]).toMatchObject({ mode: "FT8" });
+  });
+
+  it("keeps any mode typed in full, and closes the list on Escape", async () => {
+    const user = userEvent.setup();
+    renderLog();
+    const mode = screen.getByRole("combobox", { name: "Mode" });
+    await user.type(mode, "d");
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    await user.clear(mode);
+    await user.type(mode, "Olivia");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    await user.tab();
+    expect(mode).toHaveValue("Olivia");
   });
 
   it("says when and where a call sign was worked before", async () => {
