@@ -4,6 +4,7 @@ import { summaryFacts } from "../../summaryFacts";
 import ExportOptions from "../exports/ExportOptions";
 import type { Activity, ActivitySummary, Operator } from "../../types";
 import { formatDuration } from "../../export";
+import { CircleStop } from "lucide-react";
 
 /**
  * Wrapping up a net: a summary of what happened, a heads-up about anything
@@ -56,7 +57,7 @@ export default function CloseOutDialog({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel lifecycle-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>End net — {activity.title}</h3>
+          <h3><CircleStop className="heading-icon" />End net — {activity.title}</h3>
           <button onClick={onClose}>Cancel</button>
         </div>
 

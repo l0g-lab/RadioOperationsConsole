@@ -5,6 +5,7 @@ import { ERR_OFFLINE } from "../../types";
 import { offlineMessage } from "../../workOffline";
 import InfoToggle from "./InfoToggle";
 import CallsignDirectoryRow, { CALLSIGN_DIRECTORIES } from "./CallsignDirectoryRow";
+import { Milestone } from "lucide-react";
 
 // The backend gives up on its own within a minute; this is only a backstop
 // so the button can never sit on "Updating…" if something stalls.
@@ -101,6 +102,7 @@ export default function OfflineDataPanel({ onChanged }: { onChanged?: () => void
       <div className="panel">
         <div className="panel-header-row">
           <h3>
+            <Milestone className="heading-icon" />
             Mile-Marker Road Data
             <InfoToggle label="mile-marker road data">
               Turns "mile marker 182 on the turnpike" into a map point, with no

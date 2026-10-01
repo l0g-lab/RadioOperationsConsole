@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity, DeletedCounts } from "../../types";
+import { Trash2 } from "lucide-react";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -51,7 +52,7 @@ export default function DeleteActivityDialog({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel lifecycle-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Delete permanently — {activity.title}</h3>
+          <h3><Trash2 className="heading-icon heading-icon-danger" />Delete permanently — {activity.title}</h3>
           <button onClick={onClose}>Cancel</button>
         </div>
         <p>

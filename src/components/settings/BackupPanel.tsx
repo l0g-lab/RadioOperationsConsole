@@ -4,6 +4,7 @@ import * as api from "../../api";
 import type { BackupSummary } from "../../types";
 import { pad2 } from "../../utils";
 import InfoToggle from "./InfoToggle";
+import { DatabaseBackup } from "lucide-react";
 
 const LAST_BACKUP_KEY = "roc-last-backup";
 const FILTERS = [{ name: "Radio Operations Console backup", extensions: ["db"] }];
@@ -113,6 +114,7 @@ export default function BackupPanel() {
   return (
     <div className="panel">
       <h3>
+        <DatabaseBackup className="heading-icon" />
         Backup &amp; Restore
         <InfoToggle label="backup and restore">
           A backup is one file holding everything you've entered: operators, activities, templates,

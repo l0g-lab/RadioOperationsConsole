@@ -5,6 +5,7 @@ import type { CallsignPackStatus, DatapackProgress, LicenseService } from "../..
 import { ERR_OFFLINE } from "../../types";
 import { offlineMessage } from "../../workOffline";
 import InfoToggle from "./InfoToggle";
+import { BookUser } from "lucide-react";
 
 export interface CallsignDirectoryDef {
   service: LicenseService;
@@ -158,6 +159,7 @@ export default function CallsignDirectoryRow({
     <div className="offline-pack-row offline-calls-row">
       <div className="offline-pack-info">
         <h3>
+          <BookUser className="heading-icon" />
           {def.title}
           <InfoToggle label={def.infoLabel}>{def.info}</InfoToggle>
         </h3>

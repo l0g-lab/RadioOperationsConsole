@@ -5,6 +5,7 @@ import type { AprsIsPacket } from "../../types";
 import { formatCoords } from "../../geo";
 import LocationPicker from "../LocationPicker";
 import AprsIsMap from "./AprsIsMap";
+import { Rss } from "lucide-react";
 
 interface Props {
   loginCallSign: string;
@@ -179,7 +180,7 @@ export default function AprsIsFeedPanel({ loginCallSign }: Props) {
 
   return (
     <div className="panel">
-      <h3>Live APRS-IS Feed (Area)</h3>
+      <h3><Rss className="heading-icon" />Live APRS-IS Feed (Area)</h3>
       <p className="settings-hint">
         Streams every packet APRS-IS hears within a radius of a point you choose — no API key or
         internet dependency beyond APRS-IS itself. It's a live feed, not a history lookup: packets

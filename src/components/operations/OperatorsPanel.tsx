@@ -4,6 +4,7 @@ import { lookupCallsign } from "../../callsignLookup";
 import type { Operator } from "../../types";
 import LocationPicker from "../LocationPicker";
 import { resolveOfflineLocationAsync } from "../../locationResolution";
+import { Users } from "lucide-react";
 
 interface Props {
   operators: Operator[];
@@ -158,7 +159,7 @@ export default function OperatorsPanel({
   return (
     <div className="panel">
       <div className="panel-header-row">
-        <h3>Operators</h3>
+        <h3><Users className="heading-icon" />Operators</h3>
         {hasOperators && (
           <button className="link-button" onClick={() => setCollapsed((c) => !c)}>
             {showAddForm ? "Hide" : "+ Add operator"}

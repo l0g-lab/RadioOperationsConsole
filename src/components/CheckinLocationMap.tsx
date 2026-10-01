@@ -4,6 +4,7 @@ import type { Checkin } from "../types";
 import { haversineKm, formatDistance } from "../geo";
 import { BASEMAP_ATTRIBUTION, ZIP_ATTRIBUTION, createBaseMap } from "../map/baseMap";
 import { spreadDuplicates } from "../map/spreadDuplicates";
+import { MapPinned } from "lucide-react";
 
 interface Props {
   checkins: Checkin[];
@@ -192,7 +193,7 @@ export default function CheckinLocationMap({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel checkin-map-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Check-in Locations</h3>
+          <h3><MapPinned className="heading-icon" />Check-in Locations</h3>
           <button onClick={onClose}>Close</button>
         </div>
         <p className="leaflet-map-status">

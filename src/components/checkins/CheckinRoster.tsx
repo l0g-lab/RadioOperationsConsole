@@ -15,6 +15,7 @@ import {
 import { RemoveConfirmBar, RemovedPanel } from "../RemoveControls";
 import { useVoidableList } from "../../hooks/useVoidableList";
 import LocationPicker from "../LocationPicker";
+import { ClipboardCheck } from "lucide-react";
 
 interface Props {
   activity: Activity;
@@ -276,6 +277,7 @@ export default function CheckinRoster({
       <div className="checkin-roster-panel">
         <div className="checkin-roster-header">
           <h3>
+            <ClipboardCheck className="heading-icon" />
             Check-ins — {activity.title}
             {activity.frequency && (
               <span className="checkin-roster-frequency"> ({activity.frequency})</span>

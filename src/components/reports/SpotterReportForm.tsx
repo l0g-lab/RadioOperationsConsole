@@ -10,6 +10,7 @@ import {
 import { formatCoordsWithGrid } from "../../geo";
 import { nowLocalInputValue } from "../../utils";
 import LocationPicker from "../LocationPicker";
+import { ClipboardPen } from "lucide-react";
 
 interface Props {
   activityId: string;
@@ -184,7 +185,7 @@ export default function SpotterReportForm({
         handleSaveReport();
       }}
     >
-      <h3>{editingReport ? "Edit Spotter Report" : "New Spotter Report"}</h3>
+      <h3><ClipboardPen className="heading-icon" />{editingReport ? "Edit Spotter Report" : "New Spotter Report"}</h3>
 
       <div className={"report-entry-section" + sectionClass("who")}>
         <span className="report-entry-section-label">Who</span>

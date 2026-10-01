@@ -6,6 +6,7 @@ import { offlineMessage } from "../../workOffline";
 import { pad2 } from "../../utils";
 import RadarPanel from "../RadarPanel";
 import LocationPicker from "../LocationPicker";
+import { CloudSun, Crosshair, Radar, TriangleAlert } from "lucide-react";
 
 interface NwsFeature {
   properties?: {
@@ -182,7 +183,7 @@ export default function WeatherTab() {
   return (
     <>
       <div className="panel">
-        <h3>Area of Interest</h3>
+        <h3><Crosshair className="heading-icon" />Area of Interest</h3>
         <p className="settings-hint">
           Enter a zip code, city/state, address, or landmark — or pick a point on a map or type
           coordinates, which works without an internet connection. Alerts and radar below will be
@@ -225,7 +226,7 @@ export default function WeatherTab() {
 
       <div className="panel">
         <div className="panel-header-row">
-          <h3>Current Forecast (NWS)</h3>
+          <h3><CloudSun className="heading-icon" />Current Forecast (NWS)</h3>
           <button className="link-button" onClick={toggleForecast}>
             {showForecast ? "Hide forecast" : "Show forecast"}
           </button>
@@ -290,7 +291,7 @@ export default function WeatherTab() {
 
       <div className="panel">
         <div className="panel-header-row">
-          <h3>Active Alerts (NWS)</h3>
+          <h3><TriangleAlert className="heading-icon heading-icon-warning" />Active Alerts (NWS)</h3>
           <button className="link-button" onClick={toggleAlerts}>
             {showAlerts ? "Hide alerts" : "Show alerts"}
           </button>
@@ -333,7 +334,7 @@ export default function WeatherTab() {
 
       <div className="panel">
         <div className="panel-header-row">
-          <h3>Radar</h3>
+          <h3><Radar className="heading-icon" />Radar</h3>
           <button className="link-button" onClick={() => setShowRadar((v) => !v)}>
             {showRadar ? "Hide radar" : "Show radar"}
           </button>

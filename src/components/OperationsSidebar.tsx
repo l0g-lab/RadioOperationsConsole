@@ -1,5 +1,6 @@
 import type { Activity } from "../types";
 import { splitScheduledAt } from "../utils";
+import { ListChecks } from "lucide-react";
 
 interface OperationsSidebarProps {
   activities: Activity[];
@@ -27,7 +28,7 @@ export default function OperationsSidebar({
   return (
     <aside className="ops-sidebar">
       <div className="panel">
-        <h3>Activities</h3>
+        <h3><ListChecks className="heading-icon" />Activities</h3>
         {activities.length === 0 && (
           <p className="checkin-empty-state">
             No activities yet. Create one in the main window.

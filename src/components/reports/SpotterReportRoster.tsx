@@ -9,6 +9,7 @@ import IcsFormDialog from "../exports/IcsFormDialog";
 import { ics213FromReport, type GeneralMessage213Input } from "../../icsForms";
 import { useVoidableList } from "../../hooks/useVoidableList";
 import SpotterReportMap from "./SpotterReportMap";
+import { Tornado } from "lucide-react";
 
 interface Props {
   activity: Activity;
@@ -97,7 +98,7 @@ export default function SpotterReportRoster({
     <>
       <div className="checkin-roster-panel">
         <div className="checkin-roster-header">
-          <h3>Spotter Reports — {activity.title}</h3>
+          <h3><Tornado className="heading-icon" />Spotter Reports — {activity.title}</h3>
           <div className="checkin-roster-header-actions">
             <span className="checkin-roster-count">{reports.length} logged</span>
             <button onClick={() => setShowMap(true)} disabled={reports.length === 0}>

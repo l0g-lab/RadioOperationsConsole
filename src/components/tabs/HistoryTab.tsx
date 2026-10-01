@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { AuditEvent } from "../../types";
+import { History } from "lucide-react";
 
 export default function HistoryTab() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -15,7 +16,7 @@ export default function HistoryTab() {
 
   return (
     <div className="panel">
-      <h3>History &amp; Audit Events</h3>
+      <h3><History className="heading-icon" />History &amp; Audit Events</h3>
       {error && <p>History query error: {error}</p>}
       <div className="event-list">
         {events.map((e) => (

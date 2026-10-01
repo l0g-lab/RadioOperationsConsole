@@ -21,6 +21,7 @@ import {
   localTime,
   type GeneralMessage213Input,
 } from "../../icsForms";
+import { FileText } from "lucide-react";
 
 type Props = {
   activity: Activity;
@@ -98,6 +99,7 @@ export default function IcsFormDialog(props: Props) {
       <div className="modal-panel lifecycle-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>
+            <FileText className="heading-icon" />
             {props.form === "309" ? "ICS 309 — Communications Log" : "ICS 213 — General Message"}
           </h3>
           <button onClick={onClose}>Close</button>

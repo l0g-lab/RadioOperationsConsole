@@ -188,11 +188,45 @@ select {
 
 .tab-button {
   border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.tab-button.selected .tab-icon {
+  color: var(--accent);
 }
 
 .tab-button.selected {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Decorative icon leading a heading (h1–h3). Sized to the heading's own
+   font so it scales with every heading level; tinted with the accent so
+   each panel has a recognisable marker without adding new colors. */
+.heading-icon {
+  width: 1.25em;
+  height: 1.25em;
+  margin-right: 0.45em;
+  vertical-align: -0.25em;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.heading-icon-warning {
+  color: var(--warning, #e8a33d);
+}
+
+.heading-icon-danger {
+  color: var(--danger, #e05252);
 }
 
 /* ============================================================

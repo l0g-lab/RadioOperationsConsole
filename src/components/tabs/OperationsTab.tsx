@@ -6,6 +6,7 @@ import CreateActivityPanel from "../operations/CreateActivityPanel";
 import TemplatesPanel from "../operations/TemplatesPanel";
 import ArchivedActivitiesPanel from "../operations/ArchivedActivitiesPanel";
 import OperatorsPanel from "../operations/OperatorsPanel";
+import { Lightbulb } from "lucide-react";
 
 interface Props {
   activities: Activity[];
@@ -51,7 +52,7 @@ export default function OperationsTab({
     <>
       {isFirstRun && (
         <div className="panel tip-panel">
-          <h3>Getting started</h3>
+          <h3><Lightbulb className="heading-icon" />Getting started</h3>
           <p className="settings-hint">
             Add an operator on the right, then create your first activity below (e.g. a weekly net).
             Once an activity exists, it's chosen in the top bar and every tab works on it — switch

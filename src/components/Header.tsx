@@ -4,6 +4,7 @@ import { nowLocal, nowUtc } from "../utils";
 import ActivityStateControls from "./lifecycle/ActivityStateControls";
 import OnlineStatusToggle from "./OnlineStatusToggle";
 import { activityTypeLabel } from "../activityTypes";
+import { Radio } from "lucide-react";
 
 interface HeaderProps {
   operators: Operator[];
@@ -42,7 +43,7 @@ export default function Header({
 
   return (
     <header className="app-header">
-      <h1>Radio Operations Console</h1>
+      <h1><Radio className="heading-icon" />Radio Operations Console</h1>
       <div className="header-sep" />
       <OnlineStatusToggle />
       <div className="header-sep" />

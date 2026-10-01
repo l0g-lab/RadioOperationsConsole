@@ -6,6 +6,7 @@ import { formatCoords } from "../../geo";
 import { createBaseMap } from "../../map/baseMap";
 import { spreadDuplicates } from "../../map/spreadDuplicates";
 import { hazardIconSvg } from "./hazardIcons";
+import { MapPinned } from "lucide-react";
 
 interface Props {
   reports: SpotterReport[];
@@ -114,7 +115,7 @@ export default function SpotterReportMap({ reports, selectedReportId, onClose }:
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel checkin-map-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Spotter Report Locations</h3>
+          <h3><MapPinned className="heading-icon" />Spotter Report Locations</h3>
           <button onClick={onClose}>Close</button>
         </div>
         <p className="leaflet-map-status">

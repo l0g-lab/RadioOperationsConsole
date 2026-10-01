@@ -5,6 +5,7 @@ import { formatCoords } from "../../geo";
 import LocationPicker from "../LocationPicker";
 import ActivityTypeSelect from "./ActivityTypeSelect";
 import { DEFAULT_ACTIVITY_TYPE, activityTypeLabel } from "../../activityTypes";
+import { LayoutTemplate } from "lucide-react";
 
 interface Props {
   templates: ActivityTemplate[];
@@ -92,7 +93,7 @@ export default function TemplatesPanel({ templates, onTemplatesChanged, onCreate
   return (
     <div className="panel">
       <div className="panel-header-row">
-        <h3>Activity Templates{templates.length > 0 ? ` (${templates.length})` : ""}</h3>
+        <h3><LayoutTemplate className="heading-icon" />Activity Templates{templates.length > 0 ? ` (${templates.length})` : ""}</h3>
         <button className="link-button" onClick={() => setShow((v) => !v)}>
           {show ? "Hide templates" : "Show templates"}
         </button>

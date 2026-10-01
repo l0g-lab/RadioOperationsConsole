@@ -9,6 +9,7 @@ import LocationPicker from "../LocationPicker";
 import DeleteActivityDialog from "../lifecycle/DeleteActivityDialog";
 import { formatCoordsWithGrid } from "../../geo";
 import { combineScheduledAt, splitScheduledAt } from "../../utils";
+import { SquarePen } from "lucide-react";
 
 interface Props {
   activities: Activity[];
@@ -161,7 +162,7 @@ export default function SelectedActivityPanel({
 
   return (
     <div className="panel">
-      <h3>Selected Activity</h3>
+      <h3><SquarePen className="heading-icon" />Selected Activity</h3>
       {!focusedActivity && (
         <p className="checkin-empty-state">
           No activity selected. Pick one in the top bar or the list on the left, or create one

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as api from "../../api";
 import type { Activity } from "../../types";
+import { RotateCcw } from "lucide-react";
 
 /** Reopening a closed activity needs a reason, which goes into its history. */
 export default function ReopenDialog({
@@ -37,7 +38,7 @@ export default function ReopenDialog({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel lifecycle-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Reopen — {activity.title}</h3>
+          <h3><RotateCcw className="heading-icon" />Reopen — {activity.title}</h3>
           <button onClick={onClose}>Cancel</button>
         </div>
         <p className="settings-hint">

@@ -4,6 +4,7 @@ import * as api from "../api";
 import { ERR_OFFLINE } from "../types";
 import { formatAxis, getCoordFormat, parseAxis, type CoordFormat } from "../geo";
 import { DEFAULT_CENTER, DEFAULT_ZOOM, createBaseMap } from "../map/baseMap";
+import { MapPin } from "lucide-react";
 
 interface Props {
   title: string;
@@ -181,7 +182,7 @@ export default function LocationPicker({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel location-picker-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>{title}</h3>
+          <h3><MapPin className="heading-icon" />{title}</h3>
           <button onClick={onClose}>Close</button>
         </div>
 

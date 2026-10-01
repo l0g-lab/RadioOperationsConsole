@@ -7,6 +7,7 @@ import SaveTemplateBar from "./SaveTemplateBar";
 import ActivityTypeSelect from "./ActivityTypeSelect";
 import { DEFAULT_ACTIVITY_TYPE } from "../../activityTypes";
 import { combineScheduledAt, todayIso } from "../../utils";
+import { CirclePlus } from "lucide-react";
 
 interface Props {
   activities: Activity[];
@@ -162,7 +163,7 @@ export default function CreateActivityPanel({
   return (
     <div className="panel" ref={panelRef}>
       <div className="panel-header-row">
-        <h3>Create New Activity</h3>
+        <h3><CirclePlus className="heading-icon" />Create New Activity</h3>
         {hasActivities && (
           <button className="link-button" onClick={() => setCollapsed((c) => !c)}>
             {expanded ? "Hide" : "+ New activity"}

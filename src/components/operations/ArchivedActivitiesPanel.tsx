@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity } from "../../types";
 import DeleteActivityDialog from "../lifecycle/DeleteActivityDialog";
+import { Archive } from "lucide-react";
 
 interface Props {
   activities: Activity[];
@@ -46,7 +47,7 @@ export default function ArchivedActivitiesPanel({
   return (
     <div className="panel">
       <div className="panel-header-row">
-        <h3>Archived Activities</h3>
+        <h3><Archive className="heading-icon" />Archived Activities</h3>
         <button className="link-button" onClick={toggleShowArchived}>
           {showArchived ? "Hide archived" : "Show archived"}
         </button>

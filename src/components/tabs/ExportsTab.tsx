@@ -2,6 +2,7 @@ import type { Activity, Operator } from "../../types";
 import { activityTypeLabel } from "../../activityTypes";
 import ActivityStatus from "../lifecycle/ActivityStatus";
 import ExportOptions from "../exports/ExportOptions";
+import { FileDown } from "lucide-react";
 
 interface Props {
   activity: Activity | null;
@@ -13,7 +14,7 @@ export default function ExportsTab({ activity, operator }: Props) {
   if (!activity) {
     return (
       <div className="panel">
-        <h3>Exports</h3>
+        <h3><FileDown className="heading-icon" />Exports</h3>
         <p className="checkin-empty-state">
           Choose an activity in the top bar to export its records and forms.
         </p>
@@ -23,6 +24,7 @@ export default function ExportsTab({ activity, operator }: Props) {
   return (
     <div className="panel">
       <h3>
+        <FileDown className="heading-icon" />
         Exports — {activity.title} <ActivityStatus state={activity.state} />{" "}
         <span className="type-pill">{activityTypeLabel(activity.activity_type)}</span>
       </h3>

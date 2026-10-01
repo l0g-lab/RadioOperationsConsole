@@ -7,6 +7,7 @@ import InfoToggle from "../settings/InfoToggle";
 import BackupPanel from "../settings/BackupPanel";
 import OfflineDataPanel from "../settings/OfflineDataPanel";
 import StoragePanel from "../settings/StoragePanel";
+import { CloudAlert, CloudDownload, Globe, HardDrive, Package, Palette, Search } from "lucide-react";
 
 const DEFAULT_SETTINGS: AppSettings = {
   nws_api_key: "",
@@ -53,6 +54,7 @@ export default function SettingsTab() {
     <>
       <div className="settings-section-heading">
         <h2>
+          <Palette className="heading-icon" />
           Appearance
           <InfoToggle label="appearance">
             Theme (light, dark or system) and how coordinates are shown. Changes apply right away
@@ -101,6 +103,7 @@ export default function SettingsTab() {
 
       <div className="settings-section-heading">
         <h2>
+          <Globe className="heading-icon" />
           Online services
           <InfoToggle label="online services">
             Optional accounts and keys that add online features. The app works fully without them.
@@ -110,6 +113,7 @@ export default function SettingsTab() {
       </div>
       <div className="panel">
         <h3>
+          <Search className="heading-icon" />
           QRZ.com Call Sign Lookup
           <InfoToggle label="QRZ.com lookup">
             Auto-fills name, QTH location, grid square, and address when a call sign is entered on
@@ -139,6 +143,7 @@ export default function SettingsTab() {
 
       <div className="panel">
         <h3>
+          <CloudAlert className="heading-icon" />
           Weather Alerts (NWS)
           <InfoToggle label="weather alerts">
             The National Weather Service alerts API is free and works with no key. Only set one if
@@ -176,6 +181,7 @@ export default function SettingsTab() {
 
       <div className="settings-section-heading">
         <h2>
+          <CloudDownload className="heading-icon" />
           Offline data
           <InfoToggle label="offline data">
             Files kept on this computer so the app works with no internet. Update downloads the
@@ -189,6 +195,7 @@ export default function SettingsTab() {
 
       <div className="settings-section-heading">
         <h2>
+          <HardDrive className="heading-icon" />
           Storage on this computer
           <InfoToggle label="storage on this computer">
             Downloaded files and cached map tiles the app keeps so it works offline, with how much
@@ -200,7 +207,7 @@ export default function SettingsTab() {
       <StoragePanel key={storageKey} onCleared={() => setOfflineKey((k) => k + 1)} />
 
       <div className="settings-section-heading">
-        <h2>Your data</h2>
+        <h2><Package className="heading-icon" />Your data</h2>
       </div>
       <BackupPanel />
     </>
