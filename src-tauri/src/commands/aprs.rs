@@ -15,6 +15,9 @@ pub async fn start_aprs_is_stream(
     lon: f64,
     radius_km: u32,
 ) -> Result<(), String> {
+    if crate::net::working_offline() {
+        return Err(crate::net::WORKING_OFFLINE_MESSAGE.to_string());
+    }
     if call_sign.trim().is_empty() {
         return Err(
             "A call sign is required to connect to APRS-IS — focus an operator with one set."

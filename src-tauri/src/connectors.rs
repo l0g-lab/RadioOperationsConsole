@@ -205,6 +205,9 @@ fn qrz_full_address(fields: &HashMap<String, String>) -> Option<String> {
 /// QRZ.com subscription with XML/callbook data access; a plain login without
 /// that subscription authenticates but cannot be used for lookups.
 pub async fn qrz_login(username: &str, password: &str) -> QrzLoginOutcome {
+    if crate::net::working_offline() {
+        return QrzLoginOutcome::Offline;
+    }
     let client = match http_client() {
         Ok(c) => c,
         Err(e) => return QrzLoginOutcome::Error(e.to_string()),
@@ -242,6 +245,9 @@ pub async fn qrz_login(username: &str, password: &str) -> QrzLoginOutcome {
 /// treat `SessionExpired` as a signal to re-login and retry once, and
 /// `Offline` as a signal to stay silent (QRZ-030).
 pub async fn qrz_lookup(session_key: &str, call_sign: &str) -> QrzLookupOutcome {
+    if crate::net::working_offline() {
+        return QrzLookupOutcome::Offline;
+    }
     let client = match http_client() {
         Ok(c) => c,
         Err(e) => return QrzLookupOutcome::Error(e.to_string()),
@@ -324,6 +330,21 @@ fn qrz_info_from_fields(fields: &HashMap<String, String>) -> Option<QrzCallsignI
         exact_lon,
         geoloc,
     })
+}
+
+#[cfg(test)]
+mod work_offline_tests {
+    use super::*;
+
+    #[test]
+    fn lookups_report_offline_without_trying_the_network() {
+        crate::net::set_work_offline(true);
+        use tauri::async_runtime::block_on;
+        assert!(matches!(block_on(qrz_login("u", "p")), QrzLoginOutcome::Offline));
+        assert!(matches!(block_on(qrz_lookup("key", "W1AW")), QrzLookupOutcome::Offline));
+        assert!(matches!(block_on(geocode_location("Orlando, FL")), GeocodeOutcome::Offline));
+        crate::net::set_work_offline(false);
+    }
 }
 
 #[cfg(test)]
@@ -410,6 +431,9 @@ pub enum GeocodeOutcome {
 /// many countries use similarly-formatted postal codes, and an unrestricted
 /// search can resolve a US zip to a same-numbered location elsewhere.
 pub async fn geocode_location(query: &str) -> GeocodeOutcome {
+    if crate::net::working_offline() {
+        return GeocodeOutcome::Offline;
+    }
     let client = match http_client() {
         Ok(c) => c,
         Err(e) => return GeocodeOutcome::Error(e.to_string()),

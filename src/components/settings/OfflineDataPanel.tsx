@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { DataPackInfo, LicenseService } from "../../types";
 import { ERR_OFFLINE } from "../../types";
+import { offlineMessage } from "../../workOffline";
 import InfoToggle from "./InfoToggle";
 import CallsignDirectoryRow, { CALLSIGN_DIRECTORIES } from "./CallsignDirectoryRow";
 
@@ -79,7 +80,7 @@ export default function OfflineDataPanel() {
     } catch (e) {
       const text =
         e === ERR_OFFLINE
-          ? "No internet connection — try again when online."
+          ? offlineMessage("No internet connection — try again when online.")
           : String(e);
       setStatus((s) => ({ ...s, [id]: { kind: "error", text } }));
     }

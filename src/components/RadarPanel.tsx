@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { nearestNexradStation } from "../nexradStations";
+import { useWorkOffline } from "../workOffline";
 
 interface Props {
   centerLat: number | null;
@@ -15,6 +16,7 @@ export default function RadarPanel({ centerLat, centerLon }: Props) {
     centerLat != null && centerLon != null ? nearestNexradStation(centerLat, centerLon) : "CONUS";
   const [cacheBust, setCacheBust] = useState(() => Date.now());
   const [loadFailed, setLoadFailed] = useState(false);
+  const workingOffline = useWorkOffline();
 
   useEffect(() => {
     const id = setInterval(() => setCacheBust(Date.now()), AUTO_REFRESH_MS);
@@ -39,7 +41,12 @@ export default function RadarPanel({ centerLat, centerLon }: Props) {
         </span>
         <button onClick={refresh}>Refresh</button>
       </div>
-      {loadFailed ? (
+      {workingOffline ? (
+        <p className="settings-hint">
+          Radar needs the internet, and you're working offline. Click "Working offline" in the
+          header to go back online.
+        </p>
+      ) : loadFailed ? (
         <p className="weather-area-error">
           Couldn't load the radar loop — check your internet connection and try Refresh.
         </p>

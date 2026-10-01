@@ -83,6 +83,7 @@ fn main() {
             commands::activity_history,
             commands::get_settings,
             commands::save_settings,
+            commands::set_work_offline,
             commands::set_weather_area,
             commands::set_weather_area_coords,
             commands::fetch_nws_alerts,

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Activity, Operator } from "../types";
 import { nowLocal, nowUtc } from "../utils";
 import ActivityStateControls from "./lifecycle/ActivityStateControls";
-import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import OnlineStatusToggle from "./OnlineStatusToggle";
 import { activityTypeLabel } from "../activityTypes";
 
 interface HeaderProps {
@@ -29,7 +29,6 @@ export default function Header({
   onActivitiesChanged,
 }: HeaderProps) {
   const selectedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
-  const online = useOnlineStatus();
   const [local, setLocal] = useState(nowLocal());
   const [utc, setUtc] = useState(nowUtc());
 
@@ -45,17 +44,7 @@ export default function Header({
     <header className="app-header">
       <h1>Radio Operations Console</h1>
       <div className="header-sep" />
-      <span
-        className={online ? "online-pill online-pill-online" : "online-pill online-pill-offline"}
-        title={
-          online
-            ? "The operating system reports a network connection. Individual online features (QRZ, weather, APRS-IS, maps) may still be unreachable."
-            : "No network connection detected. Offline features keep working; online add-ons (QRZ, weather, APRS-IS, maps, updates) are unavailable."
-        }
-      >
-        <span className="online-dot" aria-hidden="true" />
-        {online ? "Online" : "Offline"}
-      </span>
+      <OnlineStatusToggle />
       <div className="header-sep" />
       <label className="header-field">
         Operator:

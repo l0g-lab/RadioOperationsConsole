@@ -3,11 +3,20 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import "./styles.css";
 import { applyThemeMode, getThemeMode } from "./theme";
+import { getSettings } from "./api";
+import { initWorkOffline } from "./workOffline";
 
 applyThemeMode(getThemeMode());
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+// Know whether we're working offline before anything renders, so no map tile
+// or radar image is fetched in the moment before the saved choice is read.
+getSettings()
+  .then((s) => initWorkOffline(Boolean(s.work_offline)))
+  .catch(() => {})
+  .finally(() => {
+    ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+  });

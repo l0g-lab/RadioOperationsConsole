@@ -1,4 +1,5 @@
 import L from "leaflet";
+import { isWorkingOffline } from "./workOffline";
 
 // Basemap tiles cached via the standard Cache Storage API (CIMAP-050/053):
 // a tile fetched once is available again later with no network at all,
@@ -19,14 +20,16 @@ function cachingSupported(): boolean {
  * neither cached nor reachable (offline, first visit to that area) —
  * callers leave the tile blank rather than erroring (CIMAP-052).
  */
-async function resolveTileSrc(url: string): Promise<string | null> {
+export async function resolveTileSrc(url: string): Promise<string | null> {
   if (!cachingSupported()) {
-    return url;
+    // Without a cache the only source is the network, which working offline rules out.
+    return isWorkingOffline() ? null : url;
   }
   try {
     const cache = await caches.open(CACHE_NAME);
     let response = await cache.match(url);
-    if (!response) {
+    // Working offline (UX-022): cached tiles only, no fetch.
+    if (!response && !isWorkingOffline()) {
       const netResponse = await fetch(url);
       if (netResponse.ok) {
         await cache.put(url, netResponse.clone());

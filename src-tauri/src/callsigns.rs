@@ -537,6 +537,9 @@ pub async fn download_fcc(
     progress: &(dyn Fn(u64, u64) + Sync),
 ) -> Result<PathBuf, FetchError> {
     use tokio::io::AsyncWriteExt;
+    if net::working_offline() {
+        return Err(FetchError::Offline);
+    }
     std::fs::create_dir_all(dir).map_err(|e| FetchError::Other(e.to_string()))?;
     let part = part_path(dir, service);
     let meta = meta_path(dir, service);
@@ -590,6 +593,14 @@ pub async fn download_fcc(
             .map_err(|e| FetchError::Other(format!("Couldn't write the download: {e}")))?;
         progress(written, total);
         loop {
+            // Turning "Work offline" on stops the download; what arrived is
+            // kept so running the update again resumes (UX-023).
+            if net::working_offline() {
+                let _ = file.flush().await;
+                return Err(FetchError::Other(
+                    "Stopped because you're working offline — run the update again when back online to pick up where it left off.".into(),
+                ));
+            }
             match tokio::time::timeout(stall, resp.chunk()).await {
                 Err(_) => return Err(timed_out()),
                 Ok(Err(e)) => {
@@ -1111,6 +1122,44 @@ HD|5|||KC1TST|C
             u
         });
         assert_eq!(get(&dead, &dir, Duration::from_secs(2)).unwrap_err(), "offline");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ---- working offline (UX-022, UX-023) ----
+
+    #[test]
+    fn working_offline_refuses_a_download_without_contacting_the_server() {
+        let dir = temp_dir("work-offline");
+        let hits = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let h = hits.clone();
+        let url = run(serve(move |_| {
+            h.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            Resp { status: "200 OK", headers: vec![], body: payload(), claim_len: None, hang: false }
+        }));
+        crate::net::set_work_offline(true);
+        let result = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|_, _| {}));
+        crate::net::set_work_offline(false);
+        assert!(matches!(result, Err(FetchError::Offline)));
+        assert_eq!(hits.load(std::sync::atomic::Ordering::SeqCst), 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn going_offline_mid_download_stops_it_and_keeps_the_part_to_resume() {
+        let dir = temp_dir("work-offline-mid");
+        let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![], body: payload(), claim_len: None, hang: false }));
+        let result = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|done, _| {
+            if done > 0 {
+                crate::net::set_work_offline(true);
+            }
+        }));
+        crate::net::set_work_offline(false);
+        let err = match result {
+            Err(FetchError::Other(e)) => e,
+            other => panic!("expected a stop, got ok={}", other.is_ok()),
+        };
+        assert!(err.contains("offline"), "{err}");
+        assert!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len() > 0, "partial kept");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

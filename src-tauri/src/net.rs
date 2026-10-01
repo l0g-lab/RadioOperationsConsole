@@ -3,6 +3,42 @@
 
 use std::time::Duration;
 
+/// The operator's "Work offline" switch (UX-020–UX-026). Every network entry
+/// point checks it first and reports itself offline, exactly as with no
+/// connection. Tests run in parallel threads, so there it is per-thread:
+/// one test going offline can't break another's download.
+#[cfg(not(test))]
+static WORK_OFFLINE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+#[cfg(not(test))]
+pub fn set_work_offline(on: bool) {
+    WORK_OFFLINE.store(on, std::sync::atomic::Ordering::SeqCst);
+}
+
+#[cfg(not(test))]
+pub fn working_offline() -> bool {
+    WORK_OFFLINE.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+#[cfg(test)]
+thread_local! {
+    static WORK_OFFLINE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+#[cfg(test)]
+pub fn set_work_offline(on: bool) {
+    WORK_OFFLINE.with(|w| w.set(on));
+}
+
+#[cfg(test)]
+pub fn working_offline() -> bool {
+    WORK_OFFLINE.with(|w| w.get())
+}
+
+/// Shown where a feature reports its error text directly (weather, APRS-IS).
+pub const WORKING_OFFLINE_MESSAGE: &str =
+    "Working offline — click \"Working offline\" in the header to go back online.";
+
 pub const USER_AGENT: &str = "RadioOperationsConsole/0.1 (amateur-radio net logger)";
 
 /// Why a download-style request failed. `Offline` means "no connection", which
@@ -38,4 +74,18 @@ pub fn client(connect: Duration, request_timeout: Option<Duration>) -> reqwest::
         b = b.timeout(t);
     }
     b.build()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn working_offline_is_off_until_turned_on() {
+        assert!(!working_offline());
+        set_work_offline(true);
+        assert!(working_offline());
+        set_work_offline(false);
+        assert!(!working_offline());
+    }
 }

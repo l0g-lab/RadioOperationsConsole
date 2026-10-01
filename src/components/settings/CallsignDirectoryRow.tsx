@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import * as api from "../../api";
 import type { CallsignPackStatus, DatapackProgress, LicenseService } from "../../types";
 import { ERR_OFFLINE } from "../../types";
+import { offlineMessage } from "../../workOffline";
 import InfoToggle from "./InfoToggle";
 
 export interface CallsignDirectoryDef {
@@ -127,7 +128,10 @@ export default function CallsignDirectoryRow({
     } catch (e) {
       setMessage({
         kind: "error",
-        text: e === ERR_OFFLINE ? "No internet connection — try again when online." : String(e),
+        text:
+          e === ERR_OFFLINE
+            ? offlineMessage("No internet connection — try again when online.")
+            : String(e),
       });
     } finally {
       setProgress(null);

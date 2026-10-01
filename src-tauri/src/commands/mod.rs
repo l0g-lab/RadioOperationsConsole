@@ -56,6 +56,9 @@ pub struct AppSettings {
     pub weather_area_lon: Option<f64>,
     #[serde(default)]
     pub weather_area_resolved_at: Option<String>,
+    /// "Work offline" from the header (UX-020): no network requests at all.
+    #[serde(default)]
+    pub work_offline: bool,
 }
 
 pub struct AppState {
@@ -86,6 +89,8 @@ impl AppState {
         } else {
             AppSettings::default()
         };
+        // Start the way the operator left it (UX-024).
+        crate::net::set_work_offline(settings.work_offline);
         Self {
             repo: Mutex::new(repo),
             settings: Mutex::new(settings),

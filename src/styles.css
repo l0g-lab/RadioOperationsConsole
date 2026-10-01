@@ -1451,13 +1451,33 @@ button.export-unavailable:hover {
   white-space: nowrap;
 }
 
+/* The indicator is also the "Work offline" switch (UX-020): a button that
+   keeps the pill's look instead of the usual button chrome. */
+button.online-pill {
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: inherit;
+  cursor: pointer;
+}
+
+button.online-pill:hover {
+  background: var(--bg-input);
+}
+
+button.online-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .online-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
 }
 
-.online-pill-online {
+.online-pill-online,
+button.online-pill-online:hover {
   border-color: var(--accent-dim);
   color: var(--accent);
 }
@@ -1466,13 +1486,27 @@ button.export-unavailable:hover {
   background: var(--accent);
 }
 
-.online-pill-offline {
+.online-pill-offline,
+button.online-pill-offline:hover {
   border-color: var(--warning, #e8a33d);
   color: var(--warning, #e8a33d);
 }
 
 .online-pill-offline .online-dot {
   background: var(--warning, #e8a33d);
+}
+
+/* Chosen, not detected: same warning colour as Offline, with a hollow dot and
+   its own wording ("Working offline") so it isn't told apart by colour alone. */
+.online-pill-working-offline,
+button.online-pill-working-offline:hover {
+  border-color: var(--warning, #e8a33d);
+  color: var(--warning, #e8a33d);
+}
+
+.online-pill-working-offline .online-dot {
+  border: 1.5px solid var(--warning, #e8a33d);
+  box-sizing: border-box;
 }
 
 .header-clocks {

@@ -385,6 +385,9 @@ export const getSettings = () => invoke<AppSettings>("get_settings");
 export const saveSettings = (settings: AppSettings) =>
   invoke<void>("save_settings", { settings });
 
+/** "Work offline" from the header (UX-020): saved, and enforced by the backend. */
+export const setWorkOffline = (on: boolean) => invoke<void>("set_work_offline", { on });
+
 export const setWeatherArea = (query: string) =>
   invoke<AppSettings>("set_weather_area", { query });
 

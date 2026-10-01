@@ -30,7 +30,8 @@ The header displays:
 - UTC clock
 - Internet state — implemented as an Online/Offline indicator reflecting the
   OS-reported network connection (`navigator.onLine` and the `online`/`offline`
-  events), not per-service reachability
+  events), not per-service reachability. The same indicator switches
+  "Work offline" on and off (`UX-020`–`UX-026`)
 - Connector summary for NWS, radar, APRS, QRZ, and geocoding — not yet built;
   each connector currently reports its own offline/error state where it's used
   (`VISION-002`, `QRZ-031`, `CIMAP-022`) rather than in one header summary
@@ -49,6 +50,34 @@ The header displays:
 - **UX-008:** Keyboard shortcuts MUST be discoverable and configurable.
 - **UX-009:** Status and severity MUST use text or icons in addition to color.
 - **UX-010:** The default theme SHOULD use a restrained weather/radio/Linux-console visual language without reducing legibility.
+
+## Working offline
+
+An operator may want the application offline while the computer is online:
+on a metered or satellite link, to save bandwidth for other traffic, or to
+rehearse a field deployment exactly as it will run.
+
+- **UX-020:** The header's Online/Offline indicator MUST also be the control
+  for working offline: activating it (click, Enter, or Space) MUST switch
+  "Work offline" on or off. It MUST keep the indicator's appearance rather
+  than look like a menu or dropdown, and its tooltip and accessible name MUST
+  say that it can be toggled and what it will do.
+- **UX-021:** While working offline, the indicator MUST read "Working offline"
+  (text, not only color — `UX-009`), distinct from "Offline" for no detected
+  connection.
+- **UX-022:** While working offline, the application MUST NOT make network
+  requests: QRZ, NWS alerts and forecasts, geocoding, APRS-IS, map tiles,
+  radar imagery, and data downloads. Each MUST behave exactly as it does with
+  no connection, showing its existing offline message; map tiles MUST come
+  only from the local cache.
+- **UX-023:** Turning working offline on MUST stop a running APRS-IS feed and
+  MUST stop a data download in progress, which can be resumed later as after a
+  dropped connection (`CALLDIR-033`).
+- **UX-024:** The choice MUST persist across application restarts, so the
+  application starts offline if it was left offline.
+- **UX-025:** Saving other settings MUST NOT change the working-offline choice.
+- **UX-026:** Turning working offline off MUST NOT itself make any request;
+  online features resume the next time they are used or refresh.
 
 ## Keyboard shortcuts
 

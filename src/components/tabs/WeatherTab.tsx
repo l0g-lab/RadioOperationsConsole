@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { AppSettings } from "../../types";
 import { ERR_OFFLINE } from "../../types";
+import { offlineMessage } from "../../workOffline";
 import RadarPanel from "../RadarPanel";
 import LocationPicker from "../LocationPicker";
 
@@ -107,7 +108,9 @@ export default function WeatherTab() {
     } catch (e) {
       setAreaError(
         e === ERR_OFFLINE
-          ? "Can't resolve that location without an internet connection. Try again when online."
+          ? offlineMessage(
+              "Can't resolve that location without an internet connection. Try again when online."
+            )
           : String(e)
       );
     } finally {

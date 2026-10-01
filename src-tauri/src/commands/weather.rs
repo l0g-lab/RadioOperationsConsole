@@ -75,6 +75,9 @@ pub fn set_weather_area_coords(
 
 #[tauri::command]
 pub async fn fetch_nws_alerts(state: State<'_, AppState>) -> Result<Value, String> {
+    if crate::net::working_offline() {
+        return Err(crate::net::WORKING_OFFLINE_MESSAGE.to_string());
+    }
     let (key, point) = {
         let settings = state.settings.lock().unwrap();
         let key = if settings.nws_api_key.is_empty() {
@@ -99,6 +102,9 @@ pub async fn fetch_nws_alerts(state: State<'_, AppState>) -> Result<Value, Strin
 /// set rather than guessing a location.
 #[tauri::command]
 pub async fn fetch_nws_forecast(state: State<'_, AppState>) -> Result<Value, String> {
+    if crate::net::working_offline() {
+        return Err(crate::net::WORKING_OFFLINE_MESSAGE.to_string());
+    }
     let point = {
         let settings = state.settings.lock().unwrap();
         match (settings.weather_area_lat, settings.weather_area_lon) {

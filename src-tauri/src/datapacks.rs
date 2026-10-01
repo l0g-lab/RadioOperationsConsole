@@ -246,6 +246,9 @@ fn round5(x: f64) -> f64 {
 /// Builds one finished pack from the live sources. Coordinates are rounded
 /// to 5 decimals (about a meter) to keep the file small.
 pub async fn build_pack(def: &PackDef, total_timeout: Duration) -> Result<RoutePack, FetchError> {
+    if net::working_offline() {
+        return Err(FetchError::Offline);
+    }
     let work = async {
         let client = net::client(CONNECT_TIMEOUT, Some(REQUEST_TIMEOUT))
             .map_err(|e| FetchError::Other(e.to_string()))?;

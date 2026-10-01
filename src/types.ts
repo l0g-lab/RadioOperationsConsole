@@ -234,6 +234,8 @@ export interface AppSettings {
   weather_area_lat: number | null;
   weather_area_lon: number | null;
   weather_area_resolved_at: string | null;
+  /** "Work offline" (UX-020). Set from the header, not saved by the Settings form. */
+  work_offline?: boolean;
 }
 
 export interface QrzLookupResponse {
