@@ -25,3 +25,7 @@ Fixes go into the newest release. Please update before reporting.
   names (QRZ, NWS, APRS-IS, the FCC, and the Florida DOT for mile markers),
   and not at all while working offline.
 - APRS is receive-only. Nothing is ever transmitted.
+- Updates come only from this project's published GitHub releases, over
+  HTTPS, and the installer is opened only after you click Update now. Updates
+  aren't cryptographically signed yet, so they carry the same trust as
+  downloading an installer from the Releases page yourself.

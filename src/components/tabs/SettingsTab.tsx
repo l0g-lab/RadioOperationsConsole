@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import { getVersion } from "@tauri-apps/api/app";
+import { checkForUpdate, useUpdateState } from "../../updates";
 import type { AppSettings } from "../../types";
 import { getThemeMode, setThemeMode, type ThemeMode } from "../../theme";
 import { COORD_FORMAT_LABELS, getCoordFormat, setCoordFormat, type CoordFormat } from "../../geo";
@@ -217,18 +218,41 @@ export default function SettingsTab() {
   );
 }
 
-/** Which release this is, for bug reports and checking for updates. */
+/** Which release this is, and a check for a newer one (updates.ts). */
 function AppVersion() {
   const [version, setVersion] = useState<string | null>(null);
+  const update = useUpdateState();
   useEffect(() => {
     getVersion()
       .then(setVersion)
       .catch(() => setVersion(null));
   }, []);
   if (!version) return null;
+  const status =
+    update.kind === "checking"
+      ? "Checking…"
+      : update.kind === "current"
+        ? "You have the newest version."
+        : update.kind === "available"
+          ? `Version ${update.update.version} is available — see the banner at the top.`
+          : update.kind === "error" && !update.update
+            ? update.message
+            : null;
   return (
-    <p className="settings-hint app-version">
-      Radio Operations Console {version} · GPL-3.0-or-later · github.com/l0g-lab/RadioOperationsConsole
-    </p>
+    <div className="app-version">
+      <p className="settings-hint">
+        Radio Operations Console {version} · GPL-3.0-or-later · github.com/l0g-lab/RadioOperationsConsole
+      </p>
+      <p className="settings-hint">
+        <button
+          className="link-button"
+          onClick={() => checkForUpdate(true)}
+          disabled={update.kind === "checking" || update.kind === "downloading"}
+        >
+          Check for updates
+        </button>
+        {status && <span role="status"> {status}</span>}
+      </p>
+    </div>
   );
 }

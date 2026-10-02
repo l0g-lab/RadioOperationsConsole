@@ -2258,3 +2258,25 @@ button.online-pill-working-offline:hover {
   text-align: center;
   user-select: text;
 }
+
+/* A newer release is available (UpdateBanner.tsx). */
+.update-banner {
+  align-items: flex-start;
+}
+
+.update-banner progress {
+  vertical-align: middle;
+  width: 160px;
+}
+
+.update-notes {
+  max-height: 240px;
+  overflow: auto;
+  margin: 8px 0 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  font-family: inherit;
+  white-space: pre-wrap;
+}

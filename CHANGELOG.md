@@ -17,6 +17,12 @@ top. Each release's section here is also its description on the
   - **Show text report** for spotter reports.
   - **Show summary text** for the net summary.
 - **Archived nets** can show their summary without being restored.
+- **Updates from inside the app.** The app checks for a newer release
+  shortly after it starts (never while working offline) and offers it in a
+  banner: see what's new, then **Update now** downloads the installer for your
+  computer and opens it. Windows installs it and restarts; on Linux the
+  package opens in your software installer. Settings has a **Check for
+  updates** button too.
 - **The app's version** is shown at the bottom of Settings.
 - **Colors in the NWS forecast.** Each period is colored by its conditions
   (thunderstorms, rain, snow, fog, clear), with temperature, chance of rain

@@ -14,6 +14,7 @@ mod repeaters;
 mod repo;
 mod routes;
 mod storage;
+mod updates;
 
 use commands::AppState;
 use repo::Repository;
@@ -103,6 +104,9 @@ fn main() {
             commands::start_aprs_is_stream,
             commands::stop_aprs_is_stream,
             commands::allow_export_extension,
+            commands::check_for_update,
+            commands::download_update,
+            commands::open_update_installer,
             commands::backup_database,
             commands::inspect_backup,
             commands::restore_database,

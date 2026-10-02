@@ -11,6 +11,8 @@ import type {
   BackupSummary,
   RestoreResult,
   UpgradeBackup,
+  UpdateInfo,
+  InstallerOpened,
   CallsignPackStatus,
   OfflineCallLookup,
   LicenseService,
@@ -150,6 +152,13 @@ export const deleteActivity = (activity_id: string, operator_id: string | null) 
  */
 export const allowExportExtension = (path: string, ext: string) =>
   invoke<string>("allow_export_extension", { path, ext });
+
+// Updates (src-tauri/src/updates.rs): check GitHub, download the installer
+// for this computer, and open it.
+export const checkForUpdate = () => invoke<UpdateInfo | null>("check_for_update");
+/** Downloads the installer the last check found; returns where it was saved. */
+export const downloadUpdate = () => invoke<string>("download_update");
+export const openUpdateInstaller = () => invoke<InstallerOpened>("open_update_installer");
 
 // Net listings (net-listings.md).
 export const listNetListings = (retired = false) =>

@@ -443,6 +443,21 @@ export interface BackupSummary {
   modified: string;
 }
 
+/** A newer release on GitHub (src-tauri/src/updates.rs). */
+export interface UpdateInfo {
+  version: string;
+  current_version: string;
+  /** The release's notes. */
+  notes: string;
+  /** The release's page, for when there's no installer to fetch. */
+  release_url: string;
+  /** The installer for this computer; null when running a build from source. */
+  installer: { name: string; size: number } | null;
+}
+
+/** What opening a downloaded installer did. */
+export type InstallerOpened = "installer_running" | "in_software_installer" | "app_image_ready";
+
 /** The copy saved before this launch upgraded the database (path, or why it failed). */
 export interface UpgradeBackup {
   path: string | null;

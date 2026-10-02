@@ -128,6 +128,16 @@ The app is built to be taken into the field. To prepare, spend a few minutes onl
 | FCC call-sign lookup (once downloaded) | APRS-IS feed |
 | Backup and restore | Updating offline data |
 
+## Updating
+
+The app checks for a newer release shortly after it starts, and again once a day while it's open, but never while you're working offline. When there is one, a banner shows what's new, and **Update now** downloads the installer for your computer and opens it:
+
+- **Windows:** the installer runs and the app closes so it can be updated.
+- **Linux .deb / .rpm:** the package opens in your software installer, which asks for your password. Restart the app afterwards.
+- **Linux AppImage:** the new AppImage is saved to your Downloads folder, ready to run in place of the old one.
+
+**Settings → Check for updates** checks right away. Your data is updated automatically the first time the new version starts, after a copy is saved.
+
 ## Where your data lives
 
 Created automatically on first run, under the app's identifier `org.radiooperationsconsole.desktop`:

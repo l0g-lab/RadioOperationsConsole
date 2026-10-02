@@ -21,6 +21,7 @@ mod repeaters;
 mod settings;
 mod spotter_reports;
 mod storage;
+mod updates;
 mod weather;
 
 pub use activities::*;
@@ -39,6 +40,7 @@ pub use repeaters::*;
 pub use settings::*;
 pub use spotter_reports::*;
 pub use storage::*;
+pub use updates::*;
 pub use weather::*;
 
 /// Stable error sentinels the frontend matches on to decide whether to show
@@ -89,6 +91,10 @@ pub struct AppState {
     pub callsign_update_cancel: std::sync::atomic::AtomicBool,
     /// The copy saved before this launch upgraded the database, if it did.
     pub upgrade_backup: Option<crate::db::UpgradeBackup>,
+    /// The installer the last update check found for this computer, and
+    /// where it was downloaded (commands/updates.rs).
+    pub update_installer: Mutex<Option<crate::updates::Asset>>,
+    pub update_download: Mutex<Option<PathBuf>>,
 }
 
 impl AppState {
@@ -120,6 +126,8 @@ impl AppState {
             callsign_update_running: std::sync::atomic::AtomicBool::new(false),
             callsign_update_cancel: std::sync::atomic::AtomicBool::new(false),
             upgrade_backup,
+            update_installer: Mutex::new(None),
+            update_download: Mutex::new(None),
         }
     }
 }

@@ -80,7 +80,9 @@ request; all must pass.
    matches the version, runs the full test suite, builds the Linux and Windows
    installers, and creates a **draft** release whose description is that
    version's CHANGELOG section. Review the draft on the Releases page and
-   publish it.
+   publish it. Installed copies see a release only once it's published (not
+   a draft or pre-release), and "Update now" finds the installer for each
+   platform by the file names Tauri gives them, so keep those as they are.
 
 "Run workflow" on the Release workflow's page in the Actions tab does a dry
 run without a tag.

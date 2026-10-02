@@ -15,6 +15,7 @@ import SettingsTab from "./components/tabs/SettingsTab";
 import NetsTab from "./components/tabs/NetsTab";
 import type { ActivityPrefill } from "./components/operations/activityPrefill";
 import UpgradeBackupBanner from "./components/UpgradeBackupBanner";
+import UpdateBanner from "./components/UpdateBanner";
 import type { Activity, Operator, Tab } from "./types";
 import { TABS } from "./types";
 import { isLog } from "./activityTypes";
@@ -159,6 +160,7 @@ export default function App() {
         }}
       />
       <UpgradeBackupBanner />
+      <UpdateBanner />
       <div className="app-body">
         {currentTab === "Operations" && (
           <OperationsSidebar
