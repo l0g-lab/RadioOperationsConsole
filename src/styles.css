@@ -9,6 +9,22 @@
   --accent: #39ff88;
   --accent-dim: #1f8f4e;
   --on-accent: #04140b;
+  /* Forecast colors (forecastStyle.ts): conditions, then temperature. */
+  --fc-storm: #c77dff;
+  --fc-winter: #9ad7ff;
+  --fc-rain: #4da3ff;
+  --fc-fog: #a0a8b3;
+  --fc-cloudy: #8996a3;
+  --fc-clear: #ffd166;
+  --fc-night: #aab4ff;
+  --temp-freezing: #b8e1ff;
+  --temp-cold: #4da3ff;
+  --temp-mild: #39d98a;
+  --temp-warm: #ffb347;
+  --temp-hot: #ff7043;
+  --temp-extreme: #ff4d6d;
+  --wind-strong: #ffb347;
+  --wind-dangerous: #ff4d6d;
 }
 
 /* Light palette: used when chosen explicitly, or when the mode is "system"
@@ -26,6 +42,21 @@
   --on-accent: #ffffff;
   --warning: #a86200;
   --danger: #c0392b;
+  --fc-storm: #7b2cbf;
+  --fc-winter: #15699a;
+  --fc-rain: #1565c0;
+  --fc-fog: #6b7480;
+  --fc-cloudy: #5c6875;
+  --fc-clear: #8a5b00;
+  --fc-night: #4a55a2;
+  --temp-freezing: #2b7bb9;
+  --temp-cold: #1565c0;
+  --temp-mild: #17703f;
+  --temp-warm: #955700;
+  --temp-hot: #bf360c;
+  --temp-extreme: #b0003a;
+  --wind-strong: #955700;
+  --wind-dangerous: #b0003a;
 }
 
 @media (prefers-color-scheme: light) {
@@ -42,6 +73,21 @@
     --on-accent: #ffffff;
     --warning: #a86200;
     --danger: #c0392b;
+    --fc-storm: #7b2cbf;
+    --fc-winter: #15699a;
+    --fc-rain: #1565c0;
+    --fc-fog: #6b7480;
+    --fc-cloudy: #5c6875;
+    --fc-clear: #8a5b00;
+    --fc-night: #4a55a2;
+    --temp-freezing: #2b7bb9;
+    --temp-cold: #1565c0;
+    --temp-mild: #17703f;
+    --temp-warm: #955700;
+    --temp-hot: #bf360c;
+    --temp-extreme: #b0003a;
+    --wind-strong: #955700;
+    --wind-dangerous: #b0003a;
   }
 }
 
@@ -488,6 +534,80 @@ details > summary {
   text-transform: none;
   letter-spacing: normal;
 }
+
+/* Forecast periods: a stripe and icon in the conditions' color, and chips
+   for temperature, chance of rain, and wind (forecastStyle.ts). */
+.forecast-card {
+  --fc: var(--fc-cloudy);
+  border-left: 4px solid var(--fc);
+}
+
+.forecast-storm { --fc: var(--fc-storm); }
+.forecast-winter { --fc: var(--fc-winter); }
+.forecast-rain { --fc: var(--fc-rain); }
+.forecast-fog { --fc: var(--fc-fog); }
+.forecast-cloudy,
+.forecast-other { --fc: var(--fc-cloudy); }
+.forecast-partly,
+.forecast-clear { --fc: var(--fc-clear); }
+.forecast-night.forecast-partly,
+.forecast-night.forecast-clear { --fc: var(--fc-night); }
+
+.forecast-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.forecast-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--fc);
+  flex-shrink: 0;
+}
+
+.forecast-short {
+  margin: 6px 0 2px 0;
+  color: var(--fc);
+  font-weight: 600;
+}
+
+.forecast-chip {
+  --chip: var(--text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 7px;
+  border: 1px solid var(--chip);
+  border-radius: 10px;
+  color: var(--chip);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.forecast-chip svg {
+  width: 12px;
+  height: 12px;
+}
+
+.temp-freezing { --chip: var(--temp-freezing); }
+.temp-cold { --chip: var(--temp-cold); }
+.temp-mild { --chip: var(--temp-mild); }
+.temp-warm { --chip: var(--temp-warm); }
+.temp-hot { --chip: var(--temp-hot); }
+.temp-extreme { --chip: var(--temp-extreme); }
+
+/* Chance of rain: the stronger the chance, the stronger the blue. */
+.precip-low { --chip: var(--text-dim); font-weight: normal; }
+.precip-possible { --chip: var(--fc-rain); font-weight: normal; }
+.precip-likely { --chip: var(--fc-rain); }
+.precip-high { --chip: var(--fc-rain); border-width: 2px; }
+
+.wind-calm { --chip: var(--text-dim); font-weight: normal; }
+.wind-strong { --chip: var(--wind-strong); }
+.wind-dangerous { --chip: var(--wind-dangerous); border-width: 2px; }
 
 .radar-panel {
   margin-top: 8px;

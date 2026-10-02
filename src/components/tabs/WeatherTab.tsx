@@ -6,7 +6,25 @@ import { offlineMessage } from "../../workOffline";
 import { pad2 } from "../../utils";
 import RadarPanel from "../RadarPanel";
 import LocationPicker from "../LocationPicker";
-import { CloudSun, Crosshair, Radar, TriangleAlert } from "lucide-react";
+import {
+  Cloud,
+  CloudFog,
+  CloudLightning,
+  CloudMoon,
+  CloudRain,
+  CloudSnow,
+  CloudSun,
+  Crosshair,
+  Droplets,
+  Moon,
+  Radar,
+  Sun,
+  Thermometer,
+  TriangleAlert,
+  Wind,
+  type LucideIcon,
+} from "lucide-react";
+import { conditionOf, precipLevel, tempBand, windLevel, type Condition } from "../../forecastStyle";
 
 interface NwsFeature {
   properties?: {
@@ -28,6 +46,64 @@ interface NwsForecastPeriod {
   shortForecast?: string;
   detailedForecast?: string;
   probabilityOfPrecipitation?: { value?: number | null };
+  isDaytime?: boolean;
+}
+
+const CONDITION_ICONS: Record<Condition, { day: LucideIcon; night: LucideIcon; label: string }> = {
+  storm: { day: CloudLightning, night: CloudLightning, label: "Thunderstorms" },
+  winter: { day: CloudSnow, night: CloudSnow, label: "Snow or ice" },
+  rain: { day: CloudRain, night: CloudRain, label: "Rain" },
+  fog: { day: CloudFog, night: CloudFog, label: "Fog or haze" },
+  cloudy: { day: Cloud, night: Cloud, label: "Cloudy" },
+  partly: { day: CloudSun, night: CloudMoon, label: "Partly cloudy" },
+  clear: { day: Sun, night: Moon, label: "Clear" },
+  other: { day: Cloud, night: Cloud, label: "" },
+};
+
+/**
+ * One forecast period, colored by its conditions, temperature, chance of
+ * rain, and wind (forecastStyle.ts). The words are always there too, so
+ * nothing depends on color alone.
+ */
+function ForecastPeriod({ p }: { p: NwsForecastPeriod }) {
+  const condition = conditionOf(p.shortForecast);
+  const night = p.isDaytime === false;
+  const { day, night: nightIcon, label } = CONDITION_ICONS[condition];
+  const Icon = night ? nightIcon : day;
+  const precip = p.probabilityOfPrecipitation?.value;
+  return (
+    <div className={`alert-card forecast-card forecast-${condition}${night ? " forecast-night" : ""}`}>
+      <div className="forecast-head">
+        <Icon
+          className="forecast-icon"
+          role={label ? "img" : undefined}
+          aria-label={label || undefined}
+          aria-hidden={!label}
+        />
+        <strong>{p.name}</strong>
+        {p.temperature != null && (
+          <span className={`forecast-chip temp-${tempBand(p.temperature, p.temperatureUnit)}`}>
+            <Thermometer aria-hidden />
+            {p.temperature}°{p.temperatureUnit}
+          </span>
+        )}
+        {precip != null && (
+          <span className={`forecast-chip precip-${precipLevel(precip)}`} title="Chance of precipitation">
+            <Droplets aria-hidden />
+            {precip}%
+          </span>
+        )}
+        {p.windSpeed && (
+          <span className={`forecast-chip wind-${windLevel(p.windSpeed)}`}>
+            <Wind aria-hidden />
+            {p.windDirection} {p.windSpeed}
+          </span>
+        )}
+      </div>
+      {p.shortForecast && <p className="forecast-short">{p.shortForecast}</p>}
+      {p.detailedForecast && <p className="settings-hint">{p.detailedForecast}</p>}
+    </div>
+  );
 }
 
 function severityColor(severity: string): string {
@@ -258,30 +334,7 @@ export default function WeatherTab() {
               {forecastPeriods && forecastPeriods.length > 0 && (
                 <div className="alert-list">
                   {forecastPeriods.map((p, idx) => (
-                    <div className="alert-card" key={idx}>
-                      <div>
-                        <strong>{p.name}</strong>
-                        {p.temperature != null && (
-                          <span>
-                            {" "}
-                            — {p.temperature}°{p.temperatureUnit}
-                          </span>
-                        )}
-                        {p.windSpeed && (
-                          <span>
-                            {" "}
-                            — Wind {p.windDirection} {p.windSpeed}
-                          </span>
-                        )}
-                        {p.probabilityOfPrecipitation?.value != null && (
-                          <span> — {p.probabilityOfPrecipitation.value}% precip</span>
-                        )}
-                      </div>
-                      {p.shortForecast && <p>{p.shortForecast}</p>}
-                      {p.detailedForecast && (
-                        <p className="settings-hint">{p.detailedForecast}</p>
-                      )}
-                    </div>
+                    <ForecastPeriod p={p} key={idx} />
                   ))}
                 </div>
               )}
