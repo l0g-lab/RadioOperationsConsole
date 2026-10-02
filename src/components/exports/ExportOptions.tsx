@@ -22,6 +22,7 @@ import {
 } from "../../export";
 import { ics213FromReport, ics213FromReports, type GeneralMessage213Input } from "../../icsForms";
 import IcsFormDialog from "./IcsFormDialog";
+import { SummaryTextDialog } from "./SummaryDialog";
 
 /**
  * `unavailable` is the reason there's nothing to do. The button stays clickable,
@@ -106,6 +107,7 @@ export default function ExportOptions({
     null | { form: "309" } | { form: "213"; initial: GeneralMessage213Input }
   >(null);
   const [reportId, setReportId] = useState("");
+  const [showingSummary, setShowingSummary] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -256,6 +258,11 @@ export default function ExportOptions({
           note="Times, counts by the activity's type, and the closing notes."
           actions={[
             {
+              label: "Show summary text",
+              title: "See exactly what the text file will hold, before saving it",
+              onClick: () => setShowingSummary(true),
+            },
+            {
               label: "Text",
               unavailable: !summary
                 ? "The summary hasn't loaded yet. Try again in a moment."
@@ -380,6 +387,13 @@ export default function ExportOptions({
         </p>
       )}
 
+      {showingSummary && (
+        <SummaryTextDialog
+          activity={activity}
+          conclusion={conclusion}
+          onClose={() => setShowingSummary(false)}
+        />
+      )}
       {ics && (
         <IcsFormDialog
           {...ics}

@@ -66,6 +66,12 @@ be in one predictable place, complete, and unambiguous about time.
   check-ins and spotter reports, each with the operator (`AUDIT-001`).
 - **EXPORT-014:** The activity summary as text, using the sections its type
   emphasises (`LIFE-054`).
+- **EXPORT-017:** The summary MUST be readable without saving a file, laid
+  out like the end-of-net step: on the Operations tab for the selected
+  activity, shown without a click, and for each archived activity without
+  restoring it. Wherever the summary is saved — the Operations tab and the
+  export list — the exact text it saves as (`EXPORT-014`) MUST be viewable
+  first ("Show summary text"), with Copy and Save.
 - **EXPORT-015:** A single JSON package holding the activity, its summary,
   check-ins, spotter reports, and history, marked with a format name and
   version so it can be recognised and read later.

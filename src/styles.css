@@ -2157,3 +2157,51 @@ button.online-pill-working-offline:hover {
   color: var(--text-dim);
   font-size: 12px;
 }
+
+/* An activity's summary, laid out like the end-of-net step (SummaryDialog.tsx). */
+.summary-modal {
+  gap: 10px;
+}
+
+.summary-about {
+  margin: 0;
+}
+
+.summary-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+}
+
+.summary-conclusion {
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-input);
+}
+
+.summary-conclusion p {
+  margin: 4px 0 0 0;
+  white-space: pre-wrap;
+}
+
+.summary-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The summary exactly as it's saved (SummaryTextDialog). */
+.summary-text {
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text);
+  font-family: "Consolas", "Menlo", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  user-select: text;
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity } from "../../types";
 import DeleteActivityDialog from "../lifecycle/DeleteActivityDialog";
+import SummaryDialog from "../exports/SummaryDialog";
 import { Archive } from "lucide-react";
 
 interface Props {
@@ -18,6 +19,8 @@ export default function ArchivedActivitiesPanel({
   const [showArchived, setShowArchived] = useState(false);
   const [archivedActivities, setArchivedActivities] = useState<Activity[]>([]);
   const [deleting, setDeleting] = useState<Activity | null>(null);
+  // Read an archived activity's summary without restoring it.
+  const [viewing, setViewing] = useState<Activity | null>(null);
 
   async function refreshArchived() {
     const list = await api.listArchivedActivities().catch(() => []);
@@ -64,6 +67,9 @@ export default function ArchivedActivitiesPanel({
                 {a.scheduled_at ? ` — ${a.scheduled_at}` : ""}
               </span>
               <span className="inline-form">
+                <button onClick={() => setViewing(a)} aria-label={`Show summary of ${a.title}`}>
+                  Show summary
+                </button>
                 <button onClick={() => handleRestoreActivity(a.id)}>Restore</button>
                 <button className="danger" onClick={() => setDeleting(a)}>
                   Delete…
@@ -73,6 +79,7 @@ export default function ArchivedActivitiesPanel({
           ))}
         </>
       )}
+      {viewing && <SummaryDialog activity={viewing} onClose={() => setViewing(null)} />}
       {deleting && (
         <DeleteActivityDialog
           activity={deleting}
