@@ -7,7 +7,10 @@ use tauri::State;
 #[tauri::command]
 pub fn list_data_packs(state: State<'_, AppState>) -> Result<Vec<PackInfo>, String> {
     let packs = state.route_packs.lock().unwrap();
-    Ok(packs.iter().map(|(p, downloaded)| datapacks::info_for(p, *downloaded)).collect())
+    Ok(packs
+        .iter()
+        .map(|(p, downloaded)| datapacks::info_for(p, *downloaded))
+        .collect())
 }
 
 /// Downloads the latest mile-marker data for one road straight from the
@@ -31,7 +34,16 @@ pub async fn update_data_pack(state: State<'_, AppState>, id: String) -> Result<
 /// entirely from the local data packs (no network). `None` when the text
 /// isn't a recognizable mile-marker reference for a road we have data for.
 #[tauri::command]
-pub fn resolve_mile_marker(state: State<'_, AppState>, text: String) -> Result<Option<MileMarkerHit>, String> {
-    let packs: Vec<_> = state.route_packs.lock().unwrap().iter().map(|(p, _)| p.clone()).collect();
+pub fn resolve_mile_marker(
+    state: State<'_, AppState>,
+    text: String,
+) -> Result<Option<MileMarkerHit>, String> {
+    let packs: Vec<_> = state
+        .route_packs
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|(p, _)| p.clone())
+        .collect();
     Ok(routes::resolve(&packs, &text))
 }

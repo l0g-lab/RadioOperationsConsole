@@ -24,8 +24,13 @@ pub struct Dirs<'a> {
     pub restore_copies: &'a Path,
 }
 
-pub const ITEM_IDS: [&str; 5] =
-    ["callsigns-amateur", "callsigns-gmrs", "road-data", "partial-downloads", "restore-copies"];
+pub const ITEM_IDS: [&str; 5] = [
+    "callsigns-amateur",
+    "callsigns-gmrs",
+    "road-data",
+    "partial-downloads",
+    "restore-copies",
+];
 
 fn names_in(dir: &Path, keep: impl Fn(&str) -> bool) -> Vec<PathBuf> {
     let Ok(read) = std::fs::read_dir(dir) else { return Vec::new() };
@@ -48,10 +53,13 @@ fn files_for(id: &str, dirs: &Dirs) -> Option<Vec<PathBuf>> {
             .iter()
             .flat_map(|d| existing(dirs.datapacks.join(format!("{}.json", d.id))))
             .collect(),
-        "partial-downloads" => names_in(dirs.datapacks, |n| n.ends_with(".part") || n.ends_with(".part.meta")),
+        "partial-downloads" => names_in(dirs.datapacks, |n| {
+            n.ends_with(".part") || n.ends_with(".part.meta")
+        }),
         // Safety copies from restores and from upgrades (db.rs), kept together.
         "restore-copies" => names_in(dirs.restore_copies, |n| {
-            (n.starts_with("before-restore-") || n.starts_with("before-upgrade-")) && n.ends_with(".db")
+            (n.starts_with("before-restore-") || n.starts_with("before-upgrade-"))
+                && n.ends_with(".db")
         }),
         _ => return None,
     })
@@ -74,7 +82,11 @@ pub fn usage(dirs: &Dirs) -> Vec<StorageItem> {
             StorageItem {
                 id,
                 files: files.len() as u32,
-                bytes: files.iter().filter_map(|f| std::fs::metadata(f).ok()).map(|m| m.len()).sum(),
+                bytes: files
+                    .iter()
+                    .filter_map(|f| std::fs::metadata(f).ok())
+                    .map(|m| m.len())
+                    .sum(),
                 location: folder_for(id, dirs).display().to_string(),
             }
         })
@@ -124,16 +136,25 @@ mod tests {
     }
 
     fn item(items: &[StorageItem], id: &str) -> (u32, u64) {
-        let i = items.iter().find(|i| i.id == id).unwrap_or_else(|| panic!("{id} missing"));
+        let i = items
+            .iter()
+            .find(|i| i.id == id)
+            .unwrap_or_else(|| panic!("{id} missing"));
         (i.files, i.bytes)
     }
 
     #[test]
     fn measures_each_kind_and_lists_empty_ones_too() {
         let (packs, backups) = populated();
-        let dirs = Dirs { datapacks: &packs, restore_copies: &backups };
+        let dirs = Dirs {
+            datapacks: &packs,
+            restore_copies: &backups,
+        };
         let items = usage(&dirs);
-        assert_eq!(items.iter().map(|i| i.id).collect::<Vec<_>>(), ITEM_IDS.to_vec());
+        assert_eq!(
+            items.iter().map(|i| i.id).collect::<Vec<_>>(),
+            ITEM_IDS.to_vec()
+        );
         assert_eq!(item(&items, "callsigns-amateur"), (1, 1000));
         assert_eq!(item(&items, "callsigns-gmrs"), (1, 300));
         assert_eq!(item(&items, "road-data"), (2, 100));
@@ -146,7 +167,10 @@ mod tests {
         assert_eq!(location("restore-copies"), backups.display().to_string());
 
         let empty = temp("empty");
-        let none = usage(&Dirs { datapacks: &empty, restore_copies: &empty.join("missing") });
+        let none = usage(&Dirs {
+            datapacks: &empty,
+            restore_copies: &empty.join("missing"),
+        });
         assert_eq!(none.len(), ITEM_IDS.len());
         assert!(none.iter().all(|i| i.files == 0 && i.bytes == 0));
     }
@@ -154,7 +178,10 @@ mod tests {
     #[test]
     fn clearing_removes_only_that_items_files() {
         let (packs, backups) = populated();
-        let dirs = Dirs { datapacks: &packs, restore_copies: &backups };
+        let dirs = Dirs {
+            datapacks: &packs,
+            restore_copies: &backups,
+        };
         for id in ITEM_IDS {
             clear(id, &dirs).unwrap();
             assert_eq!(item(&usage(&dirs), id), (0, 0), "{id}");
@@ -166,7 +193,10 @@ mod tests {
     #[test]
     fn clearing_one_leaves_the_others() {
         let (packs, backups) = populated();
-        let dirs = Dirs { datapacks: &packs, restore_copies: &backups };
+        let dirs = Dirs {
+            datapacks: &packs,
+            restore_copies: &backups,
+        };
         clear("callsigns-gmrs", &dirs).unwrap();
         let items = usage(&dirs);
         assert_eq!(item(&items, "callsigns-gmrs"), (0, 0));
@@ -177,6 +207,13 @@ mod tests {
     #[test]
     fn unknown_items_are_refused() {
         let (packs, backups) = populated();
-        assert!(clear("database", &Dirs { datapacks: &packs, restore_copies: &backups }).is_err());
+        assert!(clear(
+            "database",
+            &Dirs {
+                datapacks: &packs,
+                restore_copies: &backups
+            }
+        )
+        .is_err());
     }
 }

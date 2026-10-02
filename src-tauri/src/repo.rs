@@ -34,6 +34,11 @@ pub struct Activity {
     pub closed_at: String,
     /// The operator's closing notes, or empty.
     pub conclusion: String,
+    /// The repeater it runs on, copied from the directory or set by hand;
+    /// apart from `location`, which is where net control is (RPT-021).
+    pub repeater_name: String,
+    pub repeater_lat: Option<f64>,
+    pub repeater_lon: Option<f64>,
 }
 
 /// Counts and times for one activity, shown when wrapping up a net and on the
@@ -461,7 +466,7 @@ impl Repository {
         Ok(())
     }
 
-    const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,'')";
+    const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,''), coalesce(repeater_name,''), repeater_lat, repeater_lon";
 
     fn map_activity(r: &rusqlite::Row) -> rusqlite::Result<Activity> {
         Ok(Activity {
@@ -477,6 +482,9 @@ impl Repository {
             opened_at: r.get(9)?,
             closed_at: r.get(10)?,
             conclusion: r.get(11)?,
+            repeater_name: r.get(12)?,
+            repeater_lat: r.get(13)?,
+            repeater_lon: r.get(14)?,
         })
     }
 

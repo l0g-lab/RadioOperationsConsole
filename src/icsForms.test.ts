@@ -69,6 +69,9 @@ function activity(overrides: Partial<Activity> = {}): Activity {
     opened_at: "",
     closed_at: "",
     conclusion: "",
+    repeater_name: "",
+    repeater_lat: null,
+    repeater_lon: null,
     ...overrides,
   };
 }

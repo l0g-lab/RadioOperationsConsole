@@ -47,7 +47,7 @@ pub fn create_checkin(
     let activity = repo.get_activity(&activity_id).map_err(|e| e.to_string())?;
     if range_check::is_range_check(&activity.activity_type) {
         // RANGE-002, RANGE-011
-        if activity.location_lat.is_none() || activity.location_lon.is_none() {
+        if activity.repeater_lat.is_none() || activity.repeater_lon.is_none() {
             return Err(range_check::NEEDS_REPEATER.to_string());
         }
         range_check::normalize(&mut contact);

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import * as api from "../../api";
-import type { Activity, ActivityTemplate, Operator } from "../../types";
+import type { Activity, ActivityTemplate, Operator, Repeater } from "../../types";
 import SelectedActivityPanel from "../operations/SelectedActivityPanel";
 import CreateActivityPanel from "../operations/CreateActivityPanel";
 import TemplatesPanel from "../operations/TemplatesPanel";
 import ArchivedActivitiesPanel from "../operations/ArchivedActivitiesPanel";
 import OperatorsPanel from "../operations/OperatorsPanel";
+import RepeatersPanel from "../operations/RepeatersPanel";
 import { Lightbulb } from "lucide-react";
 
 interface Props {
@@ -43,6 +44,16 @@ export default function OperationsTab({
   }, []);
   useEffect(refreshTemplates, [refreshTemplates]);
 
+  // The repeater directory, shared by its panel and the activity forms.
+  const [repeaters, setRepeaters] = useState<Repeater[]>([]);
+  const refreshRepeaters = useCallback(() => {
+    api
+      .listRepeaters()
+      .then(setRepeaters)
+      .catch(() => setRepeaters([]));
+  }, []);
+  useEffect(refreshRepeaters, [refreshRepeaters]);
+
   // Which template the Templates panel asked the create form to start from.
   const [useTemplateRequest, setUseTemplateRequest] = useState<string | null>(null);
 
@@ -71,6 +82,7 @@ export default function OperationsTab({
             onEditRequestHandled={onEditActivityHandled}
             templates={templates}
             onTemplatesChanged={refreshTemplates}
+            repeaters={repeaters}
           />
           <CreateActivityPanel
             activities={activities}
@@ -82,6 +94,7 @@ export default function OperationsTab({
             onTemplatesChanged={refreshTemplates}
             useTemplateRequest={useTemplateRequest}
             onUseTemplateHandled={() => setUseTemplateRequest(null)}
+            repeaters={repeaters}
           />
           <TemplatesPanel
             templates={templates}
@@ -101,6 +114,11 @@ export default function OperationsTab({
             selectedOperatorId={selectedOperatorId}
             onOperatorsChanged={onOperatorsChanged}
             onSelectOperator={onSelectOperator}
+          />
+          <RepeatersPanel
+            repeaters={repeaters}
+            onRepeatersChanged={refreshRepeaters}
+            selectedOperatorId={selectedOperatorId}
           />
         </div>
       </div>

@@ -80,6 +80,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0019_range_check.sql",
         include_str!("../migrations/0019_range_check.sql"),
     ),
+    (
+        "0020_repeaters.sql",
+        include_str!("../migrations/0020_repeaters.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't
@@ -248,6 +252,29 @@ mod tests {
         // Already up to date: nothing more is saved.
         drop(_conn);
         assert_eq!(open_db_with_upgrade_backup(&path, Some(&backups)).unwrap().1, None);
+    }
+
+    #[test]
+    fn a_range_checks_location_becomes_its_repeater_on_upgrade() {
+        // RPT-021: before 0020 a range check kept the repeater in its own location.
+        let conn = Connection::open_in_memory().unwrap();
+        let upto = MIGRATIONS.iter().position(|(v, _)| *v == "0020_repeaters.sql").unwrap();
+        apply_migrations(&conn, &MIGRATIONS[..upto]).unwrap();
+        for (id, kind) in [("rc", "range_check"), ("net", "directed_net")] {
+            conn.execute(
+                "INSERT INTO activities(id, title, type, state, created_at, location_label, location_lat, location_lon) VALUES (?1, 't', ?2, 'scheduled', 't', 'Site', 28.5, -81.4)",
+                params![id, kind],
+            )
+            .unwrap();
+        }
+        run_migrations(&conn).unwrap();
+
+        let repo = crate::repo::Repository::new(conn);
+        let rc = repo.get_activity("rc").unwrap();
+        assert_eq!((rc.repeater_name.as_str(), rc.repeater_lat, rc.repeater_lon), ("Site", Some(28.5), Some(-81.4)));
+        assert_eq!(rc.location_lat, None, "net control's location starts unset");
+        let net = repo.get_activity("net").unwrap();
+        assert_eq!((net.location_lat, net.repeater_lat), (Some(28.5), None), "other activities are untouched");
     }
 
     #[test]

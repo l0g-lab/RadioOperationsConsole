@@ -167,7 +167,10 @@ fn timed_out() -> FetchError {
 }
 
 fn map_send_error(e: reqwest::Error) -> FetchError {
-    net::map_send_error(e, "The download timed out — check your connection and try again.")
+    net::map_send_error(
+        e,
+        "The download timed out — check your connection and try again.",
+    )
 }
 
 /// One page of an ArcGIS feature-layer query.
@@ -186,7 +189,10 @@ fn parse_page(body: &str, mile_field: &str) -> Result<Page, String> {
     let v: Value = serde_json::from_str(body)
         .map_err(|_| "The data server sent something unexpected.".to_string())?;
     if let Some(err) = v.get("error") {
-        let msg = err.get("message").and_then(Value::as_str).unwrap_or("request rejected");
+        let msg = err
+            .get("message")
+            .and_then(Value::as_str)
+            .unwrap_or("request rejected");
         return Err(format!("The data server reported an error: {msg}"));
     }
     let features = v
@@ -195,9 +201,12 @@ fn parse_page(body: &str, mile_field: &str) -> Result<Page, String> {
         .ok_or("The data server's response had no features.")?;
     let mut anchors = Vec::new();
     for f in features {
-        let mile = f.pointer(&format!("/attributes/{mile_field}")).and_then(|m| {
-            m.as_f64().or_else(|| m.as_str().and_then(|s| s.trim().parse::<f64>().ok()))
-        });
+        let mile = f
+            .pointer(&format!("/attributes/{mile_field}"))
+            .and_then(|m| {
+                m.as_f64()
+                    .or_else(|| m.as_str().and_then(|s| s.trim().parse::<f64>().ok()))
+            });
         let (Some(mile), Some(lon), Some(lat)) = (
             mile,
             f.pointer("/geometry/x").and_then(Value::as_f64),
@@ -207,8 +216,15 @@ fn parse_page(body: &str, mile_field: &str) -> Result<Page, String> {
         };
         anchors.push(Anchor { mile, lat, lon });
     }
-    let more = v.get("exceededTransferLimit").and_then(Value::as_bool).unwrap_or(false);
-    Ok(Page { anchors, count: features.len(), more })
+    let more = v
+        .get("exceededTransferLimit")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    Ok(Page {
+        anchors,
+        count: features.len(),
+        more,
+    })
 }
 
 /// Downloads every marker a source's query matches, a page at a time.
@@ -316,7 +332,10 @@ pub fn align_reversed(primary: &[Anchor], other: Vec<Anchor>) -> Result<Vec<Anch
     // Tenths, like a posted milepoint.
     Ok(other
         .into_iter()
-        .map(|a| Anchor { mile: ((offset - a.mile) * 10.0).round() / 10.0, ..a })
+        .map(|a| Anchor {
+            mile: ((offset - a.mile) * 10.0).round() / 10.0,
+            ..a
+        })
         .collect())
 }
 
@@ -335,7 +354,8 @@ pub async fn build_pack(def: &PackDef, total_timeout: Duration) -> Result<RouteP
             .map_err(|e| FetchError::Other(e.to_string()))?;
         let mut fetched: Vec<Vec<Anchor>> = Vec::new();
         for src in def.sources {
-            let mut anchors = fetch_source(&client, src.layer, src.where_clause, src.mile_field).await?;
+            let mut anchors =
+                fetch_source(&client, src.layer, src.where_clause, src.mile_field).await?;
             if src.reversed {
                 let primary = fetched.first().map(Vec::as_slice).unwrap_or(&[]);
                 anchors = align_reversed(primary, anchors).map_err(FetchError::Other)?;
@@ -351,11 +371,17 @@ pub async fn build_pack(def: &PackDef, total_timeout: Duration) -> Result<RouteP
             generated_at: chrono::Utc::now().to_rfc3339(),
             anchors: anchors
                 .into_iter()
-                .map(|a| Anchor { mile: a.mile, lat: round5(a.lat), lon: round5(a.lon) })
+                .map(|a| Anchor {
+                    mile: a.mile,
+                    lat: round5(a.lat),
+                    lon: round5(a.lon),
+                })
                 .collect(),
         })
     };
-    tokio::time::timeout(total_timeout, work).await.map_err(|_| timed_out())?
+    tokio::time::timeout(total_timeout, work)
+        .await
+        .map_err(|_| timed_out())?
 }
 
 // ------------------------------------------------------------------ storage
@@ -392,13 +418,18 @@ pub fn load_all(dir: &Path) -> Vec<(RoutePack, bool)> {
                     }
                 }
             }
-            serde_json::from_str::<RoutePack>(def.seed).ok().map(|p| (p, false))
+            serde_json::from_str::<RoutePack>(def.seed)
+                .ok()
+                .map(|p| (p, false))
         })
         .collect()
 }
 
 pub fn info_for(pack: &RoutePack, downloaded: bool) -> PackInfo {
-    let description = find_def(&pack.id).map(|d| d.description).unwrap_or("").to_string();
+    let description = find_def(&pack.id)
+        .map(|d| d.description)
+        .unwrap_or("")
+        .to_string();
     PackInfo {
         id: pack.id.clone(),
         name: pack.name.clone(),
@@ -416,7 +447,10 @@ pub fn info_for(pack: &RoutePack, downloaded: bool) -> PackInfo {
 /// increasing miles (interpolation assumes it), and real coordinates.
 pub fn validate_shape(pack: &RoutePack) -> Result<(), String> {
     if pack.anchors.len() < 10 {
-        return Err(format!("the data looks incomplete ({} points)", pack.anchors.len()));
+        return Err(format!(
+            "the data looks incomplete ({} points)",
+            pack.anchors.len()
+        ));
     }
     if !pack.anchors.windows(2).all(|w| w[0].mile < w[1].mile) {
         return Err("the mile markers aren't in order".into());
@@ -454,11 +488,14 @@ const MAX_DISAGREEMENT_MILES: f64 = 4.0;
 
 /// Refuses a download that looks broken rather than replacing good data.
 pub fn validate_update(new: &RoutePack, existing: Option<&RoutePack>) -> Result<(), String> {
-    validate_shape(new).map_err(|e| format!("Downloaded data rejected — {e}. Kept what you have."))?;
+    validate_shape(new)
+        .map_err(|e| format!("Downloaded data rejected — {e}. Kept what you have."))?;
     if let Some(old) = existing {
         // Coverage, not point count: a source with a marker every mile is
         // as complete as one with a point every half mile.
-        let span = |p: &RoutePack| p.anchors.last().map_or(0.0, |l| l.mile) - p.anchors.first().map_or(0.0, |f| f.mile);
+        let span = |p: &RoutePack| {
+            p.anchors.last().map_or(0.0, |l| l.mile) - p.anchors.first().map_or(0.0, |f| f.mile)
+        };
         if span(new) < span(old) * 0.8 {
             return Err(format!(
                 "Downloaded data covers much less of the road ({:.0} vs {:.0} miles). Kept what you have.",
@@ -522,7 +559,11 @@ mod tests {
             source: "t".into(),
             generated_at: "2026-01-01T00:00:00Z".into(),
             anchors: (0..n)
-                .map(|i| Anchor { mile: i as f64, lat: 25.0 + i as f64 * 0.0145, lon: -80.0 })
+                .map(|i| Anchor {
+                    mile: i as f64,
+                    lat: 25.0 + i as f64 * 0.0145,
+                    lon: -80.0,
+                })
                 .collect(),
         }
     }
@@ -587,7 +628,11 @@ mod tests {
         assert_eq!(info.origin, "downloaded");
         assert_eq!(packs[0].0.generated_at, "2099-01-01T00:00:00Z");
         assert!(packs[0].1);
-        assert_eq!(load_all(&dir)[0].0.generated_at, "2099-01-01T00:00:00Z", "survives a restart");
+        assert_eq!(
+            load_all(&dir)[0].0.generated_at,
+            "2099-01-01T00:00:00Z",
+            "survives a restart"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -625,28 +670,56 @@ mod tests {
     fn arcgis(features: &[(&str, f64, f64)], more: bool) -> String {
         let f: Vec<String> = features
             .iter()
-            .map(|(m, x, y)| format!(r#"{{"attributes":{{"MILEPOINT":"{m}"}},"geometry":{{"x":{x},"y":{y}}}}}"#))
+            .map(|(m, x, y)| {
+                format!(r#"{{"attributes":{{"MILEPOINT":"{m}"}},"geometry":{{"x":{x},"y":{y}}}}}"#)
+            })
             .collect();
-        format!(r#"{{"features":[{}],"exceededTransferLimit":{more}}}"#, f.join(","))
+        format!(
+            r#"{{"features":[{}],"exceededTransferLimit":{more}}}"#,
+            f.join(",")
+        )
     }
 
     #[test]
     fn parses_arcgis_responses() {
-        let body = arcgis(&[("265.5", -82.35, 28.06), ("017.0", -82.5, 28.1), ("junk", -82.0, 28.0)], false);
+        let body = arcgis(
+            &[
+                ("265.5", -82.35, 28.06),
+                ("017.0", -82.5, 28.1),
+                ("junk", -82.0, 28.0),
+            ],
+            false,
+        );
         let page = parse_page(&body, "MILEPOINT").unwrap();
         assert_eq!(page.count, 3);
         assert_eq!(page.anchors.len(), 2, "unreadable mile skipped");
-        assert_eq!(page.anchors[0], Anchor { mile: 265.5, lat: 28.06, lon: -82.35 });
+        assert_eq!(
+            page.anchors[0],
+            Anchor {
+                mile: 265.5,
+                lat: 28.06,
+                lon: -82.35
+            }
+        );
         assert_eq!(page.anchors[1].mile, 17.0);
         assert!(!page.more);
         // Numeric mile fields work too.
-        let numeric = r#"{"features":[{"attributes":{"Mile_Marker":42},"geometry":{"x":-80.1,"y":26.1}}]}"#;
-        assert_eq!(parse_page(numeric, "Mile_Marker").unwrap().anchors[0].mile, 42.0);
+        let numeric =
+            r#"{"features":[{"attributes":{"Mile_Marker":42},"geometry":{"x":-80.1,"y":26.1}}]}"#;
+        assert_eq!(
+            parse_page(numeric, "Mile_Marker").unwrap().anchors[0].mile,
+            42.0
+        );
     }
 
     #[test]
     fn provider_errors_and_junk_are_reported_not_ignored() {
-        let err = parse_page(r#"{"error":{"code":400,"message":"Invalid query"}}"#, "MILEPOINT").err().unwrap();
+        let err = parse_page(
+            r#"{"error":{"code":400,"message":"Invalid query"}}"#,
+            "MILEPOINT",
+        )
+        .err()
+        .unwrap();
         assert!(err.contains("Invalid query"));
         assert!(parse_page("<html>maintenance</html>", "MILEPOINT").is_err());
         assert!(parse_page(r#"{"nothing":1}"#, "MILEPOINT").is_err());
@@ -654,14 +727,30 @@ mod tests {
 
     #[test]
     fn later_sources_only_fill_gaps() {
-        let a = |m: f64, lat: f64| Anchor { mile: m, lat, lon: -80.0 };
+        let a = |m: f64, lat: f64| Anchor {
+            mile: m,
+            lat,
+            lon: -80.0,
+        };
         let primary = vec![a(60.0, 1.0), a(61.0, 1.0), a(62.0, 1.0)];
-        let filler = vec![a(1.0, 9.0), a(30.0, 9.0), a(60.5, 9.0), a(61.5, 9.0), a(100.0, 9.0)];
+        let filler = vec![
+            a(1.0, 9.0),
+            a(30.0, 9.0),
+            a(60.5, 9.0),
+            a(61.5, 9.0),
+            a(100.0, 9.0),
+        ];
         let merged = merge_sources(vec![primary, filler], 3.0);
         let miles: Vec<f64> = merged.iter().map(|x| x.mile).collect();
         assert!(miles.contains(&1.0) && miles.contains(&30.0) && miles.contains(&100.0));
-        assert!(!miles.contains(&60.5) && !miles.contains(&61.5), "no override where primary has data");
-        assert!(merged.iter().filter(|x| x.mile == 60.0).all(|x| x.lat == 1.0));
+        assert!(
+            !miles.contains(&60.5) && !miles.contains(&61.5),
+            "no override where primary has data"
+        );
+        assert!(merged
+            .iter()
+            .filter(|x| x.mile == 60.0)
+            .all(|x| x.lat == 1.0));
     }
 
     /// A straight east-west road: one marker a mile, `start..=end`, where
@@ -670,7 +759,11 @@ mod tests {
         (start..=end)
             .map(|i| {
                 let east = if west { -(i as f64) } else { i as f64 };
-                Anchor { mile: reading(i as f64), lat: 25.76, lon: -80.5 + east * 0.016 }
+                Anchor {
+                    mile: reading(i as f64),
+                    lat: 25.76,
+                    lon: -80.5 + east * 0.016,
+                }
             })
             .collect()
     }
@@ -690,7 +783,9 @@ mod tests {
         }
         // Beyond the signs it keeps counting the same way, in tenths.
         assert!(aligned.iter().any(|a| a.mile == 100.0));
-        assert!(aligned.iter().all(|a| (a.mile * 10.0 - (a.mile * 10.0).round()).abs() < 1e-9));
+        assert!(aligned
+            .iter()
+            .all(|a| (a.mile * 10.0 - (a.mile * 10.0).round()).abs() < 1e-9));
     }
 
     #[test]
@@ -698,10 +793,14 @@ mod tests {
         let signs = road(19, 43, true, |m| m);
         // Too little overlap: only 3 shared spots.
         let short = road(41, 43, true, |m| 114.0 - m);
-        assert!(align_reversed(&signs, short).unwrap_err().contains("overlap too little"));
+        assert!(align_reversed(&signs, short)
+            .unwrap_err()
+            .contains("overlap too little"));
         // Same spots, but the numbering isn't a consistent flip.
         let skewed = road(19, 43, true, |m| 114.0 - m * 1.1);
-        assert!(align_reversed(&signs, skewed).unwrap_err().contains("inconsistently"));
+        assert!(align_reversed(&signs, skewed)
+            .unwrap_err()
+            .contains("inconsistently"));
         // No primary at all.
         assert!(align_reversed(&[], road(3, 100, true, |m| m)).is_err());
     }
@@ -726,7 +825,14 @@ mod tests {
                     let mut buf = [0u8; 4096];
                     let n = sock.read(&mut buf).await.unwrap_or(0);
                     let request = String::from_utf8_lossy(&buf[..n]).to_string();
-                    let path = request.lines().next().unwrap_or("").split(' ').nth(1).unwrap_or("").to_string();
+                    let path = request
+                        .lines()
+                        .next()
+                        .unwrap_or("")
+                        .split(' ')
+                        .nth(1)
+                        .unwrap_or("")
+                        .to_string();
                     match handler(&path) {
                         Some((status, body)) => {
                             let msg = format!(
@@ -768,9 +874,31 @@ mod tests {
         let layer = run(serve(|path| {
             let page_two = path.contains("resultOffset=1000");
             let body = if page_two {
-                arcgis(&(1000..1005).map(|i| (Box::leak(format!("{i}").into_boxed_str()) as &str, -80.0, 25.0)).collect::<Vec<_>>(), false)
+                arcgis(
+                    &(1000..1005)
+                        .map(|i| {
+                            (
+                                Box::leak(format!("{i}").into_boxed_str()) as &str,
+                                -80.0,
+                                25.0,
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                    false,
+                )
             } else {
-                arcgis(&(0..1000).map(|i| (Box::leak(format!("{i}").into_boxed_str()) as &str, -80.0, 25.0)).collect::<Vec<_>>(), true)
+                arcgis(
+                    &(0..1000)
+                        .map(|i| {
+                            (
+                                Box::leak(format!("{i}").into_boxed_str()) as &str,
+                                -80.0,
+                                25.0,
+                            )
+                        })
+                        .collect::<Vec<_>>(),
+                    true,
+                )
             };
             Some(("200 OK", body))
         }));
@@ -783,16 +911,27 @@ mod tests {
         let started = std::time::Instant::now();
         let err = fetch(&layer).unwrap_err();
         assert!(err.contains("timed out"), "{err}");
-        assert!(started.elapsed() < Duration::from_secs(5), "took {:?}", started.elapsed());
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "took {:?}",
+            started.elapsed()
+        );
     }
 
     #[test]
     fn server_trouble_is_explained() {
         let l = run(serve(|_| Some(("503 Service Unavailable", "busy".into()))));
         assert!(fetch(&l).unwrap_err().contains("HTTP 503"));
-        let l = run(serve(|_| Some(("200 OK", r#"{"error":{"code":500,"message":"Service is down"}}"#.into()))));
+        let l = run(serve(|_| {
+            Some((
+                "200 OK",
+                r#"{"error":{"code":500,"message":"Service is down"}}"#.into(),
+            ))
+        }));
         assert!(fetch(&l).unwrap_err().contains("Service is down"));
-        let l = run(serve(|_| Some(("200 OK", "<html>captive portal</html>".into()))));
+        let l = run(serve(|_| {
+            Some(("200 OK", "<html>captive portal</html>".into()))
+        }));
         assert!(fetch(&l).unwrap_err().contains("unexpected"));
     }
 
@@ -813,11 +952,22 @@ mod tests {
     fn every_bundled_pack_parses_is_small_and_has_usable_coverage() {
         let mut total = 0;
         for def in PACK_DEFS {
-            let p: RoutePack = serde_json::from_str(def.seed).unwrap_or_else(|e| panic!("{}: {e}", def.id));
+            let p: RoutePack =
+                serde_json::from_str(def.seed).unwrap_or_else(|e| panic!("{}: {e}", def.id));
             assert_eq!(p.id, def.id);
             validate_shape(&p).unwrap_or_else(|e| panic!("{}: {e}", def.id));
-            assert!(p.anchors.len() >= 30, "{} has {} anchors", def.id, p.anchors.len());
-            assert!(def.seed.len() < 60_000, "{} is {} bytes — keep packs small", def.id, def.seed.len());
+            assert!(
+                p.anchors.len() >= 30,
+                "{} has {} anchors",
+                def.id,
+                p.anchors.len()
+            );
+            assert!(
+                def.seed.len() < 60_000,
+                "{} is {} bytes — keep packs small",
+                def.id,
+                def.seed.len()
+            );
             total += def.seed.len();
         }
         assert!(total < 150_000, "all packs together are {total} bytes");
@@ -825,11 +975,18 @@ mod tests {
 
     #[test]
     fn spoken_references_land_in_the_right_places_using_the_bundled_packs() {
-        let packs: Vec<RoutePack> = load_all(Path::new("/nonexistent")).into_iter().map(|(p, _)| p).collect();
+        let packs: Vec<RoutePack> = load_all(Path::new("/nonexistent"))
+            .into_iter()
+            .map(|(p, _)| p)
+            .collect();
         let near = |text: &str, lat: f64, lon: f64, within_miles: f64| {
-            let hit = crate::routes::resolve(&packs, text).unwrap_or_else(|| panic!("no hit for {text:?}"));
+            let hit = crate::routes::resolve(&packs, text)
+                .unwrap_or_else(|| panic!("no hit for {text:?}"));
             let d = haversine_miles((hit.lat, hit.lon), (lat, lon));
-            assert!(d <= within_miles, "{text:?} resolved {d:.1} mi from where it should be ({hit:?})");
+            assert!(
+                d <= within_miles,
+                "{text:?} resolved {d:.1} mi from where it should be ({hit:?})"
+            );
         };
         // Key Largo, Marathon, Key West on US-1.
         near("mile marker 100 on US 1", 25.09, -80.44, 2.0);
@@ -898,8 +1055,15 @@ mod tests {
                 Err(FetchError::Offline) => panic!("offline"),
                 Err(FetchError::Other(e)) => panic!("{}: {e}", def.id),
             };
-            let info = install_update(&dir, &mut packs, pack).unwrap_or_else(|e| panic!("{}: {e}", def.id));
-            println!("{}: {} points, {:?}, took {:.1}s", def.id, info.anchor_count, (info.first_mile, info.last_mile), started.elapsed().as_secs_f32());
+            let info = install_update(&dir, &mut packs, pack)
+                .unwrap_or_else(|e| panic!("{}: {e}", def.id));
+            println!(
+                "{}: {} points, {:?}, took {:.1}s",
+                def.id,
+                info.anchor_count,
+                (info.first_mile, info.last_mile),
+                started.elapsed().as_secs_f32()
+            );
         }
         assert!(load_all(&dir).iter().all(|(_, downloaded)| *downloaded));
         let _ = std::fs::remove_dir_all(&dir);

@@ -15,7 +15,12 @@ pub struct RestoreResult {
 pub(super) fn safety_dir(repo: &crate::repo::Repository) -> Result<PathBuf, String> {
     repo.conn
         .path()
-        .map(|p| Path::new(p).parent().unwrap_or(Path::new(".")).join("backups"))
+        .map(|p| {
+            Path::new(p)
+                .parent()
+                .unwrap_or(Path::new("."))
+                .join("backups")
+        })
         .ok_or_else(|| "Couldn't find the database folder.".to_string())
 }
 

@@ -51,7 +51,10 @@ fn status_from_disk(state: &AppState, service: Service) -> CallPackStatus {
 /// Is this service's offline directory downloaded, and how big/new is it?
 /// Reads only the file's header, so this is instant.
 #[tauri::command]
-pub fn callsign_pack_status(state: State<'_, AppState>, service: Service) -> Result<CallPackStatus, String> {
+pub fn callsign_pack_status(
+    state: State<'_, AppState>,
+    service: Service,
+) -> Result<CallPackStatus, String> {
     Ok(status_from_disk(&state, service))
 }
 
@@ -74,7 +77,11 @@ pub async fn update_callsign_pack(
     result
 }
 
-async fn run_update(app: &AppHandle, state: &AppState, service: Service) -> Result<CallPackStatus, String> {
+async fn run_update(
+    app: &AppHandle,
+    state: &AppState,
+    service: Service,
+) -> Result<CallPackStatus, String> {
     // Emit at most ~5 times a second so a fast download doesn't flood the UI.
     let last_emit = Arc::new(AtomicU64::new(0));
     let started = std::time::Instant::now();
@@ -82,20 +89,43 @@ async fn run_update(app: &AppHandle, state: &AppState, service: Service) -> Resu
     let progress: callsigns::ProgressFn = Arc::new(move |phase, done, total| {
         let now = started.elapsed().as_millis() as u64;
         let finished_phase = total > 0 && done >= total;
-        if !finished_phase && now.saturating_sub(last_emit.load(Ordering::Relaxed)) < 200 && done != 0 {
+        if !finished_phase
+            && now.saturating_sub(last_emit.load(Ordering::Relaxed)) < 200
+            && done != 0
+        {
             return;
         }
         last_emit.store(now, Ordering::Relaxed);
-        let _ = handle.emit("datapack-progress", ProgressEvent { id: service.pack_id(), phase, done, total });
+        let _ = handle.emit(
+            "datapack-progress",
+            ProgressEvent {
+                id: service.pack_id(),
+                phase,
+                done,
+                total,
+            },
+        );
     });
 
     let cancelled = || state.callsign_update_cancel.load(Ordering::SeqCst);
-    let db = match callsigns::build_and_install(service, service.url(), &state.datapacks_dir, progress, &cancelled).await {
+    let db = match callsigns::build_and_install(
+        service,
+        service.url(),
+        &state.datapacks_dir,
+        progress,
+        &cancelled,
+    )
+    .await
+    {
         Ok(db) => db,
         Err(FetchError::Offline) => return Err(ERR_OFFLINE.to_string()),
         Err(FetchError::Other(e)) => return Err(e),
     };
-    state.callsign_dbs.lock().unwrap().insert(service, Arc::new(db));
+    state
+        .callsign_dbs
+        .lock()
+        .unwrap()
+        .insert(service, Arc::new(db));
     Ok(status_from_disk(state, service))
 }
 
@@ -109,7 +139,10 @@ pub fn cancel_callsign_download(state: State<'_, AppState>) {
 }
 
 #[tauri::command]
-pub fn remove_callsign_pack(state: State<'_, AppState>, service: Service) -> Result<CallPackStatus, String> {
+pub fn remove_callsign_pack(
+    state: State<'_, AppState>,
+    service: Service,
+) -> Result<CallPackStatus, String> {
     let _ = std::fs::remove_file(state.datapacks_dir.join(service.pack_file()));
     state.callsign_dbs.lock().unwrap().remove(&service);
     Ok(status_from_disk(&state, service))
@@ -139,7 +172,10 @@ pub fn lookup_callsign_offline(
         Entry::Occupied(e) => Some(e.into_mut()),
         Entry::Vacant(e) => {
             let path = state.datapacks_dir.join(service.pack_file());
-            let loaded = path.exists().then(|| callsigns::load_file(&path).ok()).flatten();
+            let loaded = path
+                .exists()
+                .then(|| callsigns::load_file(&path).ok())
+                .flatten();
             loaded.map(|db| e.insert(Arc::new(db)))
         }
     };
@@ -149,6 +185,10 @@ pub fn lookup_callsign_offline(
             record: db.lookup(&call_sign),
             has_street_addresses: db.info.version >= 2,
         },
-        None => OfflineCallLookup { installed: false, record: None, has_street_addresses: false },
+        None => OfflineCallLookup {
+            installed: false,
+            record: None,
+            has_street_addresses: false,
+        },
     })
 }

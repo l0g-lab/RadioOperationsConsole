@@ -38,6 +38,40 @@ export interface Activity {
   closed_at: string;
   /** The operator's closing notes, or empty. */
   conclusion: string;
+  /**
+   * The repeater it runs on, copied from the directory or placed by hand;
+   * apart from `location`, which is where net control is. "" / null if none.
+   */
+  repeater_name: string;
+  repeater_lat: number | null;
+  repeater_lon: number | null;
+}
+
+/** "none", "pl" (CTCSS) or "dcs". */
+export type ToneKind = "none" | "pl" | "dcs";
+
+/** What's entered for a repeater (repeater-directory.md). */
+export interface RepeaterDetails {
+  name: string;
+  output_mhz: number;
+  /** Signed: input = output + offset. 0 is simplex. */
+  offset_mhz: number;
+  tone_in_kind: ToneKind;
+  /** "100.0" for PL, "023N" / "023I" for DCS, "" for none. */
+  tone_in: string;
+  tone_out_kind: ToneKind;
+  tone_out: string;
+  mode: string;
+  location_label: string;
+  location_lat: number | null;
+  location_lon: number | null;
+  notes: string;
+}
+
+export interface Repeater extends RepeaterDetails {
+  id: string;
+  /** When it was retired, or "" while in use. */
+  retired_at: string;
 }
 
 /** How many records an activity holds, or held before it was permanently deleted. */

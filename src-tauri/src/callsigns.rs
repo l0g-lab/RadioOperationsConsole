@@ -125,7 +125,12 @@ pub fn encode(records: &[CallRecord], generated_at: &str, service: Service) -> V
     encode_versioned(records, generated_at, FORMAT_VERSION, service)
 }
 
-fn encode_versioned(records: &[CallRecord], generated_at: &str, version: u8, service: Service) -> Vec<u8> {
+fn encode_versioned(
+    records: &[CallRecord],
+    generated_at: &str,
+    version: u8,
+    service: Service,
+) -> Vec<u8> {
     let mut blob: Vec<u8> = Vec::with_capacity(records.len() * 40);
     let mut offsets: Vec<u32> = Vec::with_capacity(records.len());
     for r in records {
@@ -179,7 +184,8 @@ impl<'a> Reader<'a> {
         self.take(2).map(|s| u16::from_le_bytes([s[0], s[1]]))
     }
     fn u32(&mut self) -> Option<u32> {
-        self.take(4).map(|s| u32::from_le_bytes([s[0], s[1], s[2], s[3]]))
+        self.take(4)
+            .map(|s| u32::from_le_bytes([s[0], s[1], s[2], s[3]]))
     }
     fn i32(&mut self) -> Option<i32> {
         self.u32().map(|v| v as i32)
@@ -214,7 +220,15 @@ fn parse_header(b: &[u8]) -> Result<(DbInfo, usize), String> {
     let record_count = r.u32().ok_or("truncated file")?;
     let generated_at = r.str16().ok_or("truncated file")?.to_string();
     let source = r.str16().ok_or("truncated file")?.to_string();
-    Ok((DbInfo { version, record_count, generated_at, source }, r.pos))
+    Ok((
+        DbInfo {
+            version,
+            record_count,
+            generated_at,
+            source,
+        },
+        r.pos,
+    ))
 }
 
 /// A loaded call-sign directory: the file's bytes plus an offset index, so
@@ -229,7 +243,11 @@ pub struct CallDb {
 // A derived Debug would print the whole file; show just the summary.
 impl std::fmt::Debug for CallDb {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CallDb({} records, {})", self.info.record_count, self.info.generated_at)
+        write!(
+            f,
+            "CallDb({} records, {})",
+            self.info.record_count, self.info.generated_at
+        )
     }
 }
 
@@ -245,19 +263,34 @@ impl CallDb {
             .chunks_exact(4)
             .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
             .collect();
-        Ok(CallDb { bytes, blob_start, offsets, info })
+        Ok(CallDb {
+            bytes,
+            blob_start,
+            offsets,
+            info,
+        })
     }
 
     fn call_at(&self, i: usize) -> Option<&str> {
-        let mut r = Reader { b: &self.bytes, pos: self.blob_start + *self.offsets.get(i)? as usize };
+        let mut r = Reader {
+            b: &self.bytes,
+            pos: self.blob_start + *self.offsets.get(i)? as usize,
+        };
         r.str8()
     }
 
     fn record_at(&self, i: usize) -> Option<CallRecord> {
-        let mut r = Reader { b: &self.bytes, pos: self.blob_start + *self.offsets.get(i)? as usize };
+        let mut r = Reader {
+            b: &self.bytes,
+            pos: self.blob_start + *self.offsets.get(i)? as usize,
+        };
         let call = r.str8()?.to_string();
         let name = r.str8()?.to_string();
-        let street = if self.info.version >= 2 { r.str8()?.to_string() } else { String::new() };
+        let street = if self.info.version >= 2 {
+            r.str8()?.to_string()
+        } else {
+            String::new()
+        };
         let city = r.str8()?.to_string();
         let state = std::str::from_utf8(r.take(2)?).ok()?.trim().to_string();
         let zip = match r.u32()? {
@@ -269,7 +302,15 @@ impl CallDb {
         } else {
             None
         };
-        Some(CallRecord { call, name, street, city, state, zip, coords })
+        Some(CallRecord {
+            call,
+            name,
+            street,
+            city,
+            state,
+            zip,
+            coords,
+        })
     }
 
     fn find(&self, key: &str) -> Option<CallRecord> {
@@ -322,7 +363,10 @@ pub fn load_file(path: &Path) -> Result<CallDb, String> {
 pub fn read_info(path: &Path) -> Option<DbInfo> {
     let file = std::fs::File::open(path).ok()?;
     let mut head = Vec::new();
-    GzDecoder::new(file).take(4096).read_to_end(&mut head).ok()?;
+    GzDecoder::new(file)
+        .take(4096)
+        .read_to_end(&mut head)
+        .ok()?;
     parse_header(&head).ok().map(|(i, _)| i)
 }
 
@@ -348,13 +392,19 @@ fn for_each_line<R: BufRead>(
     let mut consumed = 0u64;
     loop {
         buf.clear();
-        let n = reader.read_until(b'\n', &mut buf).map_err(|e| e.to_string())?;
+        let n = reader
+            .read_until(b'\n', &mut buf)
+            .map_err(|e| e.to_string())?;
         if n == 0 {
             return Ok(());
         }
         consumed += n as u64;
         let line: String = buf.iter().map(|&b| b as char).collect();
-        let fields: Vec<String> = line.trim_end_matches(['\r', '\n']).split('|').map(String::from).collect();
+        let fields: Vec<String> = line
+            .trim_end_matches(['\r', '\n'])
+            .split('|')
+            .map(String::from)
+            .collect();
         f(&fields, consumed);
     }
 }
@@ -394,7 +444,11 @@ fn build_name(first: &str, last: &str, entity: &str) -> String {
 
 fn is_ordinal(w: &str) -> bool {
     let digits = w.chars().take_while(|c| c.is_ascii_digit()).count();
-    digits > 0 && matches!(&w[digits..], "ST" | "ND" | "RD" | "TH" | "st" | "nd" | "rd" | "th")
+    digits > 0
+        && matches!(
+            &w[digits..],
+            "ST" | "ND" | "RD" | "TH" | "st" | "nd" | "rd" | "th"
+        )
 }
 
 /// The FCC's street lines are usually already mixed-case ("214 S. Main
@@ -408,7 +462,10 @@ fn tidy_street(s: &str) -> String {
     s.split(' ')
         .filter(|w| !w.is_empty())
         .map(|w| {
-            if matches!(w, "NE" | "NW" | "SE" | "SW" | "PO" | "PMB" | "II" | "III" | "IV") {
+            if matches!(
+                w,
+                "NE" | "NW" | "SE" | "SW" | "PO" | "PMB" | "II" | "III" | "IV"
+            ) {
                 w.to_string()
             } else if is_ordinal(w) {
                 w.to_lowercase()
@@ -457,7 +514,9 @@ pub fn parse_fcc<H: BufRead, E: BufRead>(
         }
     })?;
     if active.is_empty() {
-        return Err("The FCC data had no active licenses — the file's format may have changed.".into());
+        return Err(
+            "The FCC data had no active licenses — the file's format may have changed.".into(),
+        );
     }
 
     let mut by_call: HashMap<String, CallRecord> = HashMap::with_capacity(active.len());
@@ -481,8 +540,16 @@ pub fn parse_fcc<H: BufRead, E: BufRead>(
         if call.is_empty() || by_call.contains_key(&call) {
             return;
         }
-        let zip_digits: String = f[18].chars().take_while(|c| c.is_ascii_digit()).take(5).collect();
-        let zip = if zip_digits.len() == 5 { zip_digits } else { String::new() };
+        let zip_digits: String = f[18]
+            .chars()
+            .take_while(|c| c.is_ascii_digit())
+            .take(5)
+            .collect();
+        let zip = if zip_digits.len() == 5 {
+            zip_digits
+        } else {
+            String::new()
+        };
         by_call.insert(
             call.clone(),
             CallRecord {
@@ -544,14 +611,20 @@ pub async fn download_fcc(
     std::fs::create_dir_all(dir).map_err(|e| FetchError::Other(e.to_string()))?;
     let part = part_path(dir, service);
     let meta = meta_path(dir, service);
-    let client = net::client(CONNECT_TIMEOUT, None).map_err(|e| FetchError::Other(e.to_string()))?;
+    let client =
+        net::client(CONNECT_TIMEOUT, None).map_err(|e| FetchError::Other(e.to_string()))?;
 
     for attempt in 0..2 {
         let existing = std::fs::metadata(&part).map(|m| m.len()).unwrap_or(0);
-        let validator = std::fs::read_to_string(&meta).unwrap_or_default().trim().to_string();
+        let validator = std::fs::read_to_string(&meta)
+            .unwrap_or_default()
+            .trim()
+            .to_string();
         let mut req = client.get(url).header("User-Agent", USER_AGENT);
         if existing > 0 && !validator.is_empty() {
-            req = req.header("Range", format!("bytes={existing}-")).header("If-Range", validator);
+            req = req
+                .header("Range", format!("bytes={existing}-"))
+                .header("If-Range", validator);
         }
         let mut resp = tokio::time::timeout(stall, req.send())
             .await
@@ -581,7 +654,11 @@ pub async fn download_fcc(
                 let _ = std::fs::remove_file(&meta);
                 continue;
             }
-            code => return Err(FetchError::Other(format!("The FCC server returned HTTP {code}."))),
+            code => {
+                return Err(FetchError::Other(format!(
+                    "The FCC server returned HTTP {code}."
+                )))
+            }
         };
 
         let mut file = tokio::fs::OpenOptions::new()
@@ -619,54 +696,66 @@ pub async fn download_fcc(
                 }
                 Ok(Ok(None)) => break,
                 Ok(Ok(Some(chunk))) => {
-                    file.write_all(&chunk)
-                        .await
-                        .map_err(|e| FetchError::Other(format!("Couldn't write the download: {e}")))?;
+                    file.write_all(&chunk).await.map_err(|e| {
+                        FetchError::Other(format!("Couldn't write the download: {e}"))
+                    })?;
                     written += chunk.len() as u64;
                     progress(written, total.max(written));
                 }
             }
         }
-        file.flush().await.map_err(|e| FetchError::Other(e.to_string()))?;
+        file.flush()
+            .await
+            .map_err(|e| FetchError::Other(e.to_string()))?;
         if total > 0 && written < total {
             return Err(FetchError::Other(
-                "The download ended early — run the update again to pick up where it left off.".into(),
+                "The download ended early — run the update again to pick up where it left off."
+                    .into(),
             ));
         }
         let _ = std::fs::remove_file(&meta);
         return Ok(part);
     }
-    Err(FetchError::Other("The download couldn't be resumed — try again.".into()))
+    Err(FetchError::Other(
+        "The download couldn't be resumed — try again.".into(),
+    ))
 }
 
 /// Reads EN.dat and HD.dat out of the downloaded FCC zip and builds the
 /// finished, sorted record list.
-pub fn read_fcc_zip(zip_path: &Path, progress: impl FnMut(u64, u64)) -> Result<Vec<CallRecord>, String> {
+pub fn read_fcc_zip(
+    zip_path: &Path,
+    progress: impl FnMut(u64, u64),
+) -> Result<Vec<CallRecord>, String> {
     let mut progress = progress;
     let open = |name: &str| -> Result<Vec<u8>, String> {
         // HD.dat is only needed for its status column; read it whole (small
         // once reduced) but stream EN.dat.
         let file = std::fs::File::open(zip_path).map_err(|e| e.to_string())?;
-        let mut zip = zip::ZipArchive::new(file)
-            .map_err(|_| "The downloaded file wasn't a valid zip — try the update again.".to_string())?;
-        let mut entry = zip
-            .by_name(name)
-            .map_err(|_| format!("The FCC file didn't contain {name} — its format may have changed."))?;
+        let mut zip = zip::ZipArchive::new(file).map_err(|_| {
+            "The downloaded file wasn't a valid zip — try the update again.".to_string()
+        })?;
+        let mut entry = zip.by_name(name).map_err(|_| {
+            format!("The FCC file didn't contain {name} — its format may have changed.")
+        })?;
         let mut v = Vec::with_capacity(entry.size() as usize);
         entry.read_to_end(&mut v).map_err(|e| e.to_string())?;
         Ok(v)
     };
     let hd = open("HD.dat")?;
     let file = std::fs::File::open(zip_path).map_err(|e| e.to_string())?;
-    let mut zip = zip::ZipArchive::new(file)
-        .map_err(|_| "The downloaded file wasn't a valid zip — try the update again.".to_string())?;
-    let en_entry = zip
-        .by_name("EN.dat")
-        .map_err(|_| "The FCC file didn't contain EN.dat — its format may have changed.".to_string())?;
+    let mut zip = zip::ZipArchive::new(file).map_err(|_| {
+        "The downloaded file wasn't a valid zip — try the update again.".to_string()
+    })?;
+    let en_entry = zip.by_name("EN.dat").map_err(|_| {
+        "The FCC file didn't contain EN.dat — its format may have changed.".to_string()
+    })?;
     let en_size = en_entry.size();
-    parse_fcc(std::io::BufReader::new(&hd[..]), std::io::BufReader::new(en_entry), |done| {
-        progress(done, en_size)
-    })
+    parse_fcc(
+        std::io::BufReader::new(&hd[..]),
+        std::io::BufReader::new(en_entry),
+        |done| progress(done, en_size),
+    )
 }
 
 pub type ProgressFn = Arc<dyn Fn(&'static str, u64, u64) + Send + Sync>;
@@ -681,19 +770,27 @@ pub async fn build_and_install(
     cancelled: &(dyn Fn() -> bool + Sync),
 ) -> Result<CallDb, FetchError> {
     let p = progress.clone();
-    let zip_path =
-        download_fcc(service, url, dir, STALL_TIMEOUT, &move |d, t| p("downloading", d, t), cancelled).await?;
+    let zip_path = download_fcc(
+        service,
+        url,
+        dir,
+        STALL_TIMEOUT,
+        &move |d, t| p("downloading", d, t),
+        cancelled,
+    )
+    .await?;
 
     let p = progress.clone();
     let zp = zip_path.clone();
-    let records = tauri::async_runtime::spawn_blocking(move || read_fcc_zip(&zp, |d, t| p("reading", d, t)))
-        .await
-        .map_err(|e| FetchError::Other(e.to_string()))?
-        .map_err(|e| {
-            // A file that won't parse is useless to resume; clear it.
-            let _ = std::fs::remove_file(&zip_path);
-            FetchError::Other(e)
-        })?;
+    let records =
+        tauri::async_runtime::spawn_blocking(move || read_fcc_zip(&zp, |d, t| p("reading", d, t)))
+            .await
+            .map_err(|e| FetchError::Other(e.to_string()))?
+            .map_err(|e| {
+                // A file that won't parse is useless to resume; clear it.
+                let _ = std::fs::remove_file(&zip_path);
+                FetchError::Other(e)
+            })?;
 
     progress("saving", 0, 0);
     let dir = dir.to_path_buf();
@@ -746,7 +843,8 @@ mod tests {
 
     #[test]
     fn round_trips_and_looks_up() {
-        let db = CallDb::from_bytes(encode(&sample(), "2026-09-20T00:00:00Z", Service::Amateur)).unwrap();
+        let db = CallDb::from_bytes(encode(&sample(), "2026-09-20T00:00:00Z", Service::Amateur))
+            .unwrap();
         assert_eq!(db.info.record_count, 4);
         assert_eq!(db.info.generated_at, "2026-09-20T00:00:00Z");
         assert_eq!(db.lookup("W4TST").unwrap(), sample()[3]);
@@ -792,7 +890,10 @@ mod tests {
     fn corrupt_files_are_rejected_not_trusted() {
         assert!(CallDb::from_bytes(b"nonsense".to_vec()).is_err());
         let good = encode(&sample(), "t", Service::Amateur);
-        assert!(CallDb::from_bytes(good[..20].to_vec()).is_err(), "truncated");
+        assert!(
+            CallDb::from_bytes(good[..20].to_vec()).is_err(),
+            "truncated"
+        );
         let mut future = good.clone();
         future[8] = 99;
         assert!(CallDb::from_bytes(future).unwrap_err().contains("version"));
@@ -810,11 +911,21 @@ mod tests {
     fn saved_files_reload_and_report_their_info_quickly() {
         let dir = temp_dir("save");
         let path = dir.join(Service::Amateur.pack_file());
-        let size = save_file(&path, &encode(&sample(), "2026-01-02T03:04:05Z", Service::Amateur)).unwrap();
+        let size = save_file(
+            &path,
+            &encode(&sample(), "2026-01-02T03:04:05Z", Service::Amateur),
+        )
+        .unwrap();
         assert!(size > 0 && path.exists());
         let info = read_info(&path).unwrap();
-        assert_eq!((info.record_count, info.generated_at.as_str()), (4, "2026-01-02T03:04:05Z"));
-        assert_eq!(load_file(&path).unwrap().lookup("W1AW").unwrap().state, "CT");
+        assert_eq!(
+            (info.record_count, info.generated_at.as_str()),
+            (4, "2026-01-02T03:04:05Z")
+        );
+        assert_eq!(
+            load_file(&path).unwrap().lookup("W1AW").unwrap().state,
+            "CT"
+        );
         assert!(read_info(&dir.join("missing.gz")).is_none());
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -849,15 +960,32 @@ HD|5|||KC1TST|C
         let (hd, en) = fixture();
         let recs = parse_fcc(hd.as_bytes(), en.as_bytes(), |_| {}).unwrap();
         let calls: Vec<&str> = recs.iter().map(|r| r.call.as_str()).collect();
-        assert_eq!(calls, vec!["KC1TST", "W4ARC", "W4TST"], "expired, cancelled and contact rows dropped; sorted");
+        assert_eq!(
+            calls,
+            vec!["KC1TST", "W4ARC", "W4TST"],
+            "expired, cancelled and contact rows dropped; sorted"
+        );
         let tst = recs.iter().find(|r| r.call == "W4TST").unwrap();
-        assert_eq!((tst.name.as_str(), tst.city.as_str(), tst.state.as_str(), tst.zip.as_str()),
-                   ("Chris Tester", "Rivertown", "FL", "33055"));
+        assert_eq!(
+            (
+                tst.name.as_str(),
+                tst.city.as_str(),
+                tst.state.as_str(),
+                tst.zip.as_str()
+            ),
+            ("Chris Tester", "Rivertown", "FL", "33055")
+        );
         let club = recs.iter().find(|r| r.call == "W4ARC").unwrap();
-        assert_eq!(club.name, "Miami Amateur Radio Club", "clubs use the entity name");
+        assert_eq!(
+            club.name, "Miami Amateur Radio Club",
+            "clubs use the entity name"
+        );
         assert_eq!(club.zip, "33157", "ZIP+4 trimmed to five digits");
         let kc = recs.iter().find(|r| r.call == "KC1TST").unwrap();
-        assert_eq!(kc.city, "Fairview", "the active license's address, not the stale one");
+        assert_eq!(
+            kc.city, "Fairview",
+            "the active license's address, not the stale one"
+        );
         assert_eq!(kc.zip, "33199");
     }
 
@@ -867,7 +995,11 @@ HD|5|||KC1TST|C
         let recs = parse_fcc(hd.as_bytes(), en.as_bytes(), |_| {}).unwrap();
         let street = |c: &str| recs.iter().find(|r| r.call == c).unwrap().street.clone();
         assert_eq!(street("W4TST"), "1 Main St", "trimmed");
-        assert_eq!(street("KC1TST"), "4 Pine", "the active license's street, not the stale one");
+        assert_eq!(
+            street("KC1TST"),
+            "4 Pine",
+            "the active license's street, not the stale one"
+        );
         assert_eq!(street("W4ARC"), "3 Elm");
     }
 
@@ -889,23 +1021,42 @@ HD|5|||KC1TST|C
 
     #[test]
     fn street_casing_is_tidied_only_when_shouting() {
-        assert_eq!(tidy_street("214 S. Main St"), "214 S. Main St", "already fine: untouched");
+        assert_eq!(
+            tidy_street("214 S. Main St"),
+            "214 S. Main St",
+            "already fine: untouched"
+        );
         assert_eq!(tidy_street("15401 NW 33RD CT"), "15401 NW 33rd Ct");
         assert_eq!(tidy_street("1032 NE 35TH AVE"), "1032 NE 35th Ave");
         assert_eq!(tidy_street("PO BOX 298832"), "PO Box 298832");
-        assert_eq!(tidy_street("12321 SW 99TH ST APT 12A"), "12321 SW 99th St Apt 12A");
-        assert_eq!(tidy_street("100 MARTIN LUTHER KING JR BLVD"), "100 Martin Luther King Jr Blvd");
+        assert_eq!(
+            tidy_street("12321 SW 99TH ST APT 12A"),
+            "12321 SW 99th St Apt 12A"
+        );
+        assert_eq!(
+            tidy_street("100 MARTIN LUTHER KING JR BLVD"),
+            "100 Martin Luther King Jr Blvd"
+        );
     }
 
     #[test]
     fn files_from_before_street_addresses_still_load() {
         // A version-1 file (an earlier download) has no street field.
         let recs = sample();
-        let db = CallDb::from_bytes(encode_versioned(&recs, "2026-01-01T00:00:00Z", 1, Service::Amateur)).unwrap();
+        let db = CallDb::from_bytes(encode_versioned(
+            &recs,
+            "2026-01-01T00:00:00Z",
+            1,
+            Service::Amateur,
+        ))
+        .unwrap();
         assert_eq!(db.info.version, 1);
         let got = db.lookup("W4TST").unwrap();
         assert_eq!(got.street, "", "no street in an old file");
-        assert_eq!((got.name.as_str(), got.city.as_str(), got.zip.as_str()), ("Chris Tester", "Rivertown", "33055"));
+        assert_eq!(
+            (got.name.as_str(), got.city.as_str(), got.zip.as_str()),
+            ("Chris Tester", "Rivertown", "33055")
+        );
         let db2 = CallDb::from_bytes(encode(&recs, "t", Service::Amateur)).unwrap();
         assert_eq!(db2.info.version, 2);
         assert_eq!(db2.lookup("W4TST").unwrap().street, recs[3].street);
@@ -932,8 +1083,12 @@ HD|5|||KC1TST|C
 
     #[test]
     fn an_fcc_format_change_is_reported_not_swallowed() {
-        assert!(parse_fcc(&b""[..], &b""[..], |_| {}).unwrap_err().contains("no active licenses"));
-        assert!(parse_fcc(&b"HD|1|||A1B|A\n"[..], &b"garbage\n"[..], |_| {}).unwrap_err().contains("No licensee"));
+        assert!(parse_fcc(&b""[..], &b""[..], |_| {})
+            .unwrap_err()
+            .contains("no active licenses"));
+        assert!(parse_fcc(&b"HD|1|||A1B|A\n"[..], &b"garbage\n"[..], |_| {})
+            .unwrap_err()
+            .contains("No licensee"));
     }
 
     #[test]
@@ -948,7 +1103,8 @@ HD|5|||KC1TST|C
         use std::io::Write as _;
         let mut w = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
         for (name, body) in files {
-            w.start_file(*name, zip::write::SimpleFileOptions::default()).unwrap();
+            w.start_file(*name, zip::write::SimpleFileOptions::default())
+                .unwrap();
             w.write_all(body.as_bytes()).unwrap();
         }
         w.finish().unwrap().into_inner()
@@ -960,12 +1116,20 @@ HD|5|||KC1TST|C
         std::fs::create_dir_all(&dir).unwrap();
         let (hd, en) = fixture();
         let path = dir.join("l_amat.zip");
-        std::fs::write(&path, zip_with(&[("HD.dat", &hd), ("EN.dat", &en), ("AM.dat", "x")])).unwrap();
+        std::fs::write(
+            &path,
+            zip_with(&[("HD.dat", &hd), ("EN.dat", &en), ("AM.dat", "x")]),
+        )
+        .unwrap();
         assert_eq!(read_fcc_zip(&path, |_, _| {}).unwrap().len(), 3);
         std::fs::write(&path, zip_with(&[("HD.dat", &hd)])).unwrap();
-        assert!(read_fcc_zip(&path, |_, _| {}).unwrap_err().contains("EN.dat"));
+        assert!(read_fcc_zip(&path, |_, _| {})
+            .unwrap_err()
+            .contains("EN.dat"));
         std::fs::write(&path, b"this is not a zip").unwrap();
-        assert!(read_fcc_zip(&path, |_, _| {}).unwrap_err().contains("valid zip"));
+        assert!(read_fcc_zip(&path, |_, _| {})
+            .unwrap_err()
+            .contains("valid zip"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -983,7 +1147,13 @@ HD|5|||KC1TST|C
 
     impl Resp {
         fn ok(body: Vec<u8>, validator: &str) -> Resp {
-            Resp { status: "200 OK", headers: vec![("ETag", validator.to_string())], body, claim_len: None, hang: false }
+            Resp {
+                status: "200 OK",
+                headers: vec![("ETag", validator.to_string())],
+                body,
+                claim_len: None,
+                hang: false,
+            }
         }
     }
 
@@ -1003,7 +1173,11 @@ HD|5|||KC1TST|C
                     let n = sock.read(&mut buf).await.unwrap_or(0);
                     let req = String::from_utf8_lossy(&buf[..n]).to_string();
                     let r = handler(&req);
-                    let mut head = format!("HTTP/1.1 {}\r\nContent-Length: {}\r\nConnection: close\r\n", r.status, r.claim_len.unwrap_or(r.body.len()));
+                    let mut head = format!(
+                        "HTTP/1.1 {}\r\nContent-Length: {}\r\nConnection: close\r\n",
+                        r.status,
+                        r.claim_len.unwrap_or(r.body.len())
+                    );
                     for (k, v) in &r.headers {
                         head.push_str(&format!("{k}: {v}\r\n"));
                     }
@@ -1026,7 +1200,10 @@ HD|5|||KC1TST|C
 
     fn header_value(req: &str, name: &str) -> Option<String> {
         req.lines()
-            .find(|l| l.to_lowercase().starts_with(&format!("{}:", name.to_lowercase())))
+            .find(|l| {
+                l.to_lowercase()
+                    .starts_with(&format!("{}:", name.to_lowercase()))
+            })
             .map(|l| l.splitn(2, ':').nth(1).unwrap().trim().to_string())
     }
 
@@ -1035,7 +1212,15 @@ HD|5|||KC1TST|C
     }
 
     fn get(url: &str, dir: &Path, stall: Duration) -> Result<PathBuf, String> {
-        run(download_fcc(Service::Amateur, url, dir, stall, &|_, _| {}, &|| false)).map_err(|e| match e {
+        run(download_fcc(
+            Service::Amateur,
+            url,
+            dir,
+            stall,
+            &|_, _| {},
+            &|| false,
+        ))
+        .map_err(|e| match e {
             FetchError::Offline => "offline".into(),
             FetchError::Other(s) => s,
         })
@@ -1048,11 +1233,23 @@ HD|5|||KC1TST|C
         let d = data.clone();
         let url = run(serve(move |_| Resp::ok(d.clone(), "\"v1\"")));
         let seen = std::sync::Mutex::new(Vec::new());
-        let path = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|d, t| seen.lock().unwrap().push((d, t)), &|| false)).ok().unwrap();
+        let path = run(download_fcc(
+            Service::Amateur,
+            &url,
+            &dir,
+            Duration::from_secs(5),
+            &|d, t| seen.lock().unwrap().push((d, t)),
+            &|| false,
+        ))
+        .ok()
+        .unwrap();
         assert_eq!(std::fs::read(&path).unwrap(), data);
         let seen = seen.lock().unwrap();
         assert_eq!(seen.last().unwrap(), &(200_000, 200_000));
-        assert!(seen.windows(2).all(|w| w[0].0 <= w[1].0), "progress only moves forward");
+        assert!(
+            seen.windows(2).all(|w| w[0].0 <= w[1].0),
+            "progress only moves forward"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1077,7 +1274,11 @@ HD|5|||KC1TST|C
             }
         }));
         let path = get(&url, &dir, Duration::from_secs(5)).unwrap();
-        assert_eq!(std::fs::read(path).unwrap(), data, "second half appended to the first");
+        assert_eq!(
+            std::fs::read(path).unwrap(),
+            data,
+            "second half appended to the first"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1090,7 +1291,9 @@ HD|5|||KC1TST|C
         let data = payload();
         let d = data.clone();
         // The server ignores the stale If-Range and sends the new file whole.
-        let url = run(serve(move |_| Resp::ok(d.clone(), "\"this-weeks-version\"")));
+        let url = run(serve(move |_| {
+            Resp::ok(d.clone(), "\"this-weeks-version\"")
+        }));
         let path = get(&url, &dir, Duration::from_secs(5)).unwrap();
         assert_eq!(std::fs::read(path).unwrap(), data);
         let _ = std::fs::remove_dir_all(&dir);
@@ -1101,37 +1304,74 @@ HD|5|||KC1TST|C
         let dir = temp_dir("drop");
         let data = payload();
         let half = data[..90_000].to_vec();
-        let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![("ETag", "\"v1\"".into())], body: half.clone(), claim_len: Some(200_000), hang: false }));
+        let url = run(serve(move |_| Resp {
+            status: "200 OK",
+            headers: vec![("ETag", "\"v1\"".into())],
+            body: half.clone(),
+            claim_len: Some(200_000),
+            hang: false,
+        }));
         let err = get(&url, &dir, Duration::from_secs(5)).unwrap_err();
         assert!(err.contains("again"), "{err}");
-        assert_eq!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len(), 90_000, "progress kept");
-        assert_eq!(std::fs::read_to_string(meta_path(&dir, Service::Amateur)).unwrap(), "\"v1\"", "so it can resume the same version");
+        assert_eq!(
+            std::fs::metadata(part_path(&dir, Service::Amateur))
+                .unwrap()
+                .len(),
+            90_000,
+            "progress kept"
+        );
+        assert_eq!(
+            std::fs::read_to_string(meta_path(&dir, Service::Amateur)).unwrap(),
+            "\"v1\"",
+            "so it can resume the same version"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn a_stalled_connection_gives_up_instead_of_hanging() {
         let dir = temp_dir("stall");
-        let url = run(serve(|_| Resp { status: "200 OK", headers: vec![], body: vec![], claim_len: Some(1_000_000), hang: true }));
+        let url = run(serve(|_| Resp {
+            status: "200 OK",
+            headers: vec![],
+            body: vec![],
+            claim_len: Some(1_000_000),
+            hang: true,
+        }));
         let started = std::time::Instant::now();
         let err = get(&url, &dir, Duration::from_secs(1)).unwrap_err();
         assert!(err.contains("stalled"), "{err}");
-        assert!(started.elapsed() < Duration::from_secs(5), "took {:?}", started.elapsed());
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "took {:?}",
+            started.elapsed()
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn server_trouble_and_no_connection_are_explained() {
         let dir = temp_dir("err");
-        let url = run(serve(|_| Resp { status: "503 Service Unavailable", headers: vec![], body: b"busy".to_vec(), claim_len: None, hang: false }));
-        assert!(get(&url, &dir, Duration::from_secs(2)).unwrap_err().contains("HTTP 503"));
+        let url = run(serve(|_| Resp {
+            status: "503 Service Unavailable",
+            headers: vec![],
+            body: b"busy".to_vec(),
+            claim_len: None,
+            hang: false,
+        }));
+        assert!(get(&url, &dir, Duration::from_secs(2))
+            .unwrap_err()
+            .contains("HTTP 503"));
         let dead = run(async {
             let l = TcpListener::bind("127.0.0.1:0").await.unwrap();
             let u = format!("http://{}/x", l.local_addr().unwrap());
             drop(l);
             u
         });
-        assert_eq!(get(&dead, &dir, Duration::from_secs(2)).unwrap_err(), "offline");
+        assert_eq!(
+            get(&dead, &dir, Duration::from_secs(2)).unwrap_err(),
+            "offline"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1144,10 +1384,23 @@ HD|5|||KC1TST|C
         let h = hits.clone();
         let url = run(serve(move |_| {
             h.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Resp { status: "200 OK", headers: vec![], body: payload(), claim_len: None, hang: false }
+            Resp {
+                status: "200 OK",
+                headers: vec![],
+                body: payload(),
+                claim_len: None,
+                hang: false,
+            }
         }));
         crate::net::set_work_offline(true);
-        let result = run(download_fcc(Service::Amateur, &url, &dir, Duration::from_secs(5), &|_, _| {}, &|| false));
+        let result = run(download_fcc(
+            Service::Amateur,
+            &url,
+            &dir,
+            Duration::from_secs(5),
+            &|_, _| {},
+            &|| false,
+        ));
         crate::net::set_work_offline(false);
         assert!(matches!(result, Err(FetchError::Offline)));
         assert_eq!(hits.load(std::sync::atomic::Ordering::SeqCst), 0);
@@ -1157,7 +1410,13 @@ HD|5|||KC1TST|C
     #[test]
     fn going_offline_mid_download_stops_it_and_keeps_the_part_to_resume() {
         let dir = temp_dir("work-offline-mid");
-        let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![], body: payload(), claim_len: None, hang: false }));
+        let url = run(serve(move |_| Resp {
+            status: "200 OK",
+            headers: vec![],
+            body: payload(),
+            claim_len: None,
+            hang: false,
+        }));
         let result = run(download_fcc(
             Service::Amateur,
             &url,
@@ -1176,14 +1435,26 @@ HD|5|||KC1TST|C
             other => panic!("expected a stop, got ok={}", other.is_ok()),
         };
         assert!(err.contains("offline"), "{err}");
-        assert!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len() > 0, "partial kept");
+        assert!(
+            std::fs::metadata(part_path(&dir, Service::Amateur))
+                .unwrap()
+                .len()
+                > 0,
+            "partial kept"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn cancelling_stops_the_download_and_keeps_the_part_to_resume() {
         let dir = temp_dir("cancel");
-        let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![], body: payload(), claim_len: None, hang: false }));
+        let url = run(serve(move |_| Resp {
+            status: "200 OK",
+            headers: vec![],
+            body: payload(),
+            claim_len: None,
+            hang: false,
+        }));
         let cancelled = std::sync::atomic::AtomicBool::new(false);
         let result = run(download_fcc(
             Service::Amateur,
@@ -1201,7 +1472,13 @@ HD|5|||KC1TST|C
             Err(FetchError::Other(e)) => assert!(e.contains("Cancelled"), "{e}"),
             other => panic!("expected a cancel, got ok={}", other.is_ok()),
         }
-        assert!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len() > 0, "partial kept");
+        assert!(
+            std::fs::metadata(part_path(&dir, Service::Amateur))
+                .unwrap()
+                .len()
+                > 0,
+            "partial kept"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1209,18 +1486,34 @@ HD|5|||KC1TST|C
 
     #[test]
     fn each_service_has_its_own_files_and_the_amateur_names_are_unchanged() {
-        assert_eq!(Service::Amateur.pack_file(), "callsigns-us.bin.gz", "existing installs keep loading");
+        assert_eq!(
+            Service::Amateur.pack_file(),
+            "callsigns-us.bin.gz",
+            "existing installs keep loading"
+        );
         assert_ne!(Service::Gmrs.pack_file(), Service::Amateur.pack_file());
-        assert_ne!(part_path(Path::new("d"), Service::Gmrs), part_path(Path::new("d"), Service::Amateur));
-        assert_ne!(meta_path(Path::new("d"), Service::Gmrs), meta_path(Path::new("d"), Service::Amateur));
+        assert_ne!(
+            part_path(Path::new("d"), Service::Gmrs),
+            part_path(Path::new("d"), Service::Amateur)
+        );
+        assert_ne!(
+            meta_path(Path::new("d"), Service::Gmrs),
+            meta_path(Path::new("d"), Service::Amateur)
+        );
         assert!(Service::Gmrs.url().ends_with("/l_gmrs.zip"));
         assert!(Service::Amateur.url().ends_with("/l_amat.zip"));
     }
 
     #[test]
     fn services_are_named_as_the_interface_sends_them() {
-        assert_eq!(serde_json::from_str::<Service>("\"gmrs\"").unwrap(), Service::Gmrs);
-        assert_eq!(serde_json::from_str::<Service>("\"amateur\"").unwrap(), Service::Amateur);
+        assert_eq!(
+            serde_json::from_str::<Service>("\"gmrs\"").unwrap(),
+            Service::Gmrs
+        );
+        assert_eq!(
+            serde_json::from_str::<Service>("\"amateur\"").unwrap(),
+            Service::Amateur
+        );
         assert!(serde_json::from_str::<Service>("\"cb\"").is_err());
     }
 
@@ -1246,8 +1539,15 @@ HD|5|||KC1TST|C
         let calls: Vec<&str> = recs.iter().map(|r| r.call.as_str()).collect();
         assert_eq!(calls, vec!["KAE1234", "WRAB123"], "expired license dropped");
         let pat = &recs[1];
-        assert_eq!((pat.name.as_str(), pat.street.as_str(), pat.city.as_str(), pat.zip.as_str()),
-                   ("Pat Example", "1 Main St", "Roscommon", "48653"));
+        assert_eq!(
+            (
+                pat.name.as_str(),
+                pat.street.as_str(),
+                pat.city.as_str(),
+                pat.zip.as_str()
+            ),
+            ("Pat Example", "1 Main St", "Roscommon", "48653")
+        );
     }
 
     #[test]
@@ -1258,11 +1558,35 @@ HD|5|||KC1TST|C
         std::fs::write(meta_path(&dir, Service::Amateur), "\"amat-v1\"").unwrap();
         let data = payload();
         let body = data.clone();
-        let url = run(serve(move |_| Resp { status: "200 OK", headers: vec![], body: body.clone(), claim_len: None, hang: false }));
-        let path = run(download_fcc(Service::Gmrs, &url, &dir, Duration::from_secs(5), &|_, _| {}, &|| false)).ok().unwrap();
+        let url = run(serve(move |_| Resp {
+            status: "200 OK",
+            headers: vec![],
+            body: body.clone(),
+            claim_len: None,
+            hang: false,
+        }));
+        let path = run(download_fcc(
+            Service::Gmrs,
+            &url,
+            &dir,
+            Duration::from_secs(5),
+            &|_, _| {},
+            &|| false,
+        ))
+        .ok()
+        .unwrap();
         assert_eq!(std::fs::read(path).unwrap(), data);
-        assert_eq!(std::fs::metadata(part_path(&dir, Service::Amateur)).unwrap().len(), 1_000, "amateur partial kept");
-        assert_eq!(std::fs::read_to_string(meta_path(&dir, Service::Amateur)).unwrap(), "\"amat-v1\"");
+        assert_eq!(
+            std::fs::metadata(part_path(&dir, Service::Amateur))
+                .unwrap()
+                .len(),
+            1_000,
+            "amateur partial kept"
+        );
+        assert_eq!(
+            std::fs::read_to_string(meta_path(&dir, Service::Amateur)).unwrap(),
+            "\"amat-v1\""
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -1271,13 +1595,18 @@ HD|5|||KC1TST|C
     #[test]
     #[ignore]
     fn real_gmrs_zip() {
-        let path = std::env::var("ROC_GMRS_ZIP").expect("set ROC_GMRS_ZIP to a downloaded l_gmrs.zip");
+        let path =
+            std::env::var("ROC_GMRS_ZIP").expect("set ROC_GMRS_ZIP to a downloaded l_gmrs.zip");
         let records = read_fcc_zip(Path::new(&path), |_, _| {}).expect("read failed");
         let db = CallDb::from_bytes(encode(&records, "t", Service::Gmrs)).unwrap();
         println!("{} GMRS licensees", db.info.record_count);
         assert!(db.info.record_count > 300_000);
         let first = &records[0];
-        assert_eq!(db.lookup(&format!("{}/2", first.call)).as_ref(), Some(first), "unit suffix ignored");
+        assert_eq!(
+            db.lookup(&format!("{}/2", first.call)).as_ref(),
+            Some(first),
+            "unit suffix ignored"
+        );
     }
 
     // ---- against the real FCC (needs internet; run by hand) ----
@@ -1294,11 +1623,24 @@ HD|5|||KC1TST|C
                 println!("  {phase}: {} / {} MB", d / 1_000_000, t / 1_000_000);
             }
         });
-        let db = run(build_and_install(Service::Amateur, Service::Amateur.url(), &dir, progress, &|| false))
-            .ok()
-            .expect("update failed");
-        let size = std::fs::metadata(dir.join(Service::Amateur.pack_file())).unwrap().len();
-        println!("{} records, {:.1} MB on disk, {:.0}s total", db.info.record_count, size as f64 / 1e6, started.elapsed().as_secs_f32());
+        let db = run(build_and_install(
+            Service::Amateur,
+            Service::Amateur.url(),
+            &dir,
+            progress,
+            &|| false,
+        ))
+        .ok()
+        .expect("update failed");
+        let size = std::fs::metadata(dir.join(Service::Amateur.pack_file()))
+            .unwrap()
+            .len();
+        println!(
+            "{} records, {:.1} MB on disk, {:.0}s total",
+            db.info.record_count,
+            size as f64 / 1e6,
+            started.elapsed().as_secs_f32()
+        );
         for call in ["W1AW", "N0CALL"] {
             println!("  {call}: {:?}", db.lookup(call));
         }

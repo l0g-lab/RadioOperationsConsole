@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import * as api from "../../api";
-import type { Activity, ActivityTemplate, Operator } from "../../types";
+import type { Activity, ActivityTemplate, Operator, Repeater } from "../../types";
 import { formatCoords } from "../../geo";
 import LocationPicker from "../LocationPicker";
 import SaveTemplateBar from "./SaveTemplateBar";
 import ActivityTypeSelect from "./ActivityTypeSelect";
+import ActivityRepeaterField, { type ActivityRepeater } from "./ActivityRepeaterField";
 import { DEFAULT_ACTIVITY_TYPE, isLog, isRangeCheck } from "../../activityTypes";
 import { combineScheduledAt, todayIso } from "../../utils";
 import { CirclePlus } from "lucide-react";
@@ -20,6 +21,8 @@ interface Props {
   /** Set (to a template id) by the Templates panel's "Use template" button. */
   useTemplateRequest: string | null;
   onUseTemplateHandled: () => void;
+  /** The repeater directory, to pick from. */
+  repeaters: Repeater[];
 }
 
 export default function CreateActivityPanel({
@@ -32,6 +35,7 @@ export default function CreateActivityPanel({
   onTemplatesChanged,
   useTemplateRequest,
   onUseTemplateHandled,
+  repeaters,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const hasActivities = activities.length > 0;
@@ -56,10 +60,11 @@ export default function CreateActivityPanel({
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateMessage, setTemplateMessage] = useState<string | null>(null);
 
-  // A range check must be given the repeater's location: the operator's
-  // own doesn't stand in for it (RANGE-002).
+  // The repeater it runs on, apart from where net control is (RPT-021). A
+  // range check must have one (RANGE-002).
+  const [repeater, setRepeater] = useState<ActivityRepeater | null>(null);
   const rangeCheck = isRangeCheck(activityType);
-  const missingRepeater = rangeCheck && !location;
+  const missingRepeater = rangeCheck && !repeater;
 
   // The acting operator's own location: what the activity defaults to when
   // no location is chosen.
@@ -133,6 +138,7 @@ export default function CreateActivityPanel({
     setActivityTime("");
     setActivityFrequency("");
     setLocation(null);
+    setRepeater(null);
     setSavingTemplate(false);
     setTemplateMessage(null);
     setCollapsed(true);
@@ -147,12 +153,16 @@ export default function CreateActivityPanel({
       isLog(activityType) ? null : combineScheduledAt(activityDate, activityTime) || null,
       activityFrequency.trim() || null
     );
-    const where = rangeCheck ? location : (location ?? operatorLocation);
+    const where = location ?? operatorLocation;
     if (where) {
       // The activity exists either way; a failed location just leaves it unset.
       await api
         .setActivityLocationCoords(id, where.lat, where.lon, where.label || null)
         .catch(() => {});
+    }
+    if (repeater) {
+      // Likewise; a range check without one is refused check-ins until it's set.
+      await api.setActivityRepeater(id, repeater.name || null, repeater.lat, repeater.lon).catch(() => {});
     }
     onActivitiesChanged();
     onSelectActivity(id);
@@ -161,6 +171,7 @@ export default function CreateActivityPanel({
     setActivityTime("");
     setActivityFrequency("");
     setLocation(null);
+    setRepeater(null);
     setSavingTemplate(false);
     setTemplateMessage(null);
     setCollapsed(true);
@@ -237,7 +248,7 @@ export default function CreateActivityPanel({
           <button
             onClick={handleAddActivity}
             disabled={missingRepeater}
-            title={missingRepeater ? "Set the repeater location first" : undefined}
+            title={missingRepeater ? "Set the repeater first" : undefined}
           >
             Create activity
           </button>
@@ -245,16 +256,24 @@ export default function CreateActivityPanel({
         </div>
       )}
       {expanded && (
+        <ActivityRepeaterField
+          repeaters={repeaters}
+          value={repeater}
+          onChange={setRepeater}
+          onFrequency={setActivityFrequency}
+          required={rangeCheck}
+          title="Repeater — new activity"
+        />
+      )}
+      {expanded && (
         <div className="inline-form">
-          <span className={missingRepeater ? "weather-area-error" : "settings-hint"}>
-            {rangeCheck ? "Repeater location" : "Location"}:{" "}
+          <span className="settings-hint">
+            Net control location:{" "}
             {location ? (
               <strong>
                 {location.label ? `${location.label} — ` : ""}
                 {formatCoords(location.lat, location.lon)}
               </strong>
-            ) : rangeCheck ? (
-              "not set — a range check needs the repeater's location"
             ) : operatorLocation ? (
               <>
                 {operatorLocation.label} (the operator's location — used unless you choose another)
@@ -264,15 +283,9 @@ export default function CreateActivityPanel({
             )}
           </span>
           <button onClick={() => setShowPicker(true)}>
-            {location
-              ? rangeCheck
-                ? "Move repeater location"
-                : "Change location"
-              : rangeCheck
-                ? "Set repeater location"
-                : "Set location"}
+            {location ? "Change location" : "Set location"}
           </button>
-          {location && !rangeCheck && (
+          {location && (
             <button className="link-button" onClick={() => setLocation(null)}>
               Use the operator's location
             </button>
@@ -308,17 +321,16 @@ export default function CreateActivityPanel({
       )}
       {showPicker && (
         <LocationPicker
-          title={rangeCheck ? "Repeater location — new range check" : "Location — new activity"}
-          initialLat={location?.lat ?? (rangeCheck ? null : (operatorLocation?.lat ?? null))}
-          initialLon={location?.lon ?? (rangeCheck ? null : (operatorLocation?.lon ?? null))}
-          startAt={rangeCheck ? operatorLocation : null}
+          title="Net control location — new activity"
+          initialLat={location?.lat ?? operatorLocation?.lat ?? null}
+          initialLon={location?.lon ?? operatorLocation?.lon ?? null}
           initialLabel={location?.label ?? ""}
           onSave={(lat, lon, label) => {
             setLocation({ lat, lon, label });
             setShowPicker(false);
           }}
           onClear={
-            location && !rangeCheck
+            location
               ? () => {
                   setLocation(null);
                   setShowPicker(false);

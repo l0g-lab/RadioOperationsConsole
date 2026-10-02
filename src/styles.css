@@ -1880,3 +1880,87 @@ button.online-pill-working-offline:hover {
   user-select: all;
   overflow-wrap: anywhere;
 }
+
+/* ---- Repeater directory (RepeatersPanel.tsx) ---- */
+
+.repeater-list {
+  max-height: 420px;
+}
+
+.repeater-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.repeater-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.repeater-form label,
+.repeater-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.repeater-tone {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.repeater-mhz {
+  width: 9ch;
+  font-family: "Consolas", "Menlo", monospace;
+}
+
+.repeater-mode {
+  width: 12ch;
+}
+
+/* Repeater and net-control markers on the check-in map (RPT-030): an icon in
+   a round badge, so they never read as one of the check-in dots. */
+.map-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid;
+  background: var(--bg-panel);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.map-icon-repeater {
+  color: #ff8c1a;
+  border-color: #ff8c1a;
+}
+
+.map-icon-net-control {
+  color: #2b8cff;
+  border-color: #2b8cff;
+}
+
+.map-icon-legend {
+  width: 20px;
+  height: 20px;
+  border-width: 1.5px;
+  box-shadow: none;
+}
+
+.map-line-swatch {
+  display: inline-block;
+  width: 22px;
+  border-top: 3px solid;
+}
+
+.map-line-swatch-dashed {
+  border-top-style: dashed;
+  border-top-width: 2px;
+}

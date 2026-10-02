@@ -58,7 +58,7 @@ pub fn update_activity(
     let repo = state.repo.lock().unwrap();
     let before = repo.get_activity(&activity_id).map_err(|e| e.to_string())?;
     // RANGE-002
-    if range_check::is_range_check(activity_type.trim()) && before.location_lat.is_none() {
+    if range_check::is_range_check(activity_type.trim()) && before.repeater_lat.is_none() {
         return Err(range_check::REPEATER_REQUIRED.to_string());
     }
     repo.update_activity(
@@ -105,11 +105,6 @@ pub async fn set_activity_location(
 
     if trimmed.is_empty() {
         let repo = state.repo.lock().unwrap();
-        let activity = repo.get_activity(&activity_id).map_err(|e| e.to_string())?;
-        // RANGE-002
-        if range_check::is_range_check(&activity.activity_type) {
-            return Err(range_check::REPEATER_CANNOT_CLEAR.to_string());
-        }
         repo.set_activity_location(&activity_id, None, None, None)
             .map_err(|e| e.to_string())?;
         drop(repo);

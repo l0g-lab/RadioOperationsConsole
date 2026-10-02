@@ -23,21 +23,21 @@ pub fn create_spotter_report(
     let repo = state.repo.lock().unwrap();
     ensure_open(&repo, &activity_id)?;
     repo.create_spotter_report(
-            &activity_id,
-            &reported_at,
-            county.as_deref(),
-            location_text.as_deref(),
-            lat,
-            lon,
-            reporter.as_deref(),
-            &hazard_type,
-            magnitude.as_deref(),
-            source.as_deref(),
-            notes.as_deref(),
-            checkin_id.as_deref(),
-            operator_id.as_deref(),
-        )
-        .map_err(|e| e.to_string())
+        &activity_id,
+        &reported_at,
+        county.as_deref(),
+        location_text.as_deref(),
+        lat,
+        lon,
+        reporter.as_deref(),
+        &hazard_type,
+        magnitude.as_deref(),
+        source.as_deref(),
+        notes.as_deref(),
+        checkin_id.as_deref(),
+        operator_id.as_deref(),
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

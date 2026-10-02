@@ -27,6 +27,9 @@ const LOG: Activity = {
   opened_at: "",
   closed_at: "",
   conclusion: "",
+  repeater_name: "",
+  repeater_lat: null,
+  repeater_lon: null,
 };
 
 function contact(overrides: Partial<Checkin>): Checkin {

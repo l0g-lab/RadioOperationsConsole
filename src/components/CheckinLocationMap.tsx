@@ -1,21 +1,31 @@
 import { useEffect, useMemo, useRef } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
 import L from "leaflet";
 import type { Checkin } from "../types";
 import { haversineKm, formatDistance } from "../geo";
 import { BASEMAP_ATTRIBUTION, ZIP_ATTRIBUTION, createBaseMap } from "../map/baseMap";
 import { spreadDuplicates } from "../map/spreadDuplicates";
-import { MapPinned } from "lucide-react";
+import { MapPinned, Radio, RadioTower } from "lucide-react";
 import { SIGNAL_COLORS, SIGNAL_REPORTS, stationKindLabel } from "../rangeCheck";
+
+/** A labelled point: net control or the repeater. */
+interface Place {
+  lat: number;
+  lon: number;
+  label: string;
+}
 
 interface Props {
   checkins: Checkin[];
-  operatorLat: number | null;
-  operatorLon: number | null;
-  operatorLabel: string;
+  /** Where net control is: the activity's location, else the operator's. */
+  netControl: Place | null;
+  /** The repeater the activity runs on, if any (RPT-021). */
+  repeater?: Place | null;
   onClose: () => void;
   /**
-   * A range check: the reference point is the repeater, and each station is
-   * colored by how net control hears it, with a legend (RANGE-021).
+   * A range check: each station is colored by how net control hears it, with
+   * a legend (RANGE-021).
    */
   rangeCheck?: boolean;
 }
@@ -37,21 +47,48 @@ interface ResolvedPin {
 const CHECKIN_MARKER_RADIUS = 5;
 const CHECKIN_MARKER_COLOR = "#ff3b3b";
 const CHECKIN_MARKER_STROKE = "#7a0000";
-
-// Operator marker (CIMAP-061): same circle-marker style as check-ins, but a
-// distinct color, so it reads as "one of these dots" rather than an
-// unrelated icon.
-const OPERATOR_MARKER_RADIUS = 6;
 // Range-check stations are colored by signal, so a touch larger to read the color.
 const RANGE_MARKER_RADIUS = 7;
-const OPERATOR_MARKER_COLOR = "#2b8cff";
-const OPERATOR_MARKER_STROKE = "#0a3d7a";
 
-const DISTANCE_LINE_COLOR = "#7b2ff7";
+// Lines from the reference point (the repeater, else net control) to each
+// check-in, and from net control to the repeater, in different colors (RPT-031).
+const STATION_LINE_COLOR = "#7b2ff7";
+const LINK_LINE_COLOR = "#ff8c1a";
+
+/** An icon's SVG markup, rendered into a detached element. */
+function iconSvg(Icon: typeof Radio): string {
+  const holder = document.createElement("div");
+  const root = createRoot(holder);
+  flushSync(() => root.render(<Icon size={18} strokeWidth={2.25} aria-hidden />));
+  const svg = holder.innerHTML;
+  root.unmount();
+  return svg;
+}
+
+// Rendered once, when this module loads: flushSync can't render from inside
+// the map's effect, and react-dom/server would add ~80 kB for two icons.
+export const MARKER_SVG = {
+  repeater: iconSvg(RadioTower),
+  "net-control": iconSvg(Radio),
+};
+
+/**
+ * A map marker drawn from an icon, in a round badge so it stands apart from
+ * the check-in dots in both themes (RPT-030).
+ */
+function iconMarker(kind: "repeater" | "net-control"): L.DivIcon {
+  return L.divIcon({
+    className: `map-icon map-icon-${kind}`,
+    html: MARKER_SVG[kind],
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+    popupAnchor: [0, -14],
+  });
+}
 
 function popupContentFor(
   pin: ResolvedPin,
-  distanceKm: number | null,
+  distance: { km: number; to: string } | null,
   rangeCheck: boolean
 ): HTMLElement {
   const container = document.createElement("div");
@@ -59,40 +96,33 @@ function popupContentFor(
   callLine.textContent = pin.name ? `${pin.callSign} (${pin.name})` : pin.callSign;
   container.appendChild(callLine);
 
-  if (pin.label) {
-    const locLine = document.createElement("div");
-    locLine.textContent = pin.label;
-    container.appendChild(locLine);
-  }
-
   const line = (text: string) => {
     const el = document.createElement("div");
     el.textContent = text;
     container.appendChild(el);
   };
 
+  if (pin.label) line(pin.label);
   if (rangeCheck) {
     if (pin.weHear) line(`We hear them: ${pin.weHear}`);
     if (pin.theyHear) line(`They hear the repeater: ${pin.theyHear}`);
     const station = [pin.kind && stationKindLabel(pin.kind), pin.power].filter(Boolean).join(" · ");
     if (station) line(station);
   }
-
-  if (distanceKm != null) {
-    line(`Distance to ${rangeCheck ? "repeater" : "operator"}: ${formatDistance(distanceKm)}`);
-  }
-
+  if (distance) line(`Distance to ${distance.to}: ${formatDistance(distance.km)}`);
   return container;
 }
 
-function operatorPopupContent(label: string, rangeCheck: boolean): HTMLElement {
+function placePopupContent(title: string, label: string): HTMLElement {
   const container = document.createElement("div");
-  const title = document.createElement("strong");
-  title.textContent = rangeCheck ? "Repeater" : "Operator";
-  container.appendChild(title);
-  const labelLine = document.createElement("div");
-  labelLine.textContent = label;
-  container.appendChild(labelLine);
+  const heading = document.createElement("strong");
+  heading.textContent = title;
+  container.appendChild(heading);
+  if (label) {
+    const labelLine = document.createElement("div");
+    labelLine.textContent = label;
+    container.appendChild(labelLine);
+  }
   return container;
 }
 
@@ -106,17 +136,14 @@ function operatorPopupContent(label: string, rangeCheck: boolean): HTMLElement {
  */
 export default function CheckinLocationMap({
   checkins,
-  operatorLat,
-  operatorLon,
-  operatorLabel,
+  netControl,
+  repeater = null,
   onClose,
   rangeCheck = false,
 }: Props) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.Layer[]>([]);
-  const operatorMarkerRef = useRef<L.CircleMarker | null>(null);
-  const hasOperatorLocation = operatorLat != null && operatorLon != null;
+  const layersRef = useRef<L.Layer[]>([]);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -154,15 +181,21 @@ export default function CheckinLocationMap({
   }, [checkins, rangeCheck]);
 
   const unresolvedCount = checkins.length - pins.length;
+  // Distances and station lines run from the repeater when there is one (RPT-031).
+  const from = repeater ?? netControl;
+  const fromName = repeater ? "repeater" : "net control";
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-    operatorMarkerRef.current?.remove();
-    operatorMarkerRef.current = null;
+    layersRef.current.forEach((m) => m.remove());
+    layersRef.current = [];
+    const add = <T extends L.Layer>(layer: T) => {
+      layer.addTo(map);
+      layersRef.current.push(layer);
+      return layer;
+    };
 
     const plottedPins = spreadDuplicates(pins, (p) => p).map((s) => ({
       ...s.item,
@@ -171,57 +204,61 @@ export default function CheckinLocationMap({
     }));
 
     for (const pin of plottedPins) {
-      const distanceKm = hasOperatorLocation
-        ? haversineKm(pin.lat, pin.lon, operatorLat as number, operatorLon as number)
-        : null;
-
+      const distanceKm = from ? haversineKm(pin.lat, pin.lon, from.lat, from.lon) : null;
       const signal = rangeCheck ? SIGNAL_COLORS[pin.weHear] : undefined;
-      const marker = L.circleMarker([pin.lat, pin.lon], {
-        radius: rangeCheck ? RANGE_MARKER_RADIUS : CHECKIN_MARKER_RADIUS,
-        color: signal?.stroke ?? CHECKIN_MARKER_STROKE,
-        weight: 2,
-        fillColor: signal?.fill ?? CHECKIN_MARKER_COLOR,
-        fillOpacity: 0.9,
-      }).addTo(map);
-      marker.bindPopup(popupContentFor(pin, distanceKm, rangeCheck));
-      markersRef.current.push(marker);
 
-      if (hasOperatorLocation) {
-        const line = L.polyline(
-          [
-            [pin.lat, pin.lon],
-            [operatorLat as number, operatorLon as number],
-          ],
-          {
-            color: DISTANCE_LINE_COLOR,
-            weight: 2,
-            opacity: 0.85,
-            dashArray: "4,6",
-          }
-        ).addTo(map);
-        line.bindTooltip(formatDistance(distanceKm as number));
-        markersRef.current.push(line);
+      if (from && distanceKm != null) {
+        add(
+          L.polyline(
+            [
+              [from.lat, from.lon],
+              [pin.lat, pin.lon],
+            ],
+            { color: STATION_LINE_COLOR, weight: 2, opacity: 0.85, dashArray: "4,6" }
+          )
+        ).bindTooltip(formatDistance(distanceKm));
       }
+      add(
+        L.circleMarker([pin.lat, pin.lon], {
+          radius: rangeCheck ? RANGE_MARKER_RADIUS : CHECKIN_MARKER_RADIUS,
+          color: signal?.stroke ?? CHECKIN_MARKER_STROKE,
+          weight: 2,
+          fillColor: signal?.fill ?? CHECKIN_MARKER_COLOR,
+          fillOpacity: 0.9,
+        })
+      ).bindPopup(
+        popupContentFor(pin, distanceKm != null ? { km: distanceKm, to: fromName } : null, rangeCheck)
+      );
     }
 
-    if (hasOperatorLocation) {
-      const marker = L.circleMarker([operatorLat as number, operatorLon as number], {
-        radius: OPERATOR_MARKER_RADIUS,
-        color: OPERATOR_MARKER_STROKE,
-        weight: 2,
-        fillColor: OPERATOR_MARKER_COLOR,
-        fillOpacity: 0.9,
-      }).addTo(map);
-      marker.bindPopup(operatorPopupContent(operatorLabel, rangeCheck));
-      operatorMarkerRef.current = marker;
+    if (repeater && netControl) {
+      const km = haversineKm(netControl.lat, netControl.lon, repeater.lat, repeater.lon);
+      add(
+        L.polyline(
+          [
+            [netControl.lat, netControl.lon],
+            [repeater.lat, repeater.lon],
+          ],
+          { color: LINK_LINE_COLOR, weight: 3, opacity: 0.9 }
+        )
+      ).bindTooltip(`Net control to repeater: ${formatDistance(km)}`);
+    }
+    if (netControl) {
+      add(L.marker([netControl.lat, netControl.lon], { icon: iconMarker("net-control"), title: "Net control" }))
+        .bindPopup(placePopupContent("Net control", netControl.label));
+    }
+    if (repeater) {
+      add(L.marker([repeater.lat, repeater.lon], { icon: iconMarker("repeater"), title: "Repeater" }))
+        .bindPopup(placePopupContent("Repeater", repeater.label));
     }
 
     const boundsPoints: [number, number][] = plottedPins.map((p) => [p.lat, p.lon]);
-    if (hasOperatorLocation) boundsPoints.push([operatorLat as number, operatorLon as number]);
+    if (netControl) boundsPoints.push([netControl.lat, netControl.lon]);
+    if (repeater) boundsPoints.push([repeater.lat, repeater.lon]);
     if (boundsPoints.length > 0) {
       map.fitBounds(L.latLngBounds(boundsPoints).pad(0.2));
     }
-  }, [pins, hasOperatorLocation, operatorLat, operatorLon, operatorLabel, rangeCheck]);
+  }, [pins, netControl, repeater, from, fromName, rangeCheck]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -236,12 +273,12 @@ export default function CheckinLocationMap({
         <p className="leaflet-map-status">
           {pins.length} of {checkins.length} check-ins plotted
           {unresolvedCount > 0 && ` — ${unresolvedCount} without a resolvable location`}
-          {!hasOperatorLocation &&
-            (rangeCheck ? " — no repeater location set" : " — no operator location set")}
+          {rangeCheck && !repeater && " — no repeater set"}
+          {!rangeCheck && !from && " — no operator location set"}
         </p>
-        {rangeCheck && (
-          <ul className="range-map-legend" aria-label="How we hear them">
-            {SIGNAL_REPORTS.map((r) => (
+        <ul className="range-map-legend" aria-label="Map key">
+          {rangeCheck &&
+            SIGNAL_REPORTS.map((r) => (
               <li key={r}>
                 <span
                   className="range-map-swatch"
@@ -250,15 +287,35 @@ export default function CheckinLocationMap({
                 {r}
               </li>
             ))}
+          {repeater && (
             <li>
-              <span
-                className="range-map-swatch"
-                style={{ background: OPERATOR_MARKER_COLOR, borderColor: OPERATOR_MARKER_STROKE }}
-              />
+              <span className="map-icon map-icon-repeater map-icon-legend">
+                <RadioTower size={13} aria-hidden />
+              </span>
               Repeater
             </li>
-          </ul>
-        )}
+          )}
+          {netControl && (
+            <li>
+              <span className="map-icon map-icon-net-control map-icon-legend">
+                <Radio size={13} aria-hidden />
+              </span>
+              Net control
+            </li>
+          )}
+          {from && pins.length > 0 && (
+            <li>
+              <span className="map-line-swatch map-line-swatch-dashed" style={{ borderColor: STATION_LINE_COLOR }} />
+              Station to {fromName}
+            </li>
+          )}
+          {repeater && netControl && (
+            <li>
+              <span className="map-line-swatch" style={{ borderColor: LINK_LINE_COLOR }} />
+              Net control to repeater
+            </li>
+          )}
+        </ul>
         <div ref={mapContainerRef} className="leaflet-map-container" />
       </div>
     </div>

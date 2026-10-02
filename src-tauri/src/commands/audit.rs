@@ -14,18 +14,21 @@ pub fn create_audit_event(
     let repo = state.repo.lock().unwrap();
     // Log and traffic entries are ordinary records of an activity.
     if entity_type == "activity"
-        && matches!(action.as_str(), "activity_entry" | "traffic_item" | "traffic_marked_none" | "linked_report")
+        && matches!(
+            action.as_str(),
+            "activity_entry" | "traffic_item" | "traffic_marked_none" | "linked_report"
+        )
     {
         ensure_open(&repo, &entity_id)?;
     }
     repo.create_audit_event(
         &entity_type,
-            &entity_id,
-            &action,
-            data.as_deref(),
-            operator_id.as_deref(),
-        )
-        .map_err(|e| e.to_string())
+        &entity_id,
+        &action,
+        data.as_deref(),
+        operator_id.as_deref(),
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -157,14 +157,45 @@ pub fn locate(pack: &RoutePack, mile: f64) -> Option<(f64, f64)> {
     }
     let (lo, hi) = (&a[idx - 1], &a[idx]);
     let span = hi.mile - lo.mile;
-    let t = if span.abs() < 1e-9 { 0.0 } else { (mile - lo.mile) / span };
-    Some((lo.lat + (hi.lat - lo.lat) * t, lo.lon + (hi.lon - lo.lon) * t))
+    let t = if span.abs() < 1e-9 {
+        0.0
+    } else {
+        (mile - lo.mile) / span
+    };
+    Some((
+        lo.lat + (hi.lat - lo.lat) * t,
+        lo.lon + (hi.lon - lo.lon) * t,
+    ))
 }
 
 const STOPWORDS: &[&str] = &[
-    "on", "of", "at", "the", "hwy", "highway", "route", "rt", "road", "interstate", "northbound",
-    "southbound", "eastbound", "westbound", "nb", "sb", "eb", "wb", "near", "in", "along", "off",
-    "florida", "florida's", "fl", "state", "s",
+    "on",
+    "of",
+    "at",
+    "the",
+    "hwy",
+    "highway",
+    "route",
+    "rt",
+    "road",
+    "interstate",
+    "northbound",
+    "southbound",
+    "eastbound",
+    "westbound",
+    "nb",
+    "sb",
+    "eb",
+    "wb",
+    "near",
+    "in",
+    "along",
+    "off",
+    "florida",
+    "florida's",
+    "fl",
+    "state",
+    "s",
 ];
 
 /// Lowercases and splits into alphanumeric tokens, also splitting where
@@ -295,7 +326,13 @@ pub fn resolve(packs: &[RoutePack], text: &str) -> Option<MileMarkerHit> {
         RefKind::MileMarker => format!("{} MM {}", pack.name, format_mile(mile)),
         RefKind::Exit => format!("{} Exit {}", pack.name, format_mile(mile)),
     };
-    Some(MileMarkerHit { lat, lon, label, route_id: pack.id.clone(), mile })
+    Some(MileMarkerHit {
+        lat,
+        lon,
+        label,
+        route_id: pack.id.clone(),
+        mile,
+    })
 }
 
 #[cfg(test)]
@@ -312,16 +349,38 @@ mod tests {
             source: "test".into(),
             generated_at: "now".into(),
             anchors: (from..=to)
-                .map(|m| Anchor { mile: m as f64, lat: 25.0 + m as f64 * 0.014472, lon: -80.0 })
+                .map(|m| Anchor {
+                    mile: m as f64,
+                    lat: 25.0 + m as f64 * 0.014472,
+                    lon: -80.0,
+                })
                 .collect(),
         }
     }
 
     fn packs() -> Vec<RoutePack> {
         vec![
-            straight_pack("turnpike", "Florida's Turnpike", &["turnpike", "sr 91", "heft"], 1, 300),
-            straight_pack("i95", "I-95", &["i-95", "i 95", "interstate 95", "95"], 2, 380),
-            straight_pack("us1", "US-1", &["us-1", "us 1", "route 1", "1", "overseas highway"], 0, 127),
+            straight_pack(
+                "turnpike",
+                "Florida's Turnpike",
+                &["turnpike", "sr 91", "heft"],
+                1,
+                300,
+            ),
+            straight_pack(
+                "i95",
+                "I-95",
+                &["i-95", "i 95", "interstate 95", "95"],
+                2,
+                380,
+            ),
+            straight_pack(
+                "us1",
+                "US-1",
+                &["us-1", "us 1", "route 1", "1", "overseas highway"],
+                0,
+                127,
+            ),
         ]
     }
 
@@ -370,7 +429,11 @@ mod tests {
             ("mile marker 100 US1", "us1", 100.0),
             ("mile marker 100 on the Overseas Highway", "us1", 100.0),
             ("Mile Marker 12.5 on the Turnpike", "turnpike", 12.5),
-            ("mile marker 182 on Florida's Turnpike southbound", "turnpike", 182.0),
+            (
+                "mile marker 182 on Florida's Turnpike southbound",
+                "turnpike",
+                182.0,
+            ),
         ];
         for (text, route, mile) in cases {
             let hit = resolve(&packs(), text).unwrap_or_else(|| panic!("no hit for {text:?}"));
@@ -410,36 +473,74 @@ mod tests {
     #[test]
     fn cleaning_drops_a_stray_point_from_another_state() {
         let mut raw: Vec<Anchor> = (1..=20)
-            .map(|m| Anchor { mile: m as f64, lat: 25.0 + m as f64 * 0.0145, lon: -80.0 })
+            .map(|m| Anchor {
+                mile: m as f64,
+                lat: 25.0 + m as f64 * 0.0145,
+                lon: -80.0,
+            })
             .collect();
         // Mile 10 also has a candidate 400 miles away (a different road with
         // the same exit number).
-        raw.push(Anchor { mile: 10.0, lat: 30.6, lon: -83.2 });
+        raw.push(Anchor {
+            mile: 10.0,
+            lat: 30.6,
+            lon: -83.2,
+        });
         let clean = clean_anchors(raw);
         assert_eq!(clean.len(), 20);
         let ten = clean.iter().find(|a| a.mile == 10.0).unwrap();
-        assert!((ten.lat - (25.0 + 10.0 * 0.0145)).abs() < 1e-6, "kept the on-road cluster");
+        assert!(
+            (ten.lat - (25.0 + 10.0 * 0.0145)).abs() < 1e-6,
+            "kept the on-road cluster"
+        );
     }
 
     #[test]
     fn cleaning_averages_ramps_and_sorts() {
         let raw = vec![
-            Anchor { mile: 3.0, lat: 25.1, lon: -80.0 },
-            Anchor { mile: 1.0, lat: 25.0, lon: -80.001 },
-            Anchor { mile: 1.0, lat: 25.0, lon: -79.999 },
-            Anchor { mile: 2.0, lat: 25.05, lon: -80.0 },
+            Anchor {
+                mile: 3.0,
+                lat: 25.1,
+                lon: -80.0,
+            },
+            Anchor {
+                mile: 1.0,
+                lat: 25.0,
+                lon: -80.001,
+            },
+            Anchor {
+                mile: 1.0,
+                lat: 25.0,
+                lon: -79.999,
+            },
+            Anchor {
+                mile: 2.0,
+                lat: 25.05,
+                lon: -80.0,
+            },
         ];
         let clean = clean_anchors(raw);
-        assert_eq!(clean.iter().map(|a| a.mile).collect::<Vec<_>>(), vec![1.0, 2.0, 3.0]);
+        assert_eq!(
+            clean.iter().map(|a| a.mile).collect::<Vec<_>>(),
+            vec![1.0, 2.0, 3.0]
+        );
         assert!((clean[0].lon - -80.0).abs() < 1e-9);
     }
 
     #[test]
     fn cleaning_drops_a_bad_first_anchor() {
         let mut raw: Vec<Anchor> = (2..=12)
-            .map(|m| Anchor { mile: m as f64, lat: 25.0 + m as f64 * 0.0145, lon: -80.0 })
+            .map(|m| Anchor {
+                mile: m as f64,
+                lat: 25.0 + m as f64 * 0.0145,
+                lon: -80.0,
+            })
             .collect();
-        raw.push(Anchor { mile: 1.0, lat: 30.0, lon: -83.0 });
+        raw.push(Anchor {
+            mile: 1.0,
+            lat: 30.0,
+            lon: -83.0,
+        });
         let clean = clean_anchors(raw);
         assert_eq!(clean[0].mile, 2.0);
     }

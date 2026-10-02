@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
-import type { Activity, ActivityTemplate } from "../../types";
+import type { Activity, ActivityTemplate, Repeater } from "../../types";
 import SaveTemplateBar from "./SaveTemplateBar";
 import ActivitySummaryPanel from "./ActivitySummaryPanel";
 import ActivityTypeSelect from "./ActivityTypeSelect";
+import ActivityRepeaterField, { type ActivityRepeater } from "./ActivityRepeaterField";
 import { activityTypeLabel, isLog, isRangeCheck } from "../../activityTypes";
 import LocationPicker from "../LocationPicker";
 import DeleteActivityDialog from "../lifecycle/DeleteActivityDialog";
@@ -21,6 +22,8 @@ interface Props {
   onEditRequestHandled: () => void;
   templates: ActivityTemplate[];
   onTemplatesChanged: () => void;
+  /** The repeater directory, to pick from. */
+  repeaters: Repeater[];
 }
 
 /**
@@ -37,6 +40,7 @@ export default function SelectedActivityPanel({
   onEditRequestHandled,
   templates,
   onTemplatesChanged,
+  repeaters,
 }: Props) {
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [templateSavedName, setTemplateSavedName] = useState<string | null>(null);
@@ -53,16 +57,14 @@ export default function SelectedActivityPanel({
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   const [locationSectionOverride, setLocationSectionOverride] = useState<boolean | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+  const [editRepeater, setEditRepeater] = useState<ActivityRepeater | null>(null);
 
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
   // Collapsed by default (it's a rarely-needed override) unless a location is
   // already set for this activity, in which case show it so it isn't hidden.
-  // A range check's location is the repeater's, which it must have: always shown (RANGE-002, RANGE-003).
-  const rangeCheck = focusedActivity ? isRangeCheck(focusedActivity.activity_type) : false;
-  const hasLocation = focusedActivity?.location_lat != null;
-  const showLocationSection = rangeCheck || (locationSectionOverride ?? hasLocation);
-  // Changing to a range check needs the repeater's location first.
-  const editNeedsRepeater = isRangeCheck(editType) && !hasLocation;
+  const showLocationSection = locationSectionOverride ?? focusedActivity?.location_lat != null;
+  // A range check must have a repeater (RANGE-002).
+  const editNeedsRepeater = isRangeCheck(editType) && !editRepeater;
 
   useEffect(() => {
     setSavingTemplate(false);
@@ -96,6 +98,7 @@ export default function SelectedActivityPanel({
     setEditTime(time);
     setEditFrequency(focusedActivity.frequency);
     setEditError(null);
+    setEditRepeater(repeaterOf(focusedActivity));
     setEditingFocused(true);
     setArchivingFocused(false);
   }
@@ -115,7 +118,19 @@ export default function SelectedActivityPanel({
     if (!focusedActivity) return;
     const title = editTitle.trim();
     if (!title || editNeedsRepeater) return;
+    const before = repeaterOf(focusedActivity);
+    const changed = JSON.stringify(before) !== JSON.stringify(editRepeater);
     try {
+      // Set before the type changes, so a new range check already has one;
+      // cleared after, so a range check being changed away may lose it.
+      if (changed && editRepeater) {
+        await api.setActivityRepeater(
+          focusedActivity.id,
+          editRepeater.name || null,
+          editRepeater.lat,
+          editRepeater.lon
+        );
+      }
       await api.updateActivity(
         focusedActivity.id,
         title,
@@ -125,8 +140,12 @@ export default function SelectedActivityPanel({
         editFrequency.trim() || null,
         selectedOperatorId
       );
+      if (changed && !editRepeater) {
+        await api.setActivityRepeater(focusedActivity.id, null, null, null);
+      }
     } catch (e) {
       setEditError(String(e));
+      onActivitiesChanged();
       return;
     }
     setEditingFocused(false);
@@ -190,6 +209,9 @@ export default function SelectedActivityPanel({
               {activityTypeLabel(focusedActivity.activity_type)}
               {focusedActivity.scheduled_at ? ` · ${focusedActivity.scheduled_at}` : ""}
               {focusedActivity.frequency ? ` · ${focusedActivity.frequency}` : ""}
+              {focusedActivity.repeater_lat != null
+                ? ` · Repeater ${focusedActivity.repeater_name || formatCoordsWithGrid(focusedActivity.repeater_lat, focusedActivity.repeater_lon!)}`
+                : ""}
               {focusedActivity.location_lat != null && focusedActivity.location_lon != null
                 ? ` · ${formatCoordsWithGrid(focusedActivity.location_lat, focusedActivity.location_lon)}`
                 : ""}
@@ -229,30 +251,22 @@ export default function SelectedActivityPanel({
 
           <div className="location-subpanel">
             <div className="panel-header-row">
-              <h4>{rangeCheck ? "Repeater location" : "Location for this activity"}</h4>
-              {!rangeCheck && (
-                <button
-                  className="link-button"
-                  onClick={() => setLocationSectionOverride(!showLocationSection)}
-                >
-                  {showLocationSection ? "Hide" : "Set a different location"}
-                </button>
-              )}
+              <h4>Net control location</h4>
+              <button
+                className="link-button"
+                onClick={() => setLocationSectionOverride(!showLocationSection)}
+              >
+                {showLocationSection ? "Hide" : "Set a different location"}
+              </button>
             </div>
             {showLocationSection && (
               <>
-                {rangeCheck ? (
-                  <p className="settings-hint">
-                    Where the repeater is. Distances on the roster and map are measured from
-                    here.
-                  </p>
-                ) : (
-                  <p className="settings-hint">
-                    Where the operator is running this activity from — e.g. a field site or county
-                    EOC, if different from their usual location. Used on the check-in location map;
-                    falls back to the operator's own location (below) when unset.
-                  </p>
-                )}
+                <p className="settings-hint">
+                  Where the operator is running this activity from — e.g. a field site or county
+                  EOC, if different from their usual location. Used on the check-in location map;
+                  falls back to the operator's own location (below) when unset. The repeater is set
+                  separately, with Edit.
+                </p>
                 {activityLocationError && (
                   <p className="weather-area-error">{activityLocationError}</p>
                 )}
@@ -263,11 +277,6 @@ export default function SelectedActivityPanel({
                       focusedActivity.location_lat,
                       focusedActivity.location_lon
                     )}
-                  </p>
-                ) : rangeCheck ? (
-                  <p className="weather-area-error">
-                    Not set — a range check needs the repeater's location before taking
-                    check-ins.
                   </p>
                 ) : (
                   <p className="weather-area-status">
@@ -337,21 +346,23 @@ export default function SelectedActivityPanel({
           <button
             onClick={saveEditFocused}
             disabled={editNeedsRepeater}
-            title={editNeedsRepeater ? "Set the repeater location first" : undefined}
+            title={editNeedsRepeater ? "Set the repeater first" : undefined}
           >
             Save
           </button>
           <button onClick={cancelEditFocused}>Cancel</button>
-          {editNeedsRepeater && (
-            <span className="weather-area-error">
-              A range check needs the repeater's location.{" "}
-              <button className="link-button" onClick={() => setShowActivityPicker(true)}>
-                Set repeater location
-              </button>
-            </span>
-          )}
           {editError && <span className="weather-area-error">{editError}</span>}
         </div>
+      )}
+      {focusedActivity && editingFocused && (
+        <ActivityRepeaterField
+          repeaters={repeaters}
+          value={editRepeater}
+          onChange={setEditRepeater}
+          onFrequency={setEditFrequency}
+          required={isRangeCheck(editType)}
+          title={`Repeater — ${focusedActivity.title}`}
+        />
       )}
       {focusedActivity && archivingFocused && (
         <div className="inline-form confirm-row">
@@ -381,20 +392,22 @@ export default function SelectedActivityPanel({
 
       {showActivityPicker && focusedActivity && (
         <LocationPicker
-          title={`${rangeCheck || isRangeCheck(editType) ? "Repeater location" : "Location"} — ${focusedActivity.title}`}
+          title={`Net control location — ${focusedActivity.title}`}
           initialLat={focusedActivity.location_lat}
           initialLon={focusedActivity.location_lon}
           initialLabel={focusedActivity.location_label}
           onSave={handleSaveActivityPin}
-          onClear={
-            // A range check's repeater can be moved, never cleared (RANGE-002).
-            focusedActivity.location_lat != null && !rangeCheck
-              ? handleClearActivityLocation
-              : undefined
-          }
+          onClear={focusedActivity.location_lat != null ? handleClearActivityLocation : undefined}
           onClose={() => setShowActivityPicker(false)}
         />
       )}
     </div>
   );
+}
+
+/** An activity's repeater, if it has one. */
+function repeaterOf(a: Activity): ActivityRepeater | null {
+  return a.repeater_lat != null && a.repeater_lon != null
+    ? { name: a.repeater_name, lat: a.repeater_lat, lon: a.repeater_lon }
+    : null;
 }

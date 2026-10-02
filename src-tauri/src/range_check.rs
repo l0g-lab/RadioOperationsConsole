@@ -20,13 +20,13 @@ pub fn is_range_check(activity_type: &str) -> bool {
 }
 
 pub const NEEDS_REPEATER: &str =
-    "Set the repeater's location on this range check (Operations tab) before taking check-ins.";
+    "Set this range check's repeater (Operations tab) before taking check-ins.";
 
 pub const REPEATER_REQUIRED: &str =
-    "A range check needs the repeater's location. Set it before changing this activity to a range check.";
+    "A range check needs a repeater. Set this activity's repeater before changing it to a range check.";
 
 pub const REPEATER_CANNOT_CLEAR: &str =
-    "A range check needs the repeater's location. Move it instead of clearing it.";
+    "A range check needs a repeater. Move it instead of clearing it.";
 
 pub const POINT_CANNOT_CLEAR: &str =
     "A range-check check-in needs its point on the map. Move it instead of clearing it.";

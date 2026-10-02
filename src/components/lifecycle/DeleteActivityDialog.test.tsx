@@ -21,6 +21,9 @@ const activity: Activity = {
   opened_at: "",
   closed_at: "",
   conclusion: "",
+  repeater_name: "",
+  repeater_lat: null,
+  repeater_lon: null,
 };
 
 function renderDialog(onDeleted = vi.fn()) {

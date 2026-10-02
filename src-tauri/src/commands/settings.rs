@@ -10,7 +10,10 @@ pub fn get_settings(state: State<AppState>) -> AppSettings {
 /// working-offline choice, since the form holds a copy loaded earlier and
 /// that switch lives in the header (UX-025).
 fn for_save(current: &AppSettings, incoming: AppSettings) -> AppSettings {
-    AppSettings { work_offline: current.work_offline, ..incoming }
+    AppSettings {
+        work_offline: current.work_offline,
+        ..incoming
+    }
 }
 
 #[tauri::command]
@@ -42,11 +45,21 @@ mod tests {
 
     #[test]
     fn saving_settings_keeps_the_working_offline_choice() {
-        let current = AppSettings { work_offline: true, ..Default::default() };
-        let incoming = AppSettings { qrz_username: "me".into(), work_offline: false, ..Default::default() };
+        let current = AppSettings {
+            work_offline: true,
+            ..Default::default()
+        };
+        let incoming = AppSettings {
+            qrz_username: "me".into(),
+            work_offline: false,
+            ..Default::default()
+        };
         let merged = for_save(&current, incoming);
         assert_eq!(merged.qrz_username, "me");
-        assert!(merged.work_offline, "the Settings form's stale copy doesn't turn it off");
+        assert!(
+            merged.work_offline,
+            "the Settings form's stale copy doesn't turn it off"
+        );
     }
 
     #[test]

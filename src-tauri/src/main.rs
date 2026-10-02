@@ -9,6 +9,7 @@ mod datapacks;
 mod db;
 mod net;
 mod range_check;
+mod repeaters;
 mod repo;
 mod routes;
 mod storage;
@@ -61,6 +62,10 @@ fn main() {
             commands::set_activity_location_coords,
             commands::archive_activity,
             commands::restore_activity,
+            commands::list_repeaters,
+            commands::save_repeater,
+            commands::set_repeater_retired,
+            commands::set_activity_repeater,
             commands::create_checkin,
             commands::list_checkins,
             commands::station_history,

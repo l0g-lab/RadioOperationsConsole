@@ -15,14 +15,24 @@ pub fn list_operators(state: State<AppState>) -> Result<Vec<Operator>, String> {
 
 #[tauri::command]
 pub fn list_retired_operators(state: State<AppState>) -> Result<Vec<Operator>, String> {
-    state.repo.lock().unwrap().list_retired_operators().map_err(|e| e.to_string())
+    state
+        .repo
+        .lock()
+        .unwrap()
+        .list_retired_operators()
+        .map_err(|e| e.to_string())
 }
 
 /// Whether the operator is named on anything, which decides between delete
 /// and retire (AUDIT-012, AUDIT-013).
 #[tauri::command]
 pub fn operator_has_records(state: State<AppState>, operator_id: String) -> Result<bool, String> {
-    state.repo.lock().unwrap().operator_has_records(&operator_id).map_err(|e| e.to_string())
+    state
+        .repo
+        .lock()
+        .unwrap()
+        .operator_has_records(&operator_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -39,9 +49,16 @@ pub fn retire_operator(
     acting_operator_id: Option<String>,
 ) -> Result<(), String> {
     let repo = state.repo.lock().unwrap();
-    repo.retire_operator(&operator_id).map_err(|e| e.to_string())?;
-    repo.create_audit_event("operator", &operator_id, "retire", None, acting_operator_id.as_deref())
+    repo.retire_operator(&operator_id)
         .map_err(|e| e.to_string())?;
+    repo.create_audit_event(
+        "operator",
+        &operator_id,
+        "retire",
+        None,
+        acting_operator_id.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -52,9 +69,16 @@ pub fn restore_operator(
     acting_operator_id: Option<String>,
 ) -> Result<(), String> {
     let repo = state.repo.lock().unwrap();
-    repo.restore_operator(&operator_id).map_err(|e| e.to_string())?;
-    repo.create_audit_event("operator", &operator_id, "restore", None, acting_operator_id.as_deref())
+    repo.restore_operator(&operator_id)
         .map_err(|e| e.to_string())?;
+    repo.create_audit_event(
+        "operator",
+        &operator_id,
+        "restore",
+        None,
+        acting_operator_id.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 

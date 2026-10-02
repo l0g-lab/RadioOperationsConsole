@@ -41,25 +41,36 @@ export default function CheckinsTab({
   const rangeCheck = focusedActivity ? isRangeCheck(focusedActivity.activity_type) : false;
   const focusedOperator = operators.find((o) => o.id === selectedOperatorId) ?? null;
 
-  // A per-activity location (e.g. a field site) takes precedence over the
-  // operator's own default location for the check-in map's reference point
-  // (CIMAP-060), since an operator may run a given activity from somewhere
-  // other than their usual QTH.
-  // A range check measures from the repeater only, never the operator (RANGE-002).
-  const mapReferenceLocation =
+  // Net control: a per-activity location (e.g. a field site) takes
+  // precedence over the operator's own default location (CIMAP-060), since
+  // an operator may run a given activity from somewhere other than their
+  // usual QTH.
+  const netControl =
     focusedActivity?.location_lat != null && focusedActivity?.location_lon != null
       ? {
           lat: focusedActivity.location_lat,
           lon: focusedActivity.location_lon,
           label: focusedActivity.location_label || focusedActivity.title,
         }
-      : !rangeCheck && focusedOperator?.location_lat != null && focusedOperator?.location_lon != null
+      : focusedOperator?.location_lat != null && focusedOperator?.location_lon != null
         ? {
             lat: focusedOperator.location_lat,
             lon: focusedOperator.location_lon,
             label: focusedOperator.location_label || focusedOperator.display_name,
           }
         : null;
+  // The repeater it runs on, kept apart from net control (RPT-021).
+  const repeater =
+    focusedActivity?.repeater_lat != null && focusedActivity?.repeater_lon != null
+      ? {
+          lat: focusedActivity.repeater_lat,
+          lon: focusedActivity.repeater_lon,
+          label: focusedActivity.repeater_name || "the repeater",
+        }
+      : null;
+  // On a repeater, how far a station is from net control says little: the
+  // signal goes through the repeater, so measure from it (RPT-031).
+  const distanceFrom = repeater ?? netControl;
 
   function refreshCheckins() {
     if (!selectedActivityId) return Promise.resolve();
@@ -106,9 +117,15 @@ export default function CheckinsTab({
         {focusedActivity?.frequency && (
           <span className="checkin-context-frequency">Frequency: {focusedActivity.frequency}</span>
         )}
+        {repeater && (
+          <span className="checkin-context-frequency">
+            Repeater: {focusedActivity?.repeater_name && `${focusedActivity.repeater_name} — `}
+            {formatCoordsWithGrid(repeater.lat, repeater.lon)}
+          </span>
+        )}
         {focusedActivity?.location_lat != null && focusedActivity.location_lon != null && (
           <span className="checkin-context-frequency">
-            {rangeCheck ? "Repeater" : "Location"}: {focusedActivity.location_label && `${focusedActivity.location_label} — `}
+            Net control: {focusedActivity.location_label && `${focusedActivity.location_label} — `}
             {formatCoordsWithGrid(focusedActivity.location_lat, focusedActivity.location_lon)}
           </span>
         )}
@@ -129,10 +146,9 @@ export default function CheckinsTab({
         </p>
       )}
 
-      {focusedActivity && rangeCheck && !mapReferenceLocation && !closed && (
+      {focusedActivity && rangeCheck && !repeater && !closed && (
         <p className="weather-area-error" role="alert">
-          Set the repeater's location on this range check (Operations tab) before taking
-          check-ins.
+          Set this range check's repeater (Operations tab → Edit) before taking check-ins.
         </p>
       )}
 
@@ -152,7 +168,7 @@ export default function CheckinsTab({
               log={log}
               activityFrequency={focusedActivity.frequency}
               rangeCheck={rangeCheck}
-              repeater={mapReferenceLocation}
+              repeater={repeater}
             />
           )}
 
@@ -170,7 +186,7 @@ export default function CheckinsTab({
             onShowMap={() => setShowMap(true)}
             log={log}
             rangeCheck={rangeCheck}
-            distanceFrom={mapReferenceLocation}
+            distanceFrom={distanceFrom}
           />
         </>
       )}
@@ -178,9 +194,8 @@ export default function CheckinsTab({
       {showMap && (
         <CheckinLocationMap
           checkins={checkins}
-          operatorLat={mapReferenceLocation?.lat ?? null}
-          operatorLon={mapReferenceLocation?.lon ?? null}
-          operatorLabel={mapReferenceLocation?.label ?? ""}
+          netControl={netControl}
+          repeater={repeater}
           rangeCheck={rangeCheck}
           onClose={() => setShowMap(false)}
         />

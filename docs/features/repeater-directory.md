@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft — not yet implemented.
+Draft — implemented, except as listed under "Not yet built".
 
 ## Purpose
 
@@ -46,10 +46,10 @@ on, and for opening/closing scripts that read out frequency and tone.
   notes (coverage, linking, sponsor, hours).
 - **RPT-005:** Every repeater MUST have a one-line form used wherever it is
   shown and when it is copied onto an activity, for example
-  `146.940 −0.600 PL 100.0`, `444.500 +5.000 DCS 023N`, or
+  `146.940 -0.600 PL 100.0`, `444.500 +5.000 DCS 023N`, or
   `146.520 simplex`. The input tone is the one shown. When the output tone
   differs from the input tone, it is shown after it
-  (`PL 100.0 / out PL 123.0`).
+  (`PL 100.0 / out PL 123.0`). A mode other than FM is added at the end.
 
 ## Managing the directory
 
@@ -101,11 +101,11 @@ on, and for opening/closing scripts that read out frequency and tone.
 
 - Given the operator adds a repeater "W4ABC Orlando", output 146.940, offset
   minus 0.600, input tone PL 100.0, with a location
-  Then it is listed as `146.940 −0.600 PL 100.0`.
+  Then it is listed as `146.940 -0.600 PL 100.0`.
 
 - Given that repeater
   When the operator creates a range check and picks it as the frequency
-  Then the activity's frequency is `146.940 −0.600 PL 100.0`
+  Then the activity's frequency is `146.940 -0.600 PL 100.0`
   And its repeater is W4ABC Orlando at the repeater's location
   And its own location is still the operator's
   And Create is available without setting a repeater location separately.

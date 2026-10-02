@@ -20,6 +20,9 @@ function activity(activity_type: string, state: string): Activity {
     opened_at: "",
     closed_at: "",
     conclusion: "",
+    repeater_name: "",
+    repeater_lat: null,
+    repeater_lon: null,
   };
 }
 

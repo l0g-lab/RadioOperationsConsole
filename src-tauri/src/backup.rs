@@ -124,7 +124,11 @@ fn prune_safety_copies(dir: &Path, prefix: &str) {
 /// Replaces the live database's contents with the backup at `src`. The current
 /// contents are saved under `safety_dir` first; on success returns that copy's
 /// path. If anything fails before the copy starts, nothing has changed.
-pub fn restore_backup(live: &mut Connection, src: &Path, safety_dir: &Path) -> Result<PathBuf, String> {
+pub fn restore_backup(
+    live: &mut Connection,
+    src: &Path,
+    safety_dir: &Path,
+) -> Result<PathBuf, String> {
     inspect(src)?;
     if let Some(live_path) = live.path() {
         if same_file(Path::new(live_path), src) {
@@ -190,14 +194,16 @@ mod tests {
     #[test]
     fn backup_then_restore_brings_back_the_old_data() {
         let (mut r, _live_path) = repo();
-        r.create_activity("First Net", "weekly_net", Some("2026-01-01"), None).unwrap();
+        r.create_activity("First Net", "weekly_net", Some("2026-01-01"), None)
+            .unwrap();
 
         let file = temp("backup.db");
         let summary = create_backup(&r.conn, &file).unwrap();
         assert_eq!(summary.activities, 1);
 
         // Changes made after the backup...
-        r.create_activity("Second Net", "weekly_net", Some("2026-01-02"), None).unwrap();
+        r.create_activity("Second Net", "weekly_net", Some("2026-01-02"), None)
+            .unwrap();
         assert_eq!(count(&r.conn, "activities"), 2);
 
         // ...are undone by restoring, and a safety copy of them is kept.
@@ -206,7 +212,8 @@ mod tests {
         assert_eq!(count(&r.conn, "activities"), 1);
         assert_eq!(inspect(&safety).unwrap().activities, 2);
         // The live connection still works normally afterwards.
-        r.create_activity("Third Net", "weekly_net", Some("2026-01-03"), None).unwrap();
+        r.create_activity("Third Net", "weekly_net", Some("2026-01-03"), None)
+            .unwrap();
         assert_eq!(count(&r.conn, "activities"), 2);
     }
 
@@ -235,9 +242,14 @@ mod tests {
         assert!(inspect(&other).is_err());
 
         let (mut r, _) = repo();
-        r.create_activity("Keep me", "weekly_net", None, None).unwrap();
+        r.create_activity("Keep me", "weekly_net", None, None)
+            .unwrap();
         assert!(restore_backup(&mut r.conn, &junk, &temp("safety")).is_err());
-        assert_eq!(count(&r.conn, "activities"), 1, "a refused restore changes nothing");
+        assert_eq!(
+            count(&r.conn, "activities"),
+            1,
+            "a refused restore changes nothing"
+        );
     }
 
     #[test]
@@ -268,7 +280,11 @@ mod tests {
         let dir = temp("prune");
         std::fs::create_dir_all(&dir).unwrap();
         for i in 0..8 {
-            std::fs::write(dir.join(format!("before-restore-2026010{i}-000000.db")), b"x").unwrap();
+            std::fs::write(
+                dir.join(format!("before-restore-2026010{i}-000000.db")),
+                b"x",
+            )
+            .unwrap();
         }
         std::fs::write(dir.join("keep-me.txt"), b"x").unwrap();
         prune_safety_copies(&dir, "before-restore-");

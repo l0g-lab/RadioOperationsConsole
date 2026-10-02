@@ -1,10 +1,10 @@
+use crate::net::{client, is_offline_error, USER_AGENT};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::error::Error;
-use crate::net::{client, is_offline_error, USER_AGENT};
 use std::time::Duration;
 
 const QRZ_AGENT: &str = concat!("RadioOpsConsole", env!("CARGO_PKG_VERSION"));
@@ -312,7 +312,9 @@ fn qrz_info_from_fields(fields: &HashMap<String, String>) -> Option<QrzCallsignI
         let lat = fields.get("lat").and_then(|v| v.trim().parse::<f64>().ok());
         let lon = fields.get("lon").and_then(|v| v.trim().parse::<f64>().ok());
         match (lat, lon) {
-            (Some(lat), Some(lon)) if (-90.0..=90.0).contains(&lat) && (-180.0..=180.0).contains(&lon) => {
+            (Some(lat), Some(lon))
+                if (-90.0..=90.0).contains(&lat) && (-180.0..=180.0).contains(&lon) =>
+            {
                 (Some(lat), Some(lon))
             }
             _ => (None, None),
@@ -340,9 +342,18 @@ mod work_offline_tests {
     fn lookups_report_offline_without_trying_the_network() {
         crate::net::set_work_offline(true);
         use tauri::async_runtime::block_on;
-        assert!(matches!(block_on(qrz_login("u", "p")), QrzLoginOutcome::Offline));
-        assert!(matches!(block_on(qrz_lookup("key", "W1AW")), QrzLookupOutcome::Offline));
-        assert!(matches!(block_on(geocode_location("Orlando, FL")), GeocodeOutcome::Offline));
+        assert!(matches!(
+            block_on(qrz_login("u", "p")),
+            QrzLoginOutcome::Offline
+        ));
+        assert!(matches!(
+            block_on(qrz_lookup("key", "W1AW")),
+            QrzLookupOutcome::Offline
+        ));
+        assert!(matches!(
+            block_on(geocode_location("Orlando, FL")),
+            GeocodeOutcome::Offline
+        ));
         crate::net::set_work_offline(false);
     }
 }
@@ -355,7 +366,8 @@ mod qrz_tests {
         parse_flat_xml(xml)
     }
 
-    const BASE: &str = "<QRZDatabase><Callsign><call>W1AW</call><fname>Hiram</fname><name>Maxim</name>\
+    const BASE: &str =
+        "<QRZDatabase><Callsign><call>W1AW</call><fname>Hiram</fname><name>Maxim</name>\
         <addr1>225 Main St</addr1><addr2>Newington</addr2><state>CT</state><zip>06111</zip>\
         <country>United States</country><grid>FN31pr</grid>";
 
@@ -370,8 +382,13 @@ mod qrz_tests {
 
     #[test]
     fn user_supplied_coordinates_are_exact_too() {
-        let xml = format!("{BASE}<lat>41.7</lat><lon>-72.7</lon><geoloc>user</geoloc></Callsign></QRZDatabase>");
-        assert!(qrz_info_from_fields(&fields(&xml)).unwrap().exact_lat.is_some());
+        let xml = format!(
+            "{BASE}<lat>41.7</lat><lon>-72.7</lon><geoloc>user</geoloc></Callsign></QRZDatabase>"
+        );
+        assert!(qrz_info_from_fields(&fields(&xml))
+            .unwrap()
+            .exact_lat
+            .is_some());
     }
 
     #[test]
@@ -379,7 +396,10 @@ mod qrz_tests {
         for src in ["grid", "zip", "state", "dxcc", "none"] {
             let xml = format!("{BASE}<lat>41.7</lat><lon>-72.7</lon><geoloc>{src}</geoloc></Callsign></QRZDatabase>");
             let info = qrz_info_from_fields(&fields(&xml)).unwrap();
-            assert!(info.exact_lat.is_none() && info.exact_lon.is_none(), "{src}");
+            assert!(
+                info.exact_lat.is_none() && info.exact_lon.is_none(),
+                "{src}"
+            );
             assert_eq!(info.geoloc.as_deref(), Some(src));
         }
     }
@@ -387,11 +407,22 @@ mod qrz_tests {
     #[test]
     fn missing_or_bad_coordinates_yield_none() {
         let no_coords = format!("{BASE}<geoloc>geocode</geoloc></Callsign></QRZDatabase>");
-        assert!(qrz_info_from_fields(&fields(&no_coords)).unwrap().exact_lat.is_none());
-        let junk = format!("{BASE}<lat>abc</lat><lon>-72.7</lon><geoloc>geocode</geoloc></Callsign></QRZDatabase>");
-        assert!(qrz_info_from_fields(&fields(&junk)).unwrap().exact_lat.is_none());
+        assert!(qrz_info_from_fields(&fields(&no_coords))
+            .unwrap()
+            .exact_lat
+            .is_none());
+        let junk = format!(
+            "{BASE}<lat>abc</lat><lon>-72.7</lon><geoloc>geocode</geoloc></Callsign></QRZDatabase>"
+        );
+        assert!(qrz_info_from_fields(&fields(&junk))
+            .unwrap()
+            .exact_lat
+            .is_none());
         let out_of_range = format!("{BASE}<lat>141.7</lat><lon>-72.7</lon><geoloc>geocode</geoloc></Callsign></QRZDatabase>");
-        assert!(qrz_info_from_fields(&fields(&out_of_range)).unwrap().exact_lat.is_none());
+        assert!(qrz_info_from_fields(&fields(&out_of_range))
+            .unwrap()
+            .exact_lat
+            .is_none());
     }
 
     #[test]

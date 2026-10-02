@@ -205,6 +205,10 @@ export function checkinsToJson(activity: Activity | null, checkins: Checkin[]): 
         activity_type: activity.activity_type,
         scheduled_at: activity.scheduled_at,
         frequency: activity.frequency,
+        repeater:
+          activity.repeater_lat != null
+            ? { name: activity.repeater_name, lat: activity.repeater_lat, lon: activity.repeater_lon }
+            : null,
       },
       checkins: checkins.map(checkinRecord),
     },

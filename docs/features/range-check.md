@@ -32,14 +32,16 @@ any of it.
 - **RANGE-001:** There MUST be a "Range check" activity type, selectable
   wherever a type is chosen. It is a net: it has a date, a time, Start and
   End.
-- **RANGE-002:** A range check MUST have the repeater's location. Creating
-  one MUST require a location to be chosen; the operator's own location MUST
-  NOT stand in for it. Changing an activity to a range check MUST be refused
-  while it has no location, and a range check's location MUST NOT be
-  cleared, only moved. Check-ins MUST be refused while a range check has no
-  location (for example, one created when setting the location failed).
-- **RANGE-003:** Wherever the activity's location is shown or set for a range
-  check, it MUST be called the repeater location.
+- **RANGE-002:** A range check MUST have a repeater with a location
+  ([repeater-directory.md](repeater-directory.md), `RPT-021`–`023`), picked
+  from the directory or placed by hand. Creating one MUST require it; the
+  activity's own location, which is net control's, MUST NOT stand in for it.
+  Changing an activity to a range check MUST be refused while it has no
+  repeater, and a range check's repeater MUST NOT be cleared, only moved.
+  Check-ins MUST be refused while a range check has no repeater (for
+  example, one created when setting the repeater failed).
+- **RANGE-003:** Distances and the map's lines for a range check MUST be
+  measured from the repeater (`RPT-031`).
 
 ## Check-ins
 
@@ -90,7 +92,7 @@ any of it.
 
 ## Acceptance examples
 
-- Given a range check whose repeater location is set
+- Given a range check whose repeater is set
   When the operator enters KD4ABC, cross street "Colonial & Mills", picks the
   point on the map, chooses Mobile, 50 W, "Full quieting" and "Slight noise"
   Then the check-in saves and the form starts blank for the next station.
@@ -100,5 +102,6 @@ any of it.
   Then the save is refused, saying antenna is still needed, and nothing typed
   is lost.
 
-- Given an operator creating a range check without choosing a location
-  Then Create is unavailable until the repeater location is set.
+- Given an operator creating a range check without choosing a repeater
+  Then Create is unavailable until the repeater is set
+  And net control's location is still the operator's.

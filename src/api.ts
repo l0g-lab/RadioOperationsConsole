@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   Activity,
+  Repeater,
+  RepeaterDetails,
   HistoryEvent,
   ActivitySummary,
   DeletedCounts,
@@ -190,6 +192,27 @@ export const activityDeletePreview = (activity_id: string) =>
 
 export const deleteActivity = (activity_id: string, operator_id: string | null) =>
   invoke<DeletedCounts>("delete_activity", { activityId: activity_id, operatorId: operator_id });
+
+// Repeater directory (repeater-directory.md).
+export const listRepeaters = (retired = false) => invoke<Repeater[]>("list_repeaters", { retired });
+
+/** Adds a repeater, or with an id replaces its details. Returns its id. */
+export const saveRepeater = (
+  repeater_id: string | null,
+  details: RepeaterDetails,
+  operator_id: string | null
+) => invoke<string>("save_repeater", { repeaterId: repeater_id, details, operatorId: operator_id });
+
+export const setRepeaterRetired = (repeater_id: string, retired: boolean, operator_id: string | null) =>
+  invoke<void>("set_repeater_retired", { repeaterId: repeater_id, retired, operatorId: operator_id });
+
+/** Sets the activity's repeater, or clears it with no point. */
+export const setActivityRepeater = (
+  activity_id: string,
+  name: string | null,
+  lat: number | null,
+  lon: number | null
+) => invoke<Activity>("set_activity_repeater", { activityId: activity_id, name, lat, lon });
 
 export const createCheckin = (
   activity_id: string,

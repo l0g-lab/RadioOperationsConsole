@@ -43,8 +43,11 @@ pub const WORKING_OFFLINE_MESSAGE: &str =
 /// the real release without anyone remembering to update it.
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub const USER_AGENT: &str =
-    concat!("RadioOperationsConsole/", env!("CARGO_PKG_VERSION"), " (amateur-radio net logger)");
+pub const USER_AGENT: &str = concat!(
+    "RadioOperationsConsole/",
+    env!("CARGO_PKG_VERSION"),
+    " (amateur-radio net logger)"
+);
 
 /// Why a download-style request failed. `Offline` means "no connection", which
 /// callers turn into the friendly offline message rather than an error.
@@ -73,7 +76,10 @@ pub fn map_send_error(e: reqwest::Error, timeout_message: &str) -> FetchError {
 
 /// A client that fails fast when offline. `request_timeout` is omitted for
 /// large downloads, which are guarded by a stall timeout instead.
-pub fn client(connect: Duration, request_timeout: Option<Duration>) -> reqwest::Result<reqwest::Client> {
+pub fn client(
+    connect: Duration,
+    request_timeout: Option<Duration>,
+) -> reqwest::Result<reqwest::Client> {
     let mut b = reqwest::Client::builder().connect_timeout(connect);
     if let Some(t) = request_timeout {
         b = b.timeout(t);
@@ -88,7 +94,10 @@ mod tests {
     #[test]
     fn identifies_as_this_release() {
         let version = env!("CARGO_PKG_VERSION");
-        assert_eq!(USER_AGENT, format!("RadioOperationsConsole/{version} (amateur-radio net logger)"));
+        assert_eq!(
+            USER_AGENT,
+            format!("RadioOperationsConsole/{version} (amateur-radio net logger)")
+        );
         assert_eq!(APP_VERSION, version);
     }
 
