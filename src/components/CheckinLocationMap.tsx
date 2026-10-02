@@ -59,7 +59,7 @@ const LINK_LINE_COLOR = "#ff8c1a";
 function iconSvg(Icon: typeof Radio): string {
   const holder = document.createElement("div");
   const root = createRoot(holder);
-  flushSync(() => root.render(<Icon size={18} strokeWidth={2.25} aria-hidden />));
+  flushSync(() => root.render(<Icon size={13} strokeWidth={2.25} aria-hidden />));
   const svg = holder.innerHTML;
   root.unmount();
   return svg;
@@ -80,9 +80,9 @@ function iconMarker(kind: "repeater" | "net-control"): L.DivIcon {
   return L.divIcon({
     className: `map-icon map-icon-${kind}`,
     html: MARKER_SVG[kind],
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
-    popupAnchor: [0, -14],
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
+    popupAnchor: [0, -10],
   });
 }
 
@@ -290,7 +290,7 @@ export default function CheckinLocationMap({
           {repeater && (
             <li>
               <span className="map-icon map-icon-repeater map-icon-legend">
-                <RadioTower size={13} aria-hidden />
+                <RadioTower size={10} aria-hidden />
               </span>
               Repeater
             </li>
@@ -298,7 +298,7 @@ export default function CheckinLocationMap({
           {netControl && (
             <li>
               <span className="map-icon map-icon-net-control map-icon-legend">
-                <Radio size={13} aria-hidden />
+                <Radio size={10} aria-hidden />
               </span>
               Net control
             </li>
