@@ -42,8 +42,9 @@ const FILES = [
   },
   {
     file: "src-tauri/Cargo.lock",
-    get: (s) => s.match(/name = "radio_ops_console"\nversion = "([^"]+)"/)?.[1],
-    set: (s, v) => s.replace(/(name = "radio_ops_console"\nversion = ")[^"]+(")/, `$1${v}$2`),
+    // \r?\n: a Windows checkout may have Windows line endings.
+    get: (s) => s.match(/name = "radio_ops_console"\r?\nversion = "([^"]+)"/)?.[1],
+    set: (s, v) => s.replace(/(name = "radio_ops_console"\r?\nversion = ")[^"]+(")/, `$1${v}$2`),
   },
   {
     file: "src-tauri/tauri.conf.json",
