@@ -24,7 +24,7 @@ Creates objectives and injects, separates simulated facts from real-world events
 
 ### Administrator
 
-Configures the organization, operators, channels, templates, coverage areas, credentials, backup policy, and supported integrations.
+Configures the organization, operators, repeaters, coverage areas, credentials, backup policy, and supported integrations.
 
 ## Trusted workstation model
 

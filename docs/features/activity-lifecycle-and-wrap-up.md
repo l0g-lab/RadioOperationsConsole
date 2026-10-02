@@ -132,8 +132,8 @@ type-driven tab visibility (`TEMPLATE-005`, `TEMPLATE-006`).
 ## Not yet built
 
 - `draft` and `suspended` states.
-- Opening and closing scripts, and a closeout checklist, supplied by activity
-  templates.
+- Opening and closing scripts (planned with net listings), and a closeout
+  checklist supplied by the activity type.
 - Guarding location changes on closed check-ins.
 
 ## Acceptance examples

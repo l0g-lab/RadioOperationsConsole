@@ -38,7 +38,6 @@ reading_order:
   - docs/features/location-resolution.md
   - docs/features/mile-marker-lookup.md
   - docs/features/offline-callsign-directory.md
-  - docs/features/activity-templates.md
   - docs/features/database-backup-restore.md
   - docs/features/display-preferences.md
   - docs/features/local-storage.md
@@ -78,7 +77,7 @@ id_prefixes:
   LOCRES: docs/features/location-resolution.md
   MILE: docs/features/mile-marker-lookup.md
   CALLDIR: docs/features/offline-callsign-directory.md
-  ACTTPL: docs/features/activity-templates.md
+  # ACTTPL: retired; activity templates were removed (do not reuse).
   BACKUP: docs/features/database-backup-restore.md
   PREF: docs/features/display-preferences.md
   STORE: docs/features/local-storage.md
@@ -166,10 +165,6 @@ documents:
     path: docs/features/offline-callsign-directory.md
     status: draft
     depends_on: [SCOPE, FEATURE_QRZ, FEATURE_LOCRES]
-  - id: FEATURE_ACTTPL
-    path: docs/features/activity-templates.md
-    status: draft
-    depends_on: [EVENTS, UX, FEATURE_WEEKLY_NET, FEATURE_LOCRES]
   - id: FEATURE_BACKUP
     path: docs/features/database-backup-restore.md
     status: draft

@@ -17,7 +17,7 @@ Initial primary tabs:
 
 Traffic is recorded on the check-in it came from (`NETOPS-050`–`056`) rather than in a tab of its own.
 
-Templates may hide, deemphasize, or badge tabs. The order and meaning of core tabs remain stable so operators do not relearn navigation between activities.
+Activity types may hide, deemphasize, or badge tabs. The order and meaning of core tabs remain stable so operators do not relearn navigation between activities.
 
 ## Persistent header
 
@@ -42,7 +42,7 @@ The header displays:
 
 - **UX-001:** The shell MUST open without requiring internet access.
 - **UX-002:** The operator MUST be able to change tabs without losing unsaved form data.
-- **UX-003:** Tabs irrelevant to the active template MAY be hidden, but the activity configuration MUST reveal what is hidden.
+- **UX-003:** Tabs irrelevant to the activity's type MAY be hidden, but the activity configuration MUST reveal what is hidden.
 - **UX-004:** A global activity switcher MUST list open activities and visually identify their states.
 - **UX-005:** Switching focused activity MUST preserve per-activity tab and filter state.
 - **UX-006:** The interface MUST distinguish global settings/history from records belonging to the focused activity.
@@ -148,9 +148,9 @@ profiles — happens in the tab's main content, not the sidebar.
 - **UX-OPS-008:** The header MUST show the focused activity's type next to
   its state.
 - **UX-OPS-006:** The create-activity form MUST allow choosing a start time,
-  frequency, and location, and MUST offer saved activity templates
-  ([features/activity-templates.md](features/activity-templates.md)). The
-  Operations tab MUST also list those templates for editing and deletion.
+  frequency, net control's location, and a repeater from the directory
+  ([features/repeater-directory.md](features/repeater-directory.md)). The
+  Operations tab MUST also list the repeater directory for editing.
 
 ## Activity correction and archival
 

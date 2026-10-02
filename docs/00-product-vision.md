@@ -30,7 +30,7 @@ An operator unfamiliar with the application can select the current activity, ide
 
 ## Success measures
 
-- A new operator can open an existing weekly-net template and record a check-in without training documentation.
+- A new operator can set up a weekly net and record a check-in without training documentation.
 - A net-control operator can record consecutive check-ins without leaving the keyboard.
 - A SKYWARN operator can link a checked-in station to a structured report and locate the observation on a map.
 - Internet loss does not prevent records from being created, corrected, searched, closed, or exported.

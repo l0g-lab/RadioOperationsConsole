@@ -33,7 +33,7 @@ or end, and each record is a contact carrying its radio details.
 ## The type
 
 - **LOG-001:** There MUST be a "Station log" activity type, selectable wherever
-  a type is chosen (creating or editing an activity, templates).
+  a type is chosen (creating or editing an activity).
 - **LOG-002:** A station log MUST NOT offer Start or End. While it is not
   closed, the header MUST show no lifecycle status or action for it. A station
   log that is closed (for example, closed while it was another type) MUST still

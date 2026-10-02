@@ -5,7 +5,6 @@ import type { Operator, Repeater } from "../../types";
 
 vi.mock("../../api", () => ({
   createActivity: vi.fn(() => Promise.resolve("new")),
-  saveActivityTemplate: vi.fn(),
   setActivityLocationCoords: vi.fn(() => Promise.resolve()),
   setActivityRepeater: vi.fn(() => Promise.resolve()),
 }));
@@ -49,10 +48,6 @@ function renderPanel(
       onSelectActivity={() => {}}
       operators={operators}
       selectedOperatorId={selectedOperatorId}
-      templates={[]}
-      onTemplatesChanged={() => {}}
-      useTemplateRequest={null}
-      onUseTemplateHandled={() => {}}
       repeaters={repeaters}
     />
   );

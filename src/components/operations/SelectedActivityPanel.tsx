@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
-import type { Activity, ActivityTemplate, Repeater } from "../../types";
-import SaveTemplateBar from "./SaveTemplateBar";
+import type { Activity, Repeater } from "../../types";
 import ActivitySummaryPanel from "./ActivitySummaryPanel";
 import ActivityTypeSelect from "./ActivityTypeSelect";
 import ActivityRepeaterField, { type ActivityRepeater } from "./ActivityRepeaterField";
@@ -20,8 +19,6 @@ interface Props {
   /** True when the top bar's Edit link was clicked: open the edit form straight away. */
   editRequested: boolean;
   onEditRequestHandled: () => void;
-  templates: ActivityTemplate[];
-  onTemplatesChanged: () => void;
   /** The repeater directory, to pick from. */
   repeaters: Repeater[];
 }
@@ -38,12 +35,8 @@ export default function SelectedActivityPanel({
   onActivitiesChanged,
   editRequested,
   onEditRequestHandled,
-  templates,
-  onTemplatesChanged,
   repeaters,
 }: Props) {
-  const [savingTemplate, setSavingTemplate] = useState(false);
-  const [templateSavedName, setTemplateSavedName] = useState<string | null>(null);
   const [editingFocused, setEditingFocused] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editType, setEditType] = useState("");
@@ -65,29 +58,6 @@ export default function SelectedActivityPanel({
   const showLocationSection = locationSectionOverride ?? focusedActivity?.location_lat != null;
   // A range check must have a repeater (RANGE-002).
   const editNeedsRepeater = isRangeCheck(editType) && !editRepeater;
-
-  useEffect(() => {
-    setSavingTemplate(false);
-    setTemplateSavedName(null);
-  }, [selectedActivityId]);
-
-  async function saveAsTemplate(name: string) {
-    if (!focusedActivity) return;
-    const { time } = splitScheduledAt(focusedActivity.scheduled_at);
-    await api.saveActivityTemplate(
-      name,
-      focusedActivity.title,
-      focusedActivity.activity_type,
-      time || null,
-      focusedActivity.frequency || null,
-      focusedActivity.location_label || null,
-      focusedActivity.location_lat,
-      focusedActivity.location_lon
-    );
-    onTemplatesChanged();
-    setSavingTemplate(false);
-    setTemplateSavedName(name);
-  }
 
   function startEditFocused() {
     if (!focusedActivity) return;
@@ -220,32 +190,10 @@ export default function SelectedActivityPanel({
           <div className="inline-form">
             <button onClick={startEditFocused}>Edit</button>
             <button onClick={startArchiveFocused}>Archive</button>
-            <button
-              onClick={() => {
-                setSavingTemplate(true);
-                setTemplateSavedName(null);
-              }}
-              title="Keep this activity's title, time, frequency and location to start future ones from"
-            >
-              Save as template
-            </button>
             <button className="danger" onClick={() => setDeletingFocused(true)}>
               Delete…
             </button>
-            {templateSavedName && (
-              <span className="qrz-status qrz-status-found">
-                Saved template “{templateSavedName}”
-              </span>
-            )}
           </div>
-          {savingTemplate && (
-            <SaveTemplateBar
-              defaultName={focusedActivity.title}
-              existingNames={templates.map((t) => t.name)}
-              onSave={saveAsTemplate}
-              onCancel={() => setSavingTemplate(false)}
-            />
-          )}
 
           <ActivitySummaryPanel activity={focusedActivity} />
 

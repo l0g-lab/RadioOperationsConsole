@@ -16,7 +16,7 @@ over completeness.
 
 - This document is the canonical source for the weekly directed-net
   procedure. [05-event-and-template-model.md](../05-event-and-template-model.md)
-  defines the cross-activity lifecycle and template rules this procedure
+  defines the cross-activity lifecycle and activity-type rules this procedure
   runs on top of, and points back here for the procedure itself.
 - Builds on the shell, tab, and check-in interaction requirements in
   [06-application-shell-and-navigation.md](../06-application-shell-and-navigation.md)
@@ -76,7 +76,7 @@ be reduced to a narrow sidebar widget.
 
 - **NETOPS-010:** A check-in MUST require only a call sign or tactical
   identifier; name, location, traffic, and comment remain optional unless the
-  active template makes them required (per `TEMPLATE-005`).
+  activity's type makes them required (as a range check does).
 - **NETOPS-011:** Saving a check-in MUST associate it with the focused
   activity unless the operator explicitly selects another open activity
   (`EVENT-010`).

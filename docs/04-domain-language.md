@@ -7,7 +7,7 @@
 | Organization | The club, ARES/RACES group, SKYWARN group, EOC, or other entity using the application. |
 | Operator | The person currently entering or changing application records. |
 | Participant | A person or station that checks into or participates in an activity. |
-| Activity template | A versioned configuration that controls defaults, scripts, visible modules, and validation. |
+| Activity type | What kind of activity something is (directed net, SKYWARN, range check, station log…); controls visible modules, lifecycle, and which check-in fields are required. |
 | Activity | A bounded operation such as a weekly net, activation, exercise, or public-service event. |
 | Net session | A radio net conducted within an activity. Most weekly activities contain one session; longer activations may contain several. |
 | Operational period | A defined shift or time segment within a longer activity. |

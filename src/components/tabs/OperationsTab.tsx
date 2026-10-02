@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import * as api from "../../api";
-import type { Activity, ActivityTemplate, Operator, Repeater } from "../../types";
+import type { Activity, Operator, Repeater } from "../../types";
 import SelectedActivityPanel from "../operations/SelectedActivityPanel";
 import CreateActivityPanel from "../operations/CreateActivityPanel";
-import TemplatesPanel from "../operations/TemplatesPanel";
 import ArchivedActivitiesPanel from "../operations/ArchivedActivitiesPanel";
 import OperatorsPanel from "../operations/OperatorsPanel";
 import RepeatersPanel from "../operations/RepeatersPanel";
@@ -34,15 +33,6 @@ export default function OperationsTab({
   editActivityRequested,
   onEditActivityHandled,
 }: Props) {
-  // Owned here so the create form and the selected-activity panel see the same list.
-  const [templates, setTemplates] = useState<ActivityTemplate[]>([]);
-  const refreshTemplates = useCallback(() => {
-    api
-      .listActivityTemplates()
-      .then(setTemplates)
-      .catch(() => setTemplates([]));
-  }, []);
-  useEffect(refreshTemplates, [refreshTemplates]);
 
   // The repeater directory, shared by its panel and the activity forms.
   const [repeaters, setRepeaters] = useState<Repeater[]>([]);
@@ -54,8 +44,6 @@ export default function OperationsTab({
   }, []);
   useEffect(refreshRepeaters, [refreshRepeaters]);
 
-  // Which template the Templates panel asked the create form to start from.
-  const [useTemplateRequest, setUseTemplateRequest] = useState<string | null>(null);
 
   const isFirstRun = activities.length === 0 && operators.length === 0;
 
@@ -80,8 +68,6 @@ export default function OperationsTab({
             onActivitiesChanged={onActivitiesChanged}
             editRequested={editActivityRequested}
             onEditRequestHandled={onEditActivityHandled}
-            templates={templates}
-            onTemplatesChanged={refreshTemplates}
             repeaters={repeaters}
           />
           <CreateActivityPanel
@@ -90,16 +76,7 @@ export default function OperationsTab({
             onSelectActivity={onSelectActivity}
             operators={operators}
             selectedOperatorId={selectedOperatorId}
-            templates={templates}
-            onTemplatesChanged={refreshTemplates}
-            useTemplateRequest={useTemplateRequest}
-            onUseTemplateHandled={() => setUseTemplateRequest(null)}
             repeaters={repeaters}
-          />
-          <TemplatesPanel
-            templates={templates}
-            onTemplatesChanged={refreshTemplates}
-            onCreateFrom={setUseTemplateRequest}
           />
           <ArchivedActivitiesPanel
             activities={activities}

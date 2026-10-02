@@ -8,7 +8,7 @@ The initial usable release covers one trusted workstation and local data store.
 
 - Operator profiles and current-operator selection
 - Organization and station settings
-- Activity templates
+- Activity types and a repeater directory
 - Multiple open activities with one focused activity
 - Event lifecycle and a chronological record of the activity (the History tab)
 - Local and UTC time display
@@ -18,7 +18,7 @@ The initial usable release covers one trusted workstation and local data store.
 
 ### Weekly-net capability
 
-- Simple and directed-net templates
+- Simple and directed-net activity types
 - Opening and closing scripts
 - Rapid check-ins
 - Optional name and location

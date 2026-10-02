@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import * as api from "../../api";
-import type { Activity, ActivityTemplate, Operator, Repeater } from "../../types";
+import type { Activity, Operator, Repeater } from "../../types";
 import { formatCoords } from "../../geo";
 import LocationPicker from "../LocationPicker";
-import SaveTemplateBar from "./SaveTemplateBar";
 import ActivityTypeSelect from "./ActivityTypeSelect";
 import ActivityRepeaterField, { type ActivityRepeater } from "./ActivityRepeaterField";
 import { DEFAULT_ACTIVITY_TYPE, isLog, isRangeCheck } from "../../activityTypes";
@@ -16,11 +15,6 @@ interface Props {
   onSelectActivity: (id: string) => void;
   operators: Operator[];
   selectedOperatorId: string | null;
-  templates: ActivityTemplate[];
-  onTemplatesChanged: () => void;
-  /** Set (to a template id) by the Templates panel's "Use template" button. */
-  useTemplateRequest: string | null;
-  onUseTemplateHandled: () => void;
   /** The repeater directory, to pick from. */
   repeaters: Repeater[];
 }
@@ -31,13 +25,8 @@ export default function CreateActivityPanel({
   onSelectActivity,
   operators,
   selectedOperatorId,
-  templates,
-  onTemplatesChanged,
-  useTemplateRequest,
-  onUseTemplateHandled,
   repeaters,
 }: Props) {
-  const panelRef = useRef<HTMLDivElement>(null);
   const hasActivities = activities.length > 0;
   // Collapsed by default once activities exist, so returning users aren't
   // shown a form they rarely need — but always open for a brand-new setup
@@ -49,16 +38,14 @@ export default function CreateActivityPanel({
   const [activityDate, setActivityDate] = useState(todayIso());
   const [activityTime, setActivityTime] = useState("");
   const [activityFrequency, setActivityFrequency] = useState("");
-  // Where the activity runs from, chosen here or carried over from a template.
-  // When left unset the operator's own location is used (see operatorLocation).
+  // Where net control runs the activity from, if not the operator's usual
+  // location. When left unset the operator's own location is used (see operatorLocation).
   const [location, setLocation] = useState<{
     label: string;
     lat: number;
     lon: number;
   } | null>(null);
   const [showPicker, setShowPicker] = useState(false);
-  const [savingTemplate, setSavingTemplate] = useState(false);
-  const [templateMessage, setTemplateMessage] = useState<string | null>(null);
 
   // The repeater it runs on, apart from where net control is (RPT-021). A
   // range check must have one (RANGE-002).
@@ -78,58 +65,7 @@ export default function CreateActivityPanel({
         }
       : null;
 
-  function handleUseTemplate(id: string) {
-    const t = templates.find((x) => x.id === id);
-    if (!t) return;
-    // Fills the form; the date stays as it is (today), since it's a new occurrence.
-    setActivityTitle(t.title);
-    setActivityType(t.activity_type);
-    setActivityTime(t.scheduled_time);
-    setActivityFrequency(t.frequency);
-    setLocation(
-      t.location_lat != null && t.location_lon != null
-        ? { label: t.location_label, lat: t.location_lat, lon: t.location_lon }
-        : null
-    );
-    setTemplateMessage(null);
-  }
-
-  // Opens the form (even if collapsed), fills it from the requested template,
-  // and brings it into view so the next step is obvious.
-  useEffect(() => {
-    if (!useTemplateRequest) return;
-    setCollapsed(false);
-    handleUseTemplate(useTemplateRequest);
-    onUseTemplateHandled();
-    requestAnimationFrame(() => {
-      panelRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      panelRef.current
-        ?.querySelector<HTMLInputElement>('input[placeholder="Activity title"]')
-        ?.focus();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useTemplateRequest]);
-
-  // Saves only title, time and frequency. If this replaces an existing template,
-  // that template keeps whatever location it already had.
-  async function handleSaveTemplate(name: string) {
-    const existing = templates.find((t) => t.name.toLowerCase() === name.toLowerCase());
-    await api.saveActivityTemplate(
-      name,
-      activityTitle.trim(),
-      activityType,
-      activityTime.trim() || null,
-      activityFrequency.trim() || null,
-      existing?.location_label || null,
-      existing?.location_lat ?? null,
-      existing?.location_lon ?? null
-    );
-    onTemplatesChanged();
-    setSavingTemplate(false);
-    setTemplateMessage(`Saved template “${name}”`);
-  }
-
-  // Discards whatever was typed or filled from a template and closes the form
+  // Discards whatever was typed and closes the form
   // (it stays open only when there are no activities yet, where it's the first step).
   function handleCancel() {
     setActivityTitle("");
@@ -139,8 +75,6 @@ export default function CreateActivityPanel({
     setActivityFrequency("");
     setLocation(null);
     setRepeater(null);
-    setSavingTemplate(false);
-    setTemplateMessage(null);
     setCollapsed(true);
   }
 
@@ -172,13 +106,11 @@ export default function CreateActivityPanel({
     setActivityFrequency("");
     setLocation(null);
     setRepeater(null);
-    setSavingTemplate(false);
-    setTemplateMessage(null);
     setCollapsed(true);
   }
 
   return (
-    <div className="panel" ref={panelRef}>
+    <div className="panel">
       <div className="panel-header-row">
         <h3><CirclePlus className="heading-icon" />Create New Activity</h3>
         {hasActivities && (
@@ -189,19 +121,6 @@ export default function CreateActivityPanel({
       </div>
       {expanded && (
         <div className="inline-form">
-          {templates.length > 0 && (
-            <label>
-              Start from a template:
-              <select value="" onChange={(e) => handleUseTemplate(e.target.value)}>
-                <option value="">— choose a template —</option>
-                {templates.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <input
             autoFocus={hasActivities}
             className="activity-title-input"
@@ -289,33 +208,6 @@ export default function CreateActivityPanel({
             <button className="link-button" onClick={() => setLocation(null)}>
               Use the operator's location
             </button>
-          )}
-        </div>
-      )}
-      {expanded && (
-        <div className="inline-form">
-          {savingTemplate ? (
-            <SaveTemplateBar
-              defaultName={activityTitle.trim()}
-              existingNames={templates.map((t) => t.name)}
-              onSave={handleSaveTemplate}
-              onCancel={() => setSavingTemplate(false)}
-            />
-          ) : (
-            <button
-              className="link-button"
-              disabled={!activityTitle.trim()}
-              onClick={() => {
-                setSavingTemplate(true);
-                setTemplateMessage(null);
-              }}
-              title="Keep the title, type, time and frequency above to start future activities from"
-            >
-              Save these as a template
-            </button>
-          )}
-          {templateMessage && (
-            <span className="qrz-status qrz-status-found">{templateMessage}</span>
           )}
         </div>
       )}

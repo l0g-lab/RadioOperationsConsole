@@ -8,7 +8,7 @@ It's an operations logger first, not a contest logbook: one app that handles a r
 
 ## What it does
 
-- **Run several nets at once.** Pick the active activity from the top bar (or `Ctrl+[` / `Ctrl+]`) and every tab follows it. Templates make a recurring net one click to set up.
+- **Run several nets at once.** Pick the active activity from the top bar (or `Ctrl+[` / `Ctrl+]`) and every tab follows it. Keep a directory of your repeaters (frequency, offset, tones) and pick one when setting up a net.
 - **Take check-ins fast.** Type a call sign, press Enter. Name, address, and location fill in from QRZ — or, with no QRZ or no internet, from an offline copy of the FCC amateur-license database. GMRS call signs (like WRAB123) fill in from an offline copy of the FCC GMRS database. Export the roster as CSV or JSON, or as an ICS-309 communications log for Winlink Express's own Form-309 (or to print).
 - **Put people on a map.** Check-ins are plotted at their real location when known (QRZ coordinates, a pin you drop, typed coordinates), falling back to ZIP centre, then grid square. Say "mile marker 182 on the turnpike" and it lands on the map, offline.
 - **Keep a station log.** Log your own contacts (say, everyday VHF simplex) with time, frequency, mode, RST both ways, power, antenna, and notes — all optional, no net to start or end. Search it later, and as you type a call sign the app tells you when you last worked them, from any log or net.
@@ -99,7 +99,7 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 
 | Tab | For |
 | --- | --- |
-| Operations | Operators, creating/editing/archiving activities, activity templates |
+| Operations | Operators, the repeater directory, creating/editing/archiving activities |
 | Check-ins | Taking check-ins (with any traffic they have), the roster, the check-in map |
 | Spotter Reports | Hazard reports and the report map |
 | Weather | NWS alerts, forecast, radar |
@@ -159,7 +159,7 @@ Created and maintained by [l0g-lab](https://github.com/l0g-lab). Contributions f
 
 ## About the specification
 
-This repository also holds a vendor-neutral product and engineering specification under [docs/](docs/), alongside the Tauri prototype that implements it. The specs cover the core design and each feature module, including location handling, mile-marker and call-sign offline data, activity templates, backup/restore, and display preferences.
+This repository also holds a vendor-neutral product and engineering specification under [docs/](docs/), alongside the Tauri prototype that implements it. The specs cover the core design and each feature module, including location handling, mile-marker and call-sign offline data, the repeater directory, backup/restore, and display preferences.
 
 ### Specification layout
 
@@ -205,13 +205,14 @@ This repository also holds a vendor-neutral product and engineering specificatio
 18. [docs/features/location-resolution.md](docs/features/location-resolution.md)
 19. [docs/features/mile-marker-lookup.md](docs/features/mile-marker-lookup.md)
 20. [docs/features/offline-callsign-directory.md](docs/features/offline-callsign-directory.md)
-21. [docs/features/activity-templates.md](docs/features/activity-templates.md)
-22. [docs/features/database-backup-restore.md](docs/features/database-backup-restore.md)
-23. [docs/features/display-preferences.md](docs/features/display-preferences.md)
-24. [docs/features/activity-lifecycle-and-wrap-up.md](docs/features/activity-lifecycle-and-wrap-up.md)
-25. [docs/features/ics-form-exports.md](docs/features/ics-form-exports.md)
-26. [docs/features/activity-exports.md](docs/features/activity-exports.md)
-27. [docs/agent/BUILD_PROTOCOL.md](docs/agent/BUILD_PROTOCOL.md)
+21. [docs/features/database-backup-restore.md](docs/features/database-backup-restore.md)
+22. [docs/features/display-preferences.md](docs/features/display-preferences.md)
+23. [docs/features/activity-lifecycle-and-wrap-up.md](docs/features/activity-lifecycle-and-wrap-up.md)
+24. [docs/features/ics-form-exports.md](docs/features/ics-form-exports.md)
+25. [docs/features/activity-exports.md](docs/features/activity-exports.md)
+26. [docs/features/range-check.md](docs/features/range-check.md)
+27. [docs/features/repeater-directory.md](docs/features/repeater-directory.md)
+28. [docs/agent/BUILD_PROTOCOL.md](docs/agent/BUILD_PROTOCOL.md)
 
 ### Normative language
 

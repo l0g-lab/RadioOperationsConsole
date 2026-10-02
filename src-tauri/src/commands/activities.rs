@@ -1,7 +1,7 @@
 use super::{AppState, ERR_OFFLINE};
 use crate::connectors;
 use crate::range_check;
-use crate::repo::{Activity, ActivitySummary, ActivityTemplate, DeletedCounts};
+use crate::repo::{Activity, ActivitySummary, DeletedCounts};
 use tauri::State;
 
 #[tauri::command]
@@ -218,91 +218,6 @@ pub fn delete_activity(
         .lock()
         .unwrap()
         .delete_activity_permanently(&activity_id, operator_id.as_deref())
-}
-
-#[tauri::command]
-pub fn list_activity_templates(state: State<AppState>) -> Result<Vec<ActivityTemplate>, String> {
-    state
-        .repo
-        .lock()
-        .unwrap()
-        .list_activity_templates()
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn save_activity_template(
-    state: State<AppState>,
-    name: String,
-    title: String,
-    activity_type: String,
-    scheduled_time: Option<String>,
-    frequency: Option<String>,
-    location_label: Option<String>,
-    location_lat: Option<f64>,
-    location_lon: Option<f64>,
-) -> Result<String, String> {
-    let name = name.trim();
-    let title = title.trim();
-    if name.is_empty() || title.is_empty() {
-        return Err("A template needs a name and a title.".to_string());
-    }
-    state
-        .repo
-        .lock()
-        .unwrap()
-        .save_activity_template(
-            name,
-            title,
-            &activity_type,
-            scheduled_time.as_deref().map(str::trim).filter(|s| !s.is_empty()),
-            frequency.as_deref().map(str::trim).filter(|s| !s.is_empty()),
-            location_label.as_deref().map(str::trim).filter(|s| !s.is_empty()),
-            location_lat,
-            location_lon,
-        )
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn delete_activity_template(state: State<AppState>, template_id: String) -> Result<(), String> {
-    state
-        .repo
-        .lock()
-        .unwrap()
-        .delete_activity_template(&template_id)
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn update_activity_template(
-    state: State<AppState>,
-    template_id: String,
-    name: String,
-    title: String,
-    activity_type: String,
-    scheduled_time: Option<String>,
-    frequency: Option<String>,
-    location_label: Option<String>,
-    location_lat: Option<f64>,
-    location_lon: Option<f64>,
-) -> Result<(), String> {
-    let name = name.trim();
-    let title = title.trim();
-    if name.is_empty() || title.is_empty() {
-        return Err("A template needs a name and a title.".to_string());
-    }
-    state.repo.lock().unwrap().update_activity_template(
-        &template_id,
-        name,
-        title,
-        &activity_type,
-        scheduled_time.as_deref().map(str::trim).filter(|s| !s.is_empty()),
-        frequency.as_deref().map(str::trim).filter(|s| !s.is_empty()),
-        location_label.as_deref().map(str::trim).filter(|s| !s.is_empty()),
-        location_lat,
-        location_lon,
-    )
 }
 
 /// Scheduled -> active: the net has begun.

@@ -84,6 +84,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0020_repeaters.sql",
         include_str!("../migrations/0020_repeaters.sql"),
     ),
+    (
+        "0021_drop_activity_templates.sql",
+        include_str!("../migrations/0021_drop_activity_templates.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't
@@ -275,6 +279,32 @@ mod tests {
         assert_eq!(rc.location_lat, None, "net control's location starts unset");
         let net = repo.get_activity("net").unwrap();
         assert_eq!((net.location_lat, net.repeater_lat), (Some(28.5), None), "other activities are untouched");
+    }
+
+    #[test]
+    fn templates_are_dropped_on_upgrade_but_kept_in_the_copy() {
+        let path = temp_db("live.db");
+        let backups = temp_db("backups");
+        {
+            let conn = Connection::open(&path).unwrap();
+            let upto = MIGRATIONS.iter().position(|(v, _)| *v == "0021_drop_activity_templates.sql").unwrap();
+            apply_migrations(&conn, &MIGRATIONS[..upto]).unwrap();
+            conn.execute(
+                "INSERT INTO activity_templates(id, name, title, created_at) VALUES ('t1', 'Tuesday', 'Tuesday Net', 't')",
+                [],
+            )
+            .unwrap();
+        }
+        let table_count = |c: &Connection| -> i64 {
+            c.query_row("SELECT COUNT(*) FROM sqlite_master WHERE name = 'activity_templates'", [], |r| r.get(0))
+                .unwrap()
+        };
+
+        let (conn, saved) = open_db_with_upgrade_backup(&path, Some(&backups)).unwrap();
+        assert_eq!(table_count(&conn), 0);
+        let copy = Connection::open(saved.unwrap().path.unwrap()).unwrap();
+        let title: String = copy.query_row("SELECT title FROM activity_templates", [], |r| r.get(0)).unwrap();
+        assert_eq!(title, "Tuesday Net");
     }
 
     #[test]

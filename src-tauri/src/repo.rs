@@ -68,24 +68,6 @@ pub struct HazardCount {
     pub count: i64,
 }
 
-/// A reusable starting point for a new activity: the parts that stay the same
-/// from one occurrence to the next. The date is never stored — each new
-/// activity takes the day it's created on.
-#[derive(Serialize, Debug, Clone)]
-pub struct ActivityTemplate {
-    pub id: String,
-    pub name: String,
-    pub title: String,
-    /// The kind of activity it starts (see `Repository::clean_activity_type`).
-    pub activity_type: String,
-    /// "HH:MM", or empty.
-    pub scheduled_time: String,
-    pub frequency: String,
-    pub location_label: String,
-    pub location_lat: Option<f64>,
-    pub location_lon: Option<f64>,
-}
-
 #[derive(Serialize, Debug, Clone)]
 pub struct Checkin {
     pub id: String,
@@ -360,110 +342,6 @@ impl Repository {
             params![id, title, Self::clean_activity_type(activity_type), "scheduled", now, scheduled_at, frequency],
         )?;
         Ok(id)
-    }
-
-    pub fn list_activity_templates(&self) -> rusqlite::Result<Vec<ActivityTemplate>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, name, title, coalesce(scheduled_time,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, activity_type FROM activity_templates ORDER BY name COLLATE NOCASE",
-        )?;
-        let rows = stmt.query_map([], |r| {
-            Ok(ActivityTemplate {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                title: r.get(2)?,
-                scheduled_time: r.get(3)?,
-                frequency: r.get(4)?,
-                location_label: r.get(5)?,
-                location_lat: r.get(6)?,
-                location_lon: r.get(7)?,
-                activity_type: r.get(8)?,
-            })
-        })?;
-        rows.collect()
-    }
-
-    /// Saves a template under `name`, replacing an existing one with the same
-    /// name (case-insensitive) so re-saving updates it rather than piling up
-    /// near-duplicates.
-    #[allow(clippy::too_many_arguments)]
-    pub fn save_activity_template(
-        &self,
-        name: &str,
-        title: &str,
-        activity_type: &str,
-        scheduled_time: Option<&str>,
-        frequency: Option<&str>,
-        location_label: Option<&str>,
-        location_lat: Option<f64>,
-        location_lon: Option<f64>,
-    ) -> rusqlite::Result<String> {
-        let existing: Option<String> = self
-            .conn
-            .query_row(
-                "SELECT id FROM activity_templates WHERE name = ?1 COLLATE NOCASE",
-                params![name],
-                |r| r.get(0),
-            )
-            .ok();
-        match existing {
-            Some(id) => {
-                self.conn.execute(
-                    "UPDATE activity_templates SET name = ?1, title = ?2, scheduled_time = ?3, frequency = ?4, location_label = ?5, location_lat = ?6, location_lon = ?7, activity_type = ?8 WHERE id = ?9",
-                    params![name, title, scheduled_time, frequency, location_label, location_lat, location_lon, Self::clean_activity_type(activity_type), id],
-                )?;
-                Ok(id)
-            }
-            None => {
-                let id = Uuid::new_v4().to_string();
-                let now = Utc::now().to_rfc3339();
-                self.conn.execute(
-                    "INSERT INTO activity_templates(id, name, title, scheduled_time, frequency, location_label, location_lat, location_lon, created_at, activity_type) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
-                    params![id, name, title, scheduled_time, frequency, location_label, location_lat, location_lon, now, Self::clean_activity_type(activity_type)],
-                )?;
-                Ok(id)
-            }
-        }
-    }
-
-    /// Rewrites one template by id (including renaming it). Fails with a
-    /// readable message if the new name is already another template's.
-    #[allow(clippy::too_many_arguments)]
-    pub fn update_activity_template(
-        &self,
-        id: &str,
-        name: &str,
-        title: &str,
-        activity_type: &str,
-        scheduled_time: Option<&str>,
-        frequency: Option<&str>,
-        location_label: Option<&str>,
-        location_lat: Option<f64>,
-        location_lon: Option<f64>,
-    ) -> Result<(), String> {
-        let clash: Option<String> = self
-            .conn
-            .query_row(
-                "SELECT id FROM activity_templates WHERE name = ?1 COLLATE NOCASE AND id != ?2",
-                params![name, id],
-                |r| r.get(0),
-            )
-            .ok();
-        if clash.is_some() {
-            return Err(format!("There's already a template named “{name}”."));
-        }
-        self.conn
-            .execute(
-                "UPDATE activity_templates SET name = ?1, title = ?2, scheduled_time = ?3, frequency = ?4, location_label = ?5, location_lat = ?6, location_lon = ?7, activity_type = ?8 WHERE id = ?9",
-                params![name, title, scheduled_time, frequency, location_label, location_lat, location_lon, Self::clean_activity_type(activity_type), id],
-            )
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    pub fn delete_activity_template(&self, id: &str) -> rusqlite::Result<()> {
-        self.conn
-            .execute("DELETE FROM activity_templates WHERE id = ?1", params![id])?;
-        Ok(())
     }
 
     const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,''), coalesce(repeater_name,''), repeater_lat, repeater_lon";
@@ -1156,59 +1034,6 @@ impl Repository {
             v.push(r?);
         }
         Ok(v)
-    }
-}
-
-#[cfg(test)]
-mod template_tests {
-    use super::*;
-
-    fn repo() -> Repository {
-        let path = std::env::temp_dir().join(format!("roc-tpl-{}.db", Uuid::new_v4()));
-        Repository { conn: crate::db::open_db(&path).unwrap() }
-    }
-
-    #[test]
-    fn templates_save_list_update_and_delete() {
-        let r = repo();
-        assert!(r.list_activity_templates().unwrap().is_empty());
-
-        let id = r
-            .save_activity_template("Weekly Net", "Tuesday Night Net", "directed_net", Some("19:00"), Some("146.940"), Some("EOC"), Some(28.5), Some(-81.4))
-            .unwrap();
-        let all = r.list_activity_templates().unwrap();
-        assert_eq!(all.len(), 1);
-        assert_eq!(all[0].title, "Tuesday Night Net");
-        assert_eq!(all[0].scheduled_time, "19:00");
-        assert_eq!(all[0].location_lat, Some(28.5));
-
-        // Same name, different case: updates in place.
-        let again = r
-            .save_activity_template("weekly net", "Tuesday Net", "skywarn", None, None, None, None, None)
-            .unwrap();
-        assert_eq!(again, id);
-        let all = r.list_activity_templates().unwrap();
-        assert_eq!(all.len(), 1);
-        assert_eq!(all[0].title, "Tuesday Net");
-        assert_eq!(all[0].activity_type, "skywarn");
-        assert_eq!(all[0].scheduled_time, "");
-        assert_eq!(all[0].location_lat, None);
-
-        // Editing by id can rename, but not onto another template's name.
-        let other = r
-            .save_activity_template("Field Day", "Field Day", "other", None, None, None, None, None)
-            .unwrap();
-        r.update_activity_template(&id, "Tuesday", "Tuesday Net", "simple_net", Some("20:00"), None, None, None, None)
-            .unwrap();
-        let renamed = r.list_activity_templates().unwrap();
-        assert!(renamed.iter().any(|t| t.name == "Tuesday" && t.scheduled_time == "20:00"));
-        assert!(r
-            .update_activity_template(&id, "field day", "x", "other", None, None, None, None, None)
-            .is_err());
-        r.delete_activity_template(&other).unwrap();
-
-        r.delete_activity_template(&id).unwrap();
-        assert!(r.list_activity_templates().unwrap().is_empty());
     }
 }
 

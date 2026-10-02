@@ -64,9 +64,11 @@ stored, shown, and typed, so every feature agrees.
 
 ## Reference points and distances
 
-- **LOCRES-020:** An activity MAY have its own location; a new activity
-  without one MUST default to the acting operator's location
-  (`ACTTPL-041`).
+- **LOCRES-020:** An activity MAY have its own location, which is where net
+  control is; a new activity without one MUST default to the acting
+  operator's location, copied onto the activity when it is created. Failing
+  to apply it MUST NOT prevent the activity from being created. A repeater is
+  kept separately ([repeater-directory.md](repeater-directory.md)).
 - **LOCRES-021:** Where a reference point is needed (for example, distance
   from the net to a check-in), the activity's location MUST take precedence
   over the operator's.

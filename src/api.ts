@@ -9,7 +9,6 @@ import type {
   BackupSummary,
   RestoreResult,
   UpgradeBackup,
-  ActivityTemplate,
   CallsignPackStatus,
   OfflineCallLookup,
   LicenseService,
@@ -88,56 +87,6 @@ export const createActivity = (
     scheduledAt: scheduled_at,
     frequency,
   });
-
-export const listActivityTemplates = () =>
-  invoke<ActivityTemplate[]>("list_activity_templates");
-
-export const saveActivityTemplate = (
-  name: string,
-  title: string,
-  activity_type: string,
-  scheduled_time: string | null,
-  frequency: string | null,
-  location_label: string | null,
-  location_lat: number | null,
-  location_lon: number | null
-) =>
-  invoke<string>("save_activity_template", {
-    name,
-    title,
-    activityType: activity_type,
-    scheduledTime: scheduled_time,
-    frequency,
-    locationLabel: location_label,
-    locationLat: location_lat,
-    locationLon: location_lon,
-  });
-
-export const updateActivityTemplate = (
-  template_id: string,
-  name: string,
-  title: string,
-  activity_type: string,
-  scheduled_time: string | null,
-  frequency: string | null,
-  location_label: string | null,
-  location_lat: number | null,
-  location_lon: number | null
-) =>
-  invoke<void>("update_activity_template", {
-    templateId: template_id,
-    name,
-    title,
-    activityType: activity_type,
-    scheduledTime: scheduled_time,
-    frequency,
-    locationLabel: location_label,
-    locationLat: location_lat,
-    locationLon: location_lon,
-  });
-
-export const deleteActivityTemplate = (template_id: string) =>
-  invoke<void>("delete_activity_template", { templateId: template_id });
 
 export const updateActivity = (
   activity_id: string,

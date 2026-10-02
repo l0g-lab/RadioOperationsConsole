@@ -3,7 +3,7 @@
 ## Principles
 
 - **PRINCIPLE-001:** Offline operations are complete operations. Core workflows MUST function from local resources. Online status is supplemental context, not authority to create a record.
-- **PRINCIPLE-002:** One engine, activity-specific presentation. Weekly nets, exercises, activations, and SKYWARN operations share domain records. Templates control visible tools, defaults, labels, and validation; they do not create incompatible data silos.
+- **PRINCIPLE-002:** One engine, activity-specific presentation. Weekly nets, exercises, activations, and SKYWARN operations share domain records. Activity types control visible tools, defaults, labels, and validation; they do not create incompatible data silos.
 - **PRINCIPLE-003:** Fast under radio traffic. The most common live actions MUST have short, predictable keyboard and pointer paths. Forms MUST preserve partially entered data across recoverable errors.
 - **PRINCIPLE-004:** Facts are preserved. The application stores source facts and derives summaries. Corrections create revisions; they do not erase the original operational history.
 - **PRINCIPLE-005:** Reported, mapped, and directory locations are different. The exact location words reported over the air, a normalized/geocoded location, map coordinates, a participant's directory location, and an APRS position are separate facts. The application MUST NOT silently substitute one for another.

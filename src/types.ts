@@ -7,21 +7,6 @@ export interface Operator {
   location_lon: number | null;
 }
 
-/** A reusable starting point for a new activity; the date is never stored. */
-export interface ActivityTemplate {
-  id: string;
-  name: string;
-  title: string;
-  /** The kind of activity it starts (see activityTypes.ts). */
-  activity_type: string;
-  /** "HH:MM", or empty. */
-  scheduled_time: string;
-  frequency: string;
-  location_label: string;
-  location_lat: number | null;
-  location_lon: number | null;
-}
-
 export interface Activity {
   id: string;
   title: string;

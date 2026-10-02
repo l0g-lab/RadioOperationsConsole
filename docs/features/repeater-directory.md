@@ -90,8 +90,8 @@ on, and for opening/closing scripts that read out frequency and tone.
 
 ## Not yet built
 
-- Net listings: the nets that meet on each repeater and when, replacing
-  activity templates. This will be a separate spec.
+- Net listings: the nets that meet on each repeater and when. This will be a
+  separate spec.
 - Importing and exporting the directory as a CHIRP-format CSV, to load an
   existing radio programming file or spreadsheet.
 - Online repeater-directory lookup (for example, RepeaterBook), as an

@@ -41,26 +41,27 @@ Implemented so far: `scheduled -> active -> closed`, and reopening
 - **EVENT-009:** Background activities MUST indicate important state changes without stealing keyboard focus.
 - **EVENT-010:** New records created from an activity tab MUST be associated with the focused activity unless the operator explicitly selects another one.
 
-## Templates
+## Activity types
 
-Templates define:
+An activity's behavior comes from its type (`src/activityTypes.ts`), not from
+saved templates. (The `TEMPLATE-*` IDs below keep their original prefix so
+existing references stay valid.) A type defines, or will define:
 
-- Activity type and default title
-- Enabled and emphasized tabs
-- Opening and closing scripts
-- Default channels and frequencies
-- Check-in fields and optionality
+- Enabled and emphasized tabs and summary sections
+- Whether it has a lifecycle (a station log does not)
+- Check-in fields and which are required (as a range check does)
 - Traffic workflow
 - Available report types
 - Closeout checklist
-- Default reports
-- Visual labels and shortcuts
 
-- **TEMPLATE-001:** Templates MUST be versioned.
-- **TEMPLATE-002:** An activity MUST retain an immutable template snapshot.
-- **TEMPLATE-003:** Editing a template MUST NOT modify existing activity behavior or historical data.
-- **TEMPLATE-004:** The product MUST ship simple-net, directed-weekly-net, SKYWARN-activation, ARES/RACES-activation, SET-exercise, and custom templates.
-- **TEMPLATE-005:** The directed weekly-net template SHOULD emphasize check-ins, announcements, traffic, and conclusion while hiding complex incident tools by default.
+Recurring details of a particular net — its title, repeater, day and time,
+and opening and closing scripts — belong to net listings (planned), not to
+the type. Saved activity templates were removed in favor of the repeater
+directory and net listings.
+
+- **TEMPLATE-001:** Changing an activity's type MUST NOT hide or remove records it already has.
+- **TEMPLATE-004:** The product MUST ship simple-net, directed-net, SKYWARN, and other types, and SHOULD add ARES/RACES-activation and SET-exercise types once the features that distinguish them exist.
+- **TEMPLATE-005:** The directed-net type SHOULD emphasize check-ins, announcements, traffic, and conclusion while hiding complex incident tools by default.
 - **TEMPLATE-006:** Hidden modules MUST remain available through activity configuration when operationally necessary.
 
 ## Weekly directed-net baseline
@@ -69,5 +70,5 @@ The step-by-step weekly directed-net procedure (opening through closing) and
 its check-in requirements are specified in
 [features/weekly-net-operations.md](features/weekly-net-operations.md), which
 is the canonical home for activity-type-specific procedure detail. This
-document defines only the cross-activity engine and template rules above.
+document defines only the cross-activity engine and activity-type rules above.
 
