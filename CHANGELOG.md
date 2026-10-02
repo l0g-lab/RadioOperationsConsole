@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-02
+
 ### Added
 - **The summary on the Operations tab** is laid out like the end-of-net step:
   status, counts, how long the net ran, start and end times, unhandled
@@ -119,7 +121,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v1.3.0...v2.0.0
 [1.3.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v1.1.2...v1.2.0
