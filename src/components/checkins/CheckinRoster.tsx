@@ -1,9 +1,7 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity, Checkin } from "../../types";
 import { QRZ_ERR_NOT_CONFIGURED, ERR_OFFLINE } from "../../types";
-import { formatTimeLines } from "../../utils";
-import { formatCoords, formatDistance, haversineKm, kmToMiles } from "../../geo";
 import { resolveOfflineLocationAsync } from "../../locationResolution";
 import {
   callSignService,
@@ -16,25 +14,11 @@ import { RemoveConfirmBar, RemovedPanel } from "../RemoveControls";
 import { useVoidableList } from "../../hooks/useVoidableList";
 import LocationPicker from "../LocationPicker";
 import { ClipboardCheck, NotebookPen } from "lucide-react";
-import {
-  contactTimeError,
-  ContactFieldsInputs,
-  draftFromCheckin,
-  EMPTY_CONTACT,
-  rstPair,
-  toContactDetails,
-  type ContactDraft,
-} from "./ContactFields";
-import { RangeReportFields } from "./RangeReportFields";
-import {
-  EMPTY_RANGE,
-  missingMessage,
-  missingRangeFields,
-  rangeDraftFromCheckin,
-  stationKindLabel,
-  toRangeContact,
-  type RangeDraft,
-} from "../../rangeCheck";
+import { NetColumns, NetRow } from "./roster/NetRows";
+import { LogColumns, LogRow } from "./roster/LogRows";
+import { RangeColumns, RangeEditRow, RangeRow } from "./roster/RangeRows";
+import { CheckinEditRow } from "./roster/CheckinEditRow";
+import type { Place } from "./roster/shared";
 
 interface Props {
   activity: Activity;
@@ -55,17 +39,13 @@ interface Props {
   /** A range check: reports with a cross street, station type and signal reports (RANGE-020). */
   rangeCheck?: boolean;
   /**
-   * Where distances are measured from in a log: the activity's location,
-   * else the operator's (the same point the map uses). None, no distances.
+   * Where distances are measured from: the activity's repeater, else net
+   * control (the same point the map uses). None, no distances.
    */
-  distanceFrom?: { lat: number; lon: number; label: string } | null;
+  distanceFrom?: Place | null;
 }
 
-/** "77.2 mi", or "206 mi" from 100 miles up, to fit a narrow column. */
-export function shortMiles(km: number): string {
-  const mi = kmToMiles(km);
-  return `${mi < 100 ? mi.toFixed(1) : Math.round(mi)} mi`;
-}
+export { shortMiles } from "./roster/shared";
 
 type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
 
@@ -87,18 +67,6 @@ export default function CheckinRoster({
   distanceFrom = null,
 }: Props) {
   const [editingCheckinId, setEditingCheckinId] = useState<string | null>(null);
-  const [editCallSign, setEditCallSign] = useState("");
-  const [editName, setEditName] = useState("");
-  const [editQthLocation, setEditQthLocation] = useState("");
-  const [editGridSquare, setEditGridSquare] = useState("");
-  const [editAddress, setEditAddress] = useState("");
-  const [editHasTraffic, setEditHasTraffic] = useState(false);
-  const [editTraffic, setEditTraffic] = useState("");
-  const [editContact, setEditContact] = useState<ContactDraft>(EMPTY_CONTACT);
-  const [editSaveRefused, setEditSaveRefused] = useState(false);
-  const [editRange, setEditRange] = useState<RangeDraft>(EMPTY_RANGE);
-  const [editError, setEditError] = useState<string | null>(null);
-  const editRangeMissing = rangeCheck && editSaveRefused ? missingRangeFields(editRange) : [];
   /** Contacts whose details (power, antenna, notes, address…) are expanded. */
   const [openDetails, setOpenDetails] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -138,17 +106,6 @@ export default function CheckinRoster({
 
   function startEdit(c: Checkin) {
     setEditingCheckinId(c.id);
-    setEditCallSign(c.call_sign);
-    setEditName(c.name);
-    setEditQthLocation(c.qth_location);
-    setEditGridSquare(c.grid_square);
-    setEditAddress(c.address);
-    setEditHasTraffic(c.has_traffic);
-    setEditTraffic(c.traffic);
-    setEditContact(draftFromCheckin(c));
-    setEditRange(rangeDraftFromCheckin(c));
-    setEditSaveRefused(false);
-    setEditError(null);
     removal.cancelRemove();
   }
 
@@ -170,88 +127,7 @@ export default function CheckinRoster({
     setEditingCheckinId(null);
   }
 
-  async function saveEdit() {
-    if (!editingCheckinId) return;
-    const call = editCallSign.trim();
-    if (!call) return;
-    if (rangeCheck) return saveRangeEdit(editingCheckinId, call);
-    if (log && contactTimeError(editContact)) {
-      setEditSaveRefused(true);
-      return;
-    }
-    const trimmedQth = editQthLocation.trim() || null;
-    const trimmedGrid = editGridSquare.trim() || null;
-    const trimmedAddress = editAddress.trim() || null;
-
-    // A location already on the check-in — auto-resolved earlier or set by
-    // hand via "Edit location" — is left as-is; only resolve fresh when
-    // there's nothing there yet, so editing a typo in the address later
-    // never silently discards a manual pin (mirrors the QRZ auto-fill
-    // fields below: never overwrite something already set).
-    const current = checkins.find((c) => c.id === editingCheckinId);
-    let locationLat = current?.location_lat ?? null;
-    let locationLon = current?.location_lon ?? null;
-    let locationLabel = current?.location_label || null;
-    if (locationLat == null || locationLon == null) {
-      const resolved = await resolveOfflineLocationAsync({
-        gridSquare: trimmedGrid,
-        address: trimmedAddress,
-        qthLocation: trimmedQth,
-      });
-      if (resolved) {
-        locationLat = resolved.lat;
-        locationLon = resolved.lon;
-        locationLabel = trimmedQth || trimmedAddress || resolved.sourceText;
-      }
-    }
-
-    await api.updateCheckin(
-      editingCheckinId,
-      call,
-      editName.trim() || null,
-      trimmedQth,
-      trimmedGrid,
-      trimmedAddress,
-      operatorId,
-      locationLat,
-      locationLon,
-      locationLabel,
-      editHasTraffic,
-      editHasTraffic ? editTraffic.trim() || null : null,
-      log ? toContactDetails(editContact) : null
-    );
-    setEditingCheckinId(null);
-    onCheckinsChanged();
-  }
-
-  // A correction meets the same rules as a new report (RANGE-017); the
-  // point is moved on the map within the edit row.
-  async function saveRangeEdit(id: string, call: string) {
-    if (missingRangeFields(editRange).length > 0) {
-      setEditSaveRefused(true);
-      return;
-    }
-    const current = checkins.find((c) => c.id === id);
-    try {
-      await api.updateCheckin(
-        id,
-        call,
-        editName.trim() || null,
-        current?.qth_location || null,
-        current?.grid_square || null,
-        current?.address || null,
-        operatorId,
-        editRange.lat,
-        editRange.lon,
-        editRange.crossStreet.trim(),
-        false,
-        null,
-        toRangeContact(editRange)
-      );
-    } catch (e) {
-      setEditError(String(e));
-      return;
-    }
+  function finishEdit() {
     setEditingCheckinId(null);
     onCheckinsChanged();
   }
@@ -431,67 +307,14 @@ export default function CheckinRoster({
           }
         >
           <div className="checkin-roster">
-            {rosterNewestFirst.length > 0 && rangeCheck && (
-              <div className="checkin-row checkin-row-range checkin-row-columns">
-                <span>Call Sign</span>
-                <span>Name</span>
-                <span>Cross Street</span>
-                <span
-                  title={
-                    distanceFrom
-                      ? `Straight-line distance from ${distanceFrom.label}`
-                      : "Set the repeater's location (Operations tab) to see distances"
-                  }
-                >
-                  Distance
-                </span>
-                <span>Station</span>
-                <span>Antenna</span>
-                <span>Power</span>
-                <span title="How net control hears the station">We Hear Them</span>
-                <span title="How the station hears the repeater">They Hear Rptr</span>
-                <span>Notes</span>
-                <span className="checkin-row-time">Time</span>
-              </div>
-            )}
-            {rosterNewestFirst.length > 0 && log && (
-              <div className="checkin-row checkin-row-log checkin-row-columns">
-                <span>Call Sign</span>
-                <span>Name</span>
-                <span>Location</span>
-                <span
-                  title={
-                    distanceFrom
-                      ? `Straight-line distance from ${distanceFrom.label}`
-                      : "Set a location on this log (Operations tab) or on your operator to see distances"
-                  }
-                >
-                  Distance
-                </span>
-                <span>Frequency</span>
-                <span>Mode</span>
-                <span className="checkin-row-nowrap" title="Signal report sent / received">
-                  RST S / R
-                </span>
-                <span>Power</span>
-                <span>Antenna</span>
-                <span>Notes</span>
-                <span className="checkin-row-time">Time</span>
-                <span>Details</span>
-              </div>
-            )}
-            {rosterNewestFirst.length > 0 && !log && !rangeCheck && (
-              <div className="checkin-row checkin-row-columns">
-                <span>Call Sign</span>
-                <span>Name</span>
-                <span>Location</span>
-                <span>Grid Square</span>
-                <span>Coordinates</span>
-                <span>Address</span>
-                <span className="checkin-row-time">Time</span>
-                <span>Traffic</span>
-              </div>
-            )}
+            {rosterNewestFirst.length > 0 &&
+              (rangeCheck ? (
+                <RangeColumns distanceFrom={distanceFrom} />
+              ) : log ? (
+                <LogColumns distanceFrom={distanceFrom} />
+              ) : (
+                <NetColumns />
+              ))}
             {rosterNewestFirst.length === 0 && (
               <p className="checkin-empty-state">
                 {query
@@ -501,346 +324,56 @@ export default function CheckinRoster({
                     : "No check-ins recorded yet."}
               </p>
             )}
-            {rosterNewestFirst.map((c) =>
-              c.id === editingCheckinId && rangeCheck ? (
-                <div key={c.id} className="checkin-row checkin-row-editing checkin-row-editing-log">
-                  <input
-                    autoFocus
-                    aria-label="Call sign"
-                    className="checkin-edit-call"
-                    value={editCallSign}
-                    onChange={(e) => setEditCallSign(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEdit();
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                  />
-                  <input
-                    aria-label="Name"
-                    className="checkin-edit-name"
-                    placeholder="Name"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEdit();
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                  />
-                  <RangeReportFields
-                    value={editRange}
-                    onChange={setEditRange}
-                    onEnter={saveEdit}
-                    invalid={editRangeMissing}
+            {rosterNewestFirst.map((c) => {
+              const row = {
+                checkin: c,
+                selected: selectedCheckinId === c.id,
+                onSelect: () => onSelectCheckin(c.id),
+              };
+              if (c.id === editingCheckinId) {
+                return rangeCheck ? (
+                  <RangeEditRow
+                    key={c.id}
+                    checkin={c}
+                    operatorId={operatorId}
                     repeater={distanceFrom}
-                    callSign={editCallSign}
+                    onSaved={finishEdit}
+                    onCancel={cancelEdit}
                   />
-                  {(editRangeMissing.length > 0 || editError) && (
-                    <p className="weather-area-error contact-time-error" role="alert">
-                      {editRangeMissing.length > 0 ? missingMessage(editRangeMissing) : editError}
-                    </p>
-                  )}
-                  <div className="checkin-edit-actions">
-                    <button onClick={saveEdit}>Save</button>
-                    <button onClick={cancelEdit}>Cancel</button>
-                  </div>
-                </div>
-              ) : c.id === editingCheckinId ? (
-                <div
+                ) : (
+                  <CheckinEditRow
+                    key={c.id}
+                    checkin={c}
+                    activity={activity}
+                    operatorId={operatorId}
+                    log={log}
+                    onSaved={finishEdit}
+                    onCancel={cancelEdit}
+                  />
+                );
+              }
+              if (rangeCheck) return <RangeRow key={c.id} {...row} distanceFrom={distanceFrom} />;
+              if (log)
+                return (
+                  <LogRow
+                    key={c.id}
+                    {...row}
+                    distanceFrom={distanceFrom}
+                    detailsOpen={openDetails.has(c.id)}
+                    onToggleDetails={() => toggleDetails(c.id)}
+                  />
+                );
+              return (
+                <NetRow
                   key={c.id}
-                  className={"checkin-row checkin-row-editing" + (log ? " checkin-row-editing-log" : "")}
-                >
-                  <input
-                    autoFocus
-                    className="checkin-edit-call"
-                    value={editCallSign}
-                    onChange={(e) => setEditCallSign(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEdit();
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                  />
-                  <input
-                    className="checkin-edit-name"
-                    placeholder="Name"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEdit();
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                  />
-                  <input
-                    className="checkin-edit-qth"
-                    placeholder="QTH location"
-                    value={editQthLocation}
-                    onChange={(e) => setEditQthLocation(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEdit();
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                  />
-                  <input
-                    className="checkin-edit-grid"
-                    placeholder="Grid"
-                    value={editGridSquare}
-                    onChange={(e) => setEditGridSquare(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEdit();
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                  />
-                  <input
-                    className="checkin-edit-address"
-                    placeholder="Full address"
-                    value={editAddress}
-                    onChange={(e) => setEditAddress(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEdit();
-                      if (e.key === "Escape") cancelEdit();
-                    }}
-                  />
-                  {log ? (
-                    <ContactFieldsInputs
-                      idPrefix={`checkin-edit-${c.id}`}
-                      value={editContact}
-                      onChange={setEditContact}
-                      onEnter={saveEdit}
-                      frequencyPlaceholder={activity.frequency || undefined}
-                      saveAttempted={editSaveRefused}
-                    />
-                  ) : (
-                    <label className="checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={editHasTraffic}
-                        onChange={(e) => setEditHasTraffic(e.target.checked)}
-                      />
-                      Has traffic
-                    </label>
-                  )}
-                  {!log && editHasTraffic && (
-                    <input
-                      className="checkin-edit-traffic"
-                      placeholder="Traffic"
-                      value={editTraffic}
-                      onChange={(e) => setEditTraffic(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") saveEdit();
-                        if (e.key === "Escape") cancelEdit();
-                      }}
-                    />
-                  )}
-                  <div className="checkin-edit-actions">
-                    <button onClick={saveEdit}>Save</button>
-                    <button onClick={cancelEdit}>Cancel</button>
-                  </div>
-                </div>
-              ) : (
-                (() => {
-                  const t = formatTimeLines(c.checked_in_at);
-                  const trafficOpen = c.has_traffic && openTraffic.has(c.id);
-                  if (rangeCheck) {
-                    const distanceKm =
-                      distanceFrom && c.location_lat != null && c.location_lon != null
-                        ? haversineKm(distanceFrom.lat, distanceFrom.lon, c.location_lat, c.location_lon)
-                        : null;
-                    return (
-                      <div
-                        key={c.id}
-                        className={
-                          "checkin-row checkin-row-range" +
-                          (selectedCheckinId === c.id ? " selected" : "")
-                        }
-                        onClick={() => onSelectCheckin(c.id)}
-                      >
-                        <span className="checkin-row-call">{c.call_sign}</span>
-                        <span className="checkin-row-name">{c.name}</span>
-                        <span
-                          className="checkin-row-clip"
-                          title={
-                            c.location_lat != null && c.location_lon != null
-                              ? `${c.cross_street} — ${formatCoords(c.location_lat, c.location_lon)}`
-                              : c.cross_street || undefined
-                          }
-                        >
-                          {c.cross_street}
-                        </span>
-                        {distanceKm == null ? (
-                          <span />
-                        ) : (
-                          <span
-                            className="checkin-row-mono checkin-row-nowrap"
-                            title={`${formatDistance(distanceKm)} from ${distanceFrom!.label}`}
-                          >
-                            {shortMiles(distanceKm)}
-                          </span>
-                        )}
-                        <span>{c.station_kind ? stationKindLabel(c.station_kind) : ""}</span>
-                        <span className="checkin-row-clip" title={c.antenna || undefined}>
-                          {c.antenna}
-                        </span>
-                        <span className="checkin-row-clip" title={c.power || undefined}>
-                          {c.power}
-                        </span>
-                        <span className="checkin-row-clip" title={c.rst_sent || undefined}>
-                          {c.rst_sent}
-                        </span>
-                        <span className="checkin-row-clip" title={c.rst_received || undefined}>
-                          {c.rst_received}
-                        </span>
-                        <span className="checkin-row-clip" title={c.notes || undefined}>
-                          {c.notes}
-                        </span>
-                        <span className="checkin-row-time">
-                          <span>{t.local}</span>
-                          <span>{t.utc}</span>
-                        </span>
-                      </div>
-                    );
-                  }
-                  if (log) {
-                    const detailsOpen = openDetails.has(c.id);
-                    const coords =
-                      c.location_lat != null && c.location_lon != null
-                        ? formatCoords(c.location_lat, c.location_lon)
-                        : "";
-                    const distanceKm =
-                      distanceFrom && c.location_lat != null && c.location_lon != null
-                        ? haversineKm(distanceFrom.lat, distanceFrom.lon, c.location_lat, c.location_lon)
-                        : null;
-                    // Power, antenna and notes have columns; the rest (and
-                    // notes in full) are here.
-                    const details: [string, string][] = (
-                      [
-                        ["Grid", c.grid_square],
-                        ["Address", c.address],
-                        ["Coordinates", coords],
-                        ["Notes", c.notes],
-                        ["Traffic", c.has_traffic ? c.traffic || "yes" : ""],
-                      ] as [string, string][]
-                    ).filter(([, v]) => v);
-                    return (
-                      <Fragment key={c.id}>
-                        <div
-                          className={
-                            "checkin-row checkin-row-log" +
-                            (selectedCheckinId === c.id ? " selected" : "")
-                          }
-                          onClick={() => onSelectCheckin(c.id)}
-                        >
-                          <span className="checkin-row-call">{c.call_sign}</span>
-                          <span className="checkin-row-name">{c.name}</span>
-                          <span className="checkin-row-location">{c.qth_location}</span>
-                          {distanceKm == null ? (
-                            <span />
-                          ) : (
-                            <span
-                              className="checkin-row-mono checkin-row-nowrap"
-                              title={`${formatDistance(distanceKm)} from ${distanceFrom!.label}`}
-                            >
-                              {shortMiles(distanceKm)}
-                            </span>
-                          )}
-                          <span className="checkin-row-mono">{c.frequency}</span>
-                          <span>{c.mode}</span>
-                          <span className="checkin-row-mono checkin-row-nowrap">{rstPair(c)}</span>
-                          <span className="checkin-row-clip" title={c.power || undefined}>
-                            {c.power}
-                          </span>
-                          <span className="checkin-row-clip" title={c.antenna || undefined}>
-                            {c.antenna}
-                          </span>
-                          <span className="checkin-row-clip" title={c.notes || undefined}>
-                            {c.notes}
-                          </span>
-                          <span className="checkin-row-time">
-                            <span>{t.local}</span>
-                            <span>{t.utc}</span>
-                          </span>
-                          <span>
-                            {details.length > 0 && (
-                              <button
-                                className="link-button"
-                                aria-expanded={detailsOpen}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleDetails(c.id);
-                                }}
-                              >
-                                {detailsOpen ? "Hide details" : "Show details"}
-                              </button>
-                            )}
-                          </span>
-                        </div>
-                        {detailsOpen && (
-                          <div className="report-notes-detail contact-details">
-                            {details.map(([label, value]) => (
-                              <span key={label}>
-                                <span className="report-notes-label">{label}:</span> {value}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </Fragment>
-                    );
-                  }
-                  return (
-                    <Fragment key={c.id}>
-                      <div
-                        className={"checkin-row" + (selectedCheckinId === c.id ? " selected" : "")}
-                        onClick={() => onSelectCheckin(c.id)}
-                      >
-                        <span className="checkin-row-call">{c.call_sign}</span>
-                        <span className="checkin-row-name">{c.name || ""}</span>
-                        <span className="checkin-row-location">{c.qth_location}</span>
-                        <span className="checkin-row-grid">{c.grid_square}</span>
-                        <span className="checkin-row-coords" title={c.location_label || undefined}>
-                          {c.location_lat != null && c.location_lon != null
-                            ? formatCoords(c.location_lat, c.location_lon)
-                            : ""}
-                        </span>
-                        <span className="checkin-row-address" title={c.address || undefined}>
-                          {c.address}
-                        </span>
-                        <span className="checkin-row-time">
-                          <span>{t.local}</span>
-                          <span>{t.utc}</span>
-                        </span>
-                        <span className="checkin-row-traffic">
-                          {c.has_traffic && (
-                            <button
-                              className="link-button"
-                              aria-expanded={trafficOpen}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleTraffic(c.id);
-                              }}
-                            >
-                              {trafficOpen ? "Hide traffic" : "Show traffic"}
-                            </button>
-                          )}
-                        </span>
-                      </div>
-                      {trafficOpen && (
-                        <div className="report-notes-detail">
-                          <span className="report-notes-label">Traffic:</span>{" "}
-                          {c.traffic || <em>No details recorded yet.</em>}
-                          <label className="checkbox-row traffic-handled">
-                            <input
-                              type="checkbox"
-                              checked={c.traffic_handled}
-                              disabled={readOnly}
-                              onChange={(e) => handleTrafficHandled(c.id, e.target.checked)}
-                            />
-                            Handled
-                          </label>
-                        </div>
-                      )}
-                    </Fragment>
-                  );
-                })()
-              )
-            )}
+                  {...row}
+                  trafficOpen={c.has_traffic && openTraffic.has(c.id)}
+                  onToggleTraffic={() => toggleTraffic(c.id)}
+                  readOnly={readOnly}
+                  onTrafficHandled={(handled) => handleTrafficHandled(c.id, handled)}
+                />
+              );
+            })}
           </div>
         </div>
 

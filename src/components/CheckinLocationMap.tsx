@@ -274,7 +274,7 @@ export default function CheckinLocationMap({
           {pins.length} of {checkins.length} check-ins plotted
           {unresolvedCount > 0 && ` — ${unresolvedCount} without a resolvable location`}
           {rangeCheck && !repeater && " — no repeater set"}
-          {!rangeCheck && !from && " — no operator location set"}
+          {!rangeCheck && !from && " — no repeater or net control location set"}
         </p>
         <ul className="range-map-legend" aria-label="Map key">
           {rangeCheck &&

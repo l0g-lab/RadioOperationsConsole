@@ -95,11 +95,11 @@ or end, and each record is a contact carrying its radio details.
   every column, the roster scrolls sideways within its panel, headings and
   rows together.
 - **LOG-023:** The roster MUST show each contact's straight-line distance in
-  miles (kilometers too on hover) from the log's own location, else the
-  operator's — the same point the check-in map measures from (`CIMAP-060`,
-  `CIMAP-064`) — whole miles from 100 up. A contact with no location, or a
-  log and operator with none, shows no distance, and the column's hover text
-  says how to set one.
+  miles (kilometers too on hover) from the same point the check-in map
+  measures from (`CIMAP-063`, `RPT-031`): the log's repeater if it has one,
+  else its own location, else the operator's — whole miles from 100 up. A
+  contact with no location, or a log with no such point, shows no distance,
+  and the column's hover text says how to set one.
 - **LOG-021:** The log MUST be searchable by call sign, name, location, and
   notes, saying so when nothing matches.
 - **LOG-022:** Roster exports (CSV and JSON) MUST include the contact fields.

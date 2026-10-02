@@ -6,6 +6,7 @@ import type { Activity, Checkin } from "../../types";
 vi.mock("../../api", () => ({
   listVoidedCheckins: vi.fn(() => Promise.resolve([])),
   updateCheckin: vi.fn(() => Promise.resolve()),
+  setCheckinTrafficHandled: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("../../locationResolution", () => ({
   resolveOfflineLocationAsync: vi.fn(() => Promise.resolve(null)),
@@ -279,5 +280,71 @@ describe("CheckinRoster as a range check", () => {
     const args = vi.mocked(api.updateCheckin).mock.calls[0];
     expect(args.slice(7, 10)).toEqual([28.55, -81.35, "Colonial & Mills"]);
     expect(args[12]).toMatchObject({ station_kind: "mobile", antenna: null, rst_sent: "Full quieting" });
+  });
+});
+
+describe("CheckinRoster as a net", () => {
+  const NET: Activity = { ...LOG, id: "net1", title: "Tuesday Net", activity_type: "directed_net" };
+  const WITH_TRAFFIC = contact({
+    id: "t1",
+    call_sign: "W2TRF",
+    has_traffic: true,
+    traffic: "Need a generator",
+    frequency: "",
+    mode: "",
+    rst_sent: "",
+    rst_received: "",
+    power: "",
+    antenna: "",
+    notes: "",
+  });
+
+  function renderNet(selectedCheckinId: string | null = null) {
+    return render(
+      <CheckinRoster
+        activity={NET}
+        operatorId="op1"
+        onOpenExports={() => {}}
+        checkins={[WITH_TRAFFIC]}
+        qrzConfigured={false}
+        offlineCallsAvailable={false}
+        selectedCheckinId={selectedCheckinId}
+        onSelectCheckin={() => {}}
+        onCheckinsChanged={() => {}}
+        onShowMap={() => {}}
+      />
+    );
+  }
+
+  beforeEach(() => {
+    vi.mocked(api.updateCheckin).mockClear();
+    vi.mocked(api.setCheckinTrafficHandled).mockClear();
+  });
+
+  it("shows traffic on request and marks it handled", async () => {
+    const user = userEvent.setup();
+    renderNet();
+    expect(screen.getByRole("heading", { name: /Check-ins — Tuesday Net/ })).toBeInTheDocument();
+    expect(screen.getByText("Grid Square")).toBeInTheDocument();
+    expect(screen.queryByText("Need a generator")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show traffic" }));
+    expect(screen.getByText("Need a generator")).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: "Handled" }));
+    expect(api.setCheckinTrafficHandled).toHaveBeenCalledWith("t1", true, "op1");
+  });
+
+  it("corrects a check-in's traffic", async () => {
+    const user = userEvent.setup();
+    renderNet("t1");
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const traffic = screen.getByPlaceholderText("Traffic");
+    expect(traffic).toHaveValue("Need a generator");
+    await user.clear(traffic);
+    await user.type(traffic, "Need water{Enter}");
+
+    const args = vi.mocked(api.updateCheckin).mock.calls[0];
+    expect(args.slice(0, 2)).toEqual(["t1", "W2TRF"]);
+    expect(args.slice(10, 13)).toEqual([true, "Need water", null]);
   });
 });

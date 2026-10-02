@@ -663,10 +663,6 @@ details > summary {
   color: var(--text-dim);
 }
 
-.checkin-export-status {
-  margin: 4px 0 0 0;
-}
-
 .checkin-roster-panel {
   flex: 1;
   min-height: 0;
@@ -1350,18 +1346,6 @@ details > summary {
   letter-spacing: 0.04em;
 }
 
-.template-list {
-  margin-top: 6px;
-}
-
-.template-edit {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-
 /* Room for longer activity names. */
 .activity-title-input {
   flex: 1 1 380px;
@@ -1435,13 +1419,6 @@ details > summary {
   border-radius: 3px;
   padding: 4px 6px;
   font: inherit;
-}
-
-.closeout-save {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
 }
 
 .checkin-entry-row-traffic {
@@ -1613,11 +1590,6 @@ details > summary {
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-.ics-steps {
-  margin: 0;
-  padding-left: 20px;
 }
 
 .ics-pager {

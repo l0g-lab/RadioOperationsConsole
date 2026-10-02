@@ -111,7 +111,8 @@ until now.
 
 - **NETOPS-040:** An activity MUST be able to record a channel/frequency as
   free text (e.g. a repeater description with offset/tone, or a simplex
-  frequency), set at creation and correctable afterward on the same terms
+  frequency), typed or filled in by picking a repeater from the directory
+  (`RPT-020`), set at creation and correctable afterward on the same terms
   as title and scheduled date (`UX-OPS-010`).
 - **NETOPS-041:** Channel/frequency MUST remain optional. Activities
   created without one, or created before this field existed, MUST NOT be
@@ -129,7 +130,9 @@ An activity may be run from somewhere other than the operator's usual
 station — a field deployment, a county EOC during an activation — and that
 site may not have a known zip code, address, or grid square to type.
 
-- **NETOPS-043:** An activity MUST be able to record its own location,
+- **NETOPS-043:** An activity MUST be able to record its own location —
+  where net control is, kept apart from the repeater it runs on
+  (`RPT-021`) —
   optional and set/correctable on the same terms as title and scheduled
   date (`UX-OPS-010`), via any of the entry methods in `CIMAP-073` (text
   search, map click, or GPS coordinates).

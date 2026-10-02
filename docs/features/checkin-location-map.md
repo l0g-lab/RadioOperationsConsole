@@ -48,8 +48,9 @@ the Check-ins workspace, not part of the rapid check-in entry path.
 ## Core principle: stored data, not re-derived data
 
 - **CIMAP-001:** The map MUST plot each check-in using only the location
-  data already stored on that check-in record (`qth_location`,
-  `grid_square`, `address`) as of when the map is opened. It MUST NOT
+  data already stored on that check-in record — its coordinates, resolved
+  once when it was saved or set by hand ([location-resolution.md](location-resolution.md))
+  — as of when the map is opened. It MUST NOT
   re-query QRZ or any callbook connector for the call sign's directory
   location.
 - **CIMAP-002:** When an operator has edited, cleared, or manually entered a
@@ -133,13 +134,13 @@ gap: an area already viewed once stays viewable later without one.
   just the current session, so a previously-viewed area stays available
   offline later without having to be reloaded online first.
 
-## Operator location and distance
+## Net control, repeater, and distance
 
-An operator can locate themselves on the same map used for check-ins, and
-see how far each checked-in station is from them — useful for propagation
-and coverage awareness during a net.
+Net control can locate themselves on the same map used for check-ins, along
+with the repeater the net runs on, and see how far each checked-in station
+is — useful for propagation and coverage awareness during a net.
 
-- **CIMAP-060:** The reference location used on this map MUST be resolved
+- **CIMAP-060:** Net control's location on this map MUST be resolved
   with this precedence: (1) a location set on the focused activity itself,
   when present, else (2) the location recorded for the currently selected
   operator profile. An operator's activity-specific location (e.g. a field
@@ -147,16 +148,18 @@ and coverage awareness during a net.
   activity only; it does not change the operator's stored default. Both are
   entered the same way (`CIMAP-073`), not as differently-entered location
   concepts.
-- **CIMAP-061:** When a reference location is resolved (activity or
-  operator), the map MUST plot it with a marker visually distinct from
-  check-in markers (`CIMAP-070`).
-- **CIMAP-062:** When neither the focused activity nor the current operator
-  has a location set, the map MUST omit the reference marker and any
-  distance lines without error, mirroring `CIMAP-013`'s treatment of a
-  check-in with no resolvable location.
-- **CIMAP-063:** When a reference location is resolved, the map MUST draw a
-  line from each resolved check-in to it, labeled with the distance between
-  them.
+- **CIMAP-061:** When net control's location is resolved, the map MUST plot
+  it with a marker visually distinct from check-in markers, and the
+  activity's repeater, when it has one, with another (`CIMAP-070`,
+  `RPT-030`).
+- **CIMAP-062:** When there is neither a repeater nor a location for net
+  control, the map MUST omit those markers and any distance lines without
+  error, mirroring `CIMAP-013`'s treatment of a check-in with no resolvable
+  location.
+- **CIMAP-063:** The map MUST draw a line from each resolved check-in to the
+  repeater when the activity has one, else to net control, labeled with the
+  distance between them, and a line in a different color from net control
+  to the repeater (`RPT-031`).
 - **CIMAP-064:** Distance MUST be computed offline from the two known
   coordinates (no network request), consistent with `CIMAP-010`'s offline
   grid-square math.
@@ -190,15 +193,14 @@ and coverage awareness during a net.
 
 ## Presentation
 
-- **CIMAP-070:** Check-in markers MUST be small and MUST use a color
-  distinguishable from the operator marker and from the basemap, while
-  remaining clearly visible against it. The operator marker MUST use the
-  same circle-marker style as check-in markers (not a differently-shaped
-  icon), distinguished only by color, so both read as the same kind of
-  station marker.
+- **CIMAP-070:** Check-in markers MUST be small dots in a color clearly
+  visible against the basemap. Net control and the repeater MUST be shown
+  as icons (a radio and an antenna tower) in round badges, so they never
+  read as check-ins, with a key above the map.
 - **CIMAP-072:** Distance lines MUST use a line weight and color that keep
   them clearly visible against the basemap and easy to point at/hover over,
-  distinct from both the check-in and operator marker colors.
+  distinct from the marker colors. Lines to check-ins are dashed; the line
+  from net control to the repeater is solid and a different color.
 - **CIMAP-073:** Setting either the operator's default location or an
   activity's location MUST support three entry methods, since a site may
   not have a zip code, address, or grid square known offhand: free-text
@@ -216,22 +218,16 @@ and coverage awareness during a net.
 
 ## Explicit non-goals for this slice
 
-- Persisting resolved check-in coordinates back onto the check-in record,
-  or caching them beyond the current map session's in-memory cache. (This
-  is distinct from tile caching, `CIMAP-050`, which caches basemap imagery,
-  not check-in coordinates.)
 - Bulk bounding-box/radius search or routing between stations. Point-to-
-  point distance from each check-in to the operator location is covered by
-  `CIMAP-063`; general station-to-station distance or routing is not.
-- Editing a check-in's location by dragging a map pin — the existing edit
-  form (`NETOPS-030`) remains the only way to change stored location text.
+  point distance from each check-in to the repeater or net control is
+  covered by `CIMAP-063`; general station-to-station distance or routing is
+  not.
 - A location-picker workflow for spotter reports is now covered by
   `skywarn-incidents-and-reports.md` (`SPOT-004`), reusing this feature's
   `LocationPicker` component rather than a second implementation. Incident
   location-picking remains unbuilt, tracked as a future increment there.
-- Editing the operator's location from this map (dragging its marker,
-  etc.) — it is set from the Operations tab (`UX-OPS-010`-style correction),
-  not from here.
+- Moving net control or the repeater from this map (dragging their
+  markers) — they are set from the Operations tab, not from here.
 
 ## Acceptance examples
 
@@ -261,15 +257,22 @@ Scenario: A previously viewed area stays viewable offline
   When the operator opens the check-in location map over that same area
   Then the previously cached tiles are shown
 
-Scenario: Operator location shows distance to each check-in
-  Given the current operator has a location set
+Scenario: Net control's location shows distance to each check-in
+  Given the current operator has a location set and the activity has no repeater
   When the operator opens the check-in location map
-  Then the operator's location shows with a marker distinct from check-in markers
-  And a line from each resolved check-in to the operator shows the distance between them
+  Then net control shows with a radio icon, distinct from check-in markers
+  And a line from each resolved check-in to net control shows the distance between them
 
-Scenario: No operator location means no distance lines
-  Given the current operator has no location set
+Scenario: On a repeater, distances run from the repeater
+  Given the activity has a repeater and the operator has a location
   When the operator opens the check-in location map
-  Then no operator marker or distance lines appear
+  Then the repeater shows with an antenna-tower icon and net control with a radio icon
+  And dashed lines run from the repeater to each check-in with the distance
+  And a solid line in another color joins net control and the repeater
+
+Scenario: No location means no distance lines
+  Given the current operator has no location set and the activity has no repeater
+  When the operator opens the check-in location map
+  Then no net-control marker or distance lines appear
   And check-in pins still display normally
 ```

@@ -69,9 +69,10 @@ stored, shown, and typed, so every feature agrees.
   operator's location, copied onto the activity when it is created. Failing
   to apply it MUST NOT prevent the activity from being created. A repeater is
   kept separately ([repeater-directory.md](repeater-directory.md)).
-- **LOCRES-021:** Where a reference point is needed (for example, distance
-  from the net to a check-in), the activity's location MUST take precedence
-  over the operator's.
+- **LOCRES-021:** Where net control's position is needed, the activity's
+  location MUST take precedence over the operator's. Distances to check-ins
+  are measured from the activity's repeater when it has one, else from net
+  control (`RPT-031`).
 
 ## Coordinate formats
 
