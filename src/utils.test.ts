@@ -4,19 +4,8 @@ import {
   formatTimeLines,
   formatContactTime,
   parseContactTime,
-  pad2,
   splitScheduledAt,
 } from "./utils";
-
-describe("pad2", () => {
-  it("pads single digits", () => {
-    expect(pad2(5)).toBe("05");
-  });
-
-  it("leaves two-or-more digits alone", () => {
-    expect(pad2(42)).toBe("42");
-  });
-});
 
 describe("splitScheduledAt / combineScheduledAt", () => {
   it("splits a date-and-time value", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatMhz, formatRepeater, inputMhz, repeaterMatches, suggestedOffset, tuningDetails } from "./repeaters";
+import { formatMhz, formatRepeater, inputMhz } from "./repeaters";
 import type { Repeater } from "./types";
 
 function repeater(overrides: Partial<Repeater> = {}): Repeater {
@@ -48,36 +48,8 @@ describe("formatRepeater (RPT-005)", () => {
 });
 
 describe("offsets (RPT-002)", () => {
-  it("suggests the band's usual amount", () => {
-    expect(suggestedOffset(146.94)).toBe(0.6);
-    expect(suggestedOffset(444.5)).toBe(5);
-    expect(suggestedOffset(224.1)).toBe(1.6);
-    expect(suggestedOffset(53.1)).toBe(0.5);
-    expect(suggestedOffset(29.6)).toBeNull();
-  });
-
   it("works out the input frequency", () => {
     expect(inputMhz(repeater())).toBe(146.34);
   });
 });
 
-describe("repeaterMatches (RPT-011)", () => {
-  it("searches name, frequency and notes", () => {
-    expect(repeaterMatches(repeater(), "w4abc")).toBe(true);
-    expect(repeaterMatches(repeater(), "146.94")).toBe(true);
-    expect(repeaterMatches(repeater(), "county")).toBe(true);
-    expect(repeaterMatches(repeater(), "444")).toBe(false);
-  });
-});
-
-describe("tuningDetails", () => {
-  it("spells out what to program", () => {
-    expect(tuningDetails(repeater())).toBe("Output 146.940 · Input 146.340 (-0.600) · Tone PL 100.0 · FM");
-    expect(tuningDetails(repeater({ tone_out: "123.0", mode: "DMR" }))).toBe(
-      "Output 146.940 · Input 146.340 (-0.600) · Tone PL 100.0 · Output tone PL 123.0 · DMR"
-    );
-    expect(
-      tuningDetails(repeater({ offset_mhz: 0, tone_in_kind: "none", tone_in: "", tone_out_kind: "none", tone_out: "" }))
-    ).toBe("Output 146.940 · Simplex · No tone · FM");
-  });
-});

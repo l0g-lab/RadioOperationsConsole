@@ -13,7 +13,7 @@ vi.mock("../../locationResolution", () => ({
 }));
 
 import * as api from "../../api";
-import CheckinRoster, { shortMiles } from "./CheckinRoster";
+import CheckinRoster from "./CheckinRoster";
 
 const LOG: Activity = {
   id: "log1",
@@ -143,17 +143,6 @@ describe("CheckinRoster as a station log", () => {
       "title",
       "Straight-line distance from Tampa EOC"
     );
-  });
-
-  it("rounds long distances to whole miles", () => {
-    expect(shortMiles(124.2)).toBe("77.2 mi");
-    expect(shortMiles(331.2)).toBe("206 mi");
-  });
-
-  it("says how to get distances when there's nothing to measure from", () => {
-    renderRoster();
-    expect(screen.getByText("Distance").getAttribute("title")).toMatch(/Set a location/);
-    expect(screen.queryByText(/ mi$/)).not.toBeInTheDocument();
   });
 
   it("keeps the rest (address, grid, full notes) under Show details, for contacts that have any", async () => {

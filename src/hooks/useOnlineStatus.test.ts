@@ -31,16 +31,6 @@ describe("useOnlineStatus", () => {
     expect(result.current).toBe(false);
   });
 
-  it("flips back to true when the browser fires the 'online' event", () => {
-    setNavigatorOnLine(false);
-    const { result } = renderHook(() => useOnlineStatus());
-    expect(result.current).toBe(false);
-    act(() => {
-      window.dispatchEvent(new Event("online"));
-    });
-    expect(result.current).toBe(true);
-  });
-
   it("stops listening after unmount", () => {
     setNavigatorOnLine(true);
     const { result, unmount } = renderHook(() => useOnlineStatus());

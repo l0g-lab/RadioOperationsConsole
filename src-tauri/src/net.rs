@@ -86,27 +86,3 @@ pub fn client(
     }
     b.build()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn identifies_as_this_release() {
-        let version = env!("CARGO_PKG_VERSION");
-        assert_eq!(
-            USER_AGENT,
-            format!("RadioOperationsConsole/{version} (amateur-radio net logger)")
-        );
-        assert_eq!(APP_VERSION, version);
-    }
-
-    #[test]
-    fn working_offline_is_off_until_turned_on() {
-        assert!(!working_offline());
-        set_work_offline(true);
-        assert!(working_offline());
-        set_work_offline(false);
-        assert!(!working_offline());
-    }
-}

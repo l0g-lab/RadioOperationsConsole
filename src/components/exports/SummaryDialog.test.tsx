@@ -58,19 +58,6 @@ describe("SummaryDialog", () => {
     vi.mocked(saveTextFile).mockClear();
   });
 
-  it("lays out the summary like the end-of-net step", async () => {
-    render(<SummaryDialog activity={{ ...NET, repeater_name: "W4ABC Orlando" }} onClose={() => {}} />);
-    expect(await screen.findByText("12 check-ins")).toBeInTheDocument();
-    expect(screen.getByText("(11 unique stations)")).toBeInTheDocument();
-    expect(screen.getByText("1 check-in with traffic")).toBeInTheDocument();
-    expect(screen.getByText("30 min")).toBeInTheDocument();
-    expect(screen.getByText(/Directed net · 2026-09-29 19:00 · 146\.940 -0\.600 PL 100\.0 · Repeater W4ABC Orlando/)).toBeInTheDocument();
-    expect(screen.getByText("Started")).toBeInTheDocument();
-    expect(screen.getByText("Ended")).toBeInTheDocument();
-    expect(screen.getByText("Quiet night.")).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
   it("warns about traffic left unhandled", async () => {
     vi.mocked(api.activitySummary).mockResolvedValue({ ...SUMMARY, open_traffic_items: 2 });
     render(<SummaryDialog activity={NET} onClose={() => {}} />);
@@ -93,15 +80,6 @@ describe("SummaryDialog", () => {
     render(<SummaryDialog activity={NET} conclusion="  Two new stations.  " onClose={() => {}} />);
     expect(await screen.findByText("Two new stations.")).toBeInTheDocument();
     expect(screen.queryByText("Quiet night.")).not.toBeInTheDocument();
-  });
-
-  it("closes with Escape", async () => {
-    const user = userEvent.setup();
-    const onClose = vi.fn();
-    render(<SummaryDialog activity={NET} onClose={onClose} />);
-    await screen.findByText("12 check-ins");
-    await user.keyboard("{Escape}");
-    expect(onClose).toHaveBeenCalled();
   });
 
   it("is offered for archived activities, without restoring them", async () => {

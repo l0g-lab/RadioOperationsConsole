@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn backup_then_restore_brings_back_the_old_data() {
         let (mut r, _live_path) = repo();
-        r.create_activity("First Net", "weekly_net", Some("2026-01-01"), None)
+        r.create_activity("First Net", "directed_net", Some("2026-01-01"), None)
             .unwrap();
 
         let file = temp("backup.db");
@@ -202,7 +202,7 @@ mod tests {
         assert_eq!(summary.activities, 1);
 
         // Changes made after the backup...
-        r.create_activity("Second Net", "weekly_net", Some("2026-01-02"), None)
+        r.create_activity("Second Net", "directed_net", Some("2026-01-02"), None)
             .unwrap();
         assert_eq!(count(&r.conn, "activities"), 2);
 
@@ -212,7 +212,7 @@ mod tests {
         assert_eq!(count(&r.conn, "activities"), 1);
         assert_eq!(inspect(&safety).unwrap().activities, 2);
         // The live connection still works normally afterwards.
-        r.create_activity("Third Net", "weekly_net", Some("2026-01-03"), None)
+        r.create_activity("Third Net", "directed_net", Some("2026-01-03"), None)
             .unwrap();
         assert_eq!(count(&r.conn, "activities"), 2);
     }
@@ -222,7 +222,7 @@ mod tests {
         let (r, _) = repo();
         let file = temp("again.db");
         create_backup(&r.conn, &file).unwrap();
-        r.create_activity("Net", "weekly_net", None, None).unwrap();
+        r.create_activity("Net", "directed_net", None, None).unwrap();
         assert_eq!(create_backup(&r.conn, &file).unwrap().activities, 1);
     }
 
@@ -242,7 +242,7 @@ mod tests {
         assert!(inspect(&other).is_err());
 
         let (mut r, _) = repo();
-        r.create_activity("Keep me", "weekly_net", None, None)
+        r.create_activity("Keep me", "directed_net", None, None)
             .unwrap();
         assert!(restore_backup(&mut r.conn, &junk, &temp("safety")).is_err());
         assert_eq!(

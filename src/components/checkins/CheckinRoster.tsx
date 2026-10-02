@@ -45,7 +45,6 @@ interface Props {
   distanceFrom?: Place | null;
 }
 
-export { shortMiles } from "./roster/shared";
 
 type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
 

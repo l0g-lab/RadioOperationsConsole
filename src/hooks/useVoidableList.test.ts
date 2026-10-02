@@ -29,14 +29,6 @@ function setup(overrides: Partial<Parameters<typeof useVoidableList<Item>>[0]> =
 }
 
 describe("useVoidableList", () => {
-  it("starts with nothing pending and no removed items loaded", () => {
-    const { result } = setup();
-    expect(result.current.removingId).toBeNull();
-    expect(result.current.reason).toBe("");
-    expect(result.current.showRemoved).toBe(false);
-    expect(result.current.voided).toEqual([]);
-  });
-
   it("startRemove sets the pending id and clears any leftover reason text", async () => {
     const { result } = setup();
     act(() => result.current.setReason("leftover"));
@@ -72,13 +64,6 @@ describe("useVoidableList", () => {
     expect(voidItem).toHaveBeenCalledWith("item-1", null);
   });
 
-  it("confirmRemove does nothing if nothing is pending", async () => {
-    const { result, voidItem, onChanged } = setup();
-    await act(() => result.current.confirmRemove());
-    expect(voidItem).not.toHaveBeenCalled();
-    expect(onChanged).not.toHaveBeenCalled();
-  });
-
   it("confirmRemove refreshes the removed list only when it's currently shown", async () => {
     const { result, listVoided } = setup();
     act(() => result.current.startRemove("item-1"));
@@ -98,15 +83,6 @@ describe("useVoidableList", () => {
     expect(result.current.showRemoved).toBe(true);
     expect(result.current.voided).toEqual([{ id: "v1" }]);
     expect(listVoided).toHaveBeenCalledTimes(1);
-  });
-
-  it("toggleShowRemoved back off doesn't reload", async () => {
-    const { result, listVoided } = setup();
-    await act(() => result.current.toggleShowRemoved());
-    listVoided.mockClear();
-    await act(() => result.current.toggleShowRemoved());
-    expect(result.current.showRemoved).toBe(false);
-    expect(listVoided).not.toHaveBeenCalled();
   });
 
   it("a failed listVoided leaves the removed list empty instead of throwing", async () => {

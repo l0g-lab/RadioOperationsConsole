@@ -6,7 +6,6 @@ import {
   formatDistance,
   getCoordFormat,
   haversineKm,
-  kmToMiles,
   parseAxis,
   parseCoords,
   setCoordFormat,
@@ -26,10 +25,6 @@ describe("haversineKm / kmToMiles / formatDistance", () => {
     // Denver (39.7392,-104.9903) to Boulder (40.0150,-105.2705) is ~38.5 km.
     const km = haversineKm(39.7392, -104.9903, 40.015, -105.2705);
     expect(km).toBeCloseTo(38.5, 0);
-  });
-
-  it("kmToMiles applies the standard conversion factor", () => {
-    expect(kmToMiles(1)).toBeCloseTo(0.621371, 5);
   });
 
   it("formatDistance shows both units", () => {

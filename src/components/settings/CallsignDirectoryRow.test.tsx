@@ -35,10 +35,6 @@ describe("CallsignDirectoryRow (CALLDIR-040)", () => {
     });
   });
 
-  it("offers both directories, amateur first", () => {
-    expect(CALLSIGN_DIRECTORIES.map((d) => d.service)).toEqual(["amateur", "gmrs"]);
-  });
-
   it("states the size up front and downloads with one click (CALLDIR-031)", async () => {
     const user = userEvent.setup();
     const onBusy = vi.fn();

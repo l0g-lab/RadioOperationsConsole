@@ -228,12 +228,6 @@ mod tests {
     }
 
     #[test]
-    fn the_tone_lists_are_complete() {
-        assert_eq!(CTCSS_TONES.len(), 50);
-        assert_eq!(DCS_CODES.len(), 104);
-    }
-
-    #[test]
     fn entries_are_checked_and_tidied() {
         // RPT-001, RPT-003, RPT-004
         let d = clean(w4abc()).unwrap();

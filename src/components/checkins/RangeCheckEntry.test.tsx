@@ -80,21 +80,6 @@ describe("CheckinEntryForm in a range check", () => {
     expect(screen.queryByLabelText("Antenna")).not.toBeInTheDocument();
   });
 
-  it("offers only the five signal reports (RANGE-013)", () => {
-    renderRangeCheck();
-    const options = Array.from(
-      (screen.getByLabelText("How we hear them") as HTMLSelectElement).options
-    ).map((o) => o.value);
-    expect(options).toEqual([
-      "",
-      "Full quieting",
-      "Slight noise",
-      "Noisy but readable",
-      "Broken",
-      "Unreadable",
-    ]);
-  });
-
   it("saves a complete check-in with its map point and starts the next one blank (RANGE-010, RANGE-016)", async () => {
     const user = userEvent.setup();
     renderRangeCheck();

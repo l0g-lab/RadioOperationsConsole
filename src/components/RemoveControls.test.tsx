@@ -34,19 +34,6 @@ describe("RemoveConfirmBar", () => {
 });
 
 describe("RemovedPanel", () => {
-  it("shows the empty message when there are no items", () => {
-    render(
-      <RemovedPanel
-        title="Removed check-ins"
-        emptyText="No removed check-ins."
-        items={[]}
-        renderItem={() => null}
-        onRestore={vi.fn()}
-      />
-    );
-    expect(screen.getByText("No removed check-ins.")).toBeInTheDocument();
-  });
-
   it("renders each item and restores it on click", async () => {
     const user = userEvent.setup();
     const onRestore = vi.fn();

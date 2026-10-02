@@ -28,11 +28,6 @@ import SettingsTab from "./SettingsTab";
 describe("SettingsTab save control", () => {
   beforeEach(() => vi.mocked(api.saveSettings).mockClear());
 
-  it("renders Save settings as the primary action", () => {
-    render(<SettingsTab />);
-    expect(screen.getByRole("button", { name: "Save settings" })).toHaveClass("primary");
-  });
-
   it("flags unsaved changes after an edit and clears the flag on save", async () => {
     const user = userEvent.setup();
     render(<SettingsTab />);

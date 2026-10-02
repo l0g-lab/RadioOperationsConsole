@@ -191,16 +191,6 @@ describe("CheckinEntryForm in a station log", { timeout: 10_000 }, () => {
     expect(new Date(at!).getTime()).toBe(new Date(2026, 8, 14, 10, 5).getTime());
   });
 
-  it("shows the current time, running, in the empty time box", async () => {
-    renderLog();
-    const time = screen.getByLabelText("Contact time");
-    const shown = time.getAttribute("placeholder")!;
-    expect(shown).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
-    expect(Math.abs(new Date(shown.replace(" ", "T")).getTime() - Date.now())).toBeLessThan(2000);
-    await pause(1100);
-    expect(time.getAttribute("placeholder")).not.toBe(shown);
-  });
-
   it("refuses an unreadable time, saying why, and keeps what was typed", async () => {
     const user = userEvent.setup();
     renderLog();

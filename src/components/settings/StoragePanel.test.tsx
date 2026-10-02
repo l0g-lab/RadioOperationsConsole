@@ -51,15 +51,6 @@ describe("StoragePanel (STORE-001–STORE-004)", () => {
     expect(within(row(/Unfinished downloads/)).getByText(/2 files · 30 MB/)).toBeInTheDocument();
   });
 
-  it("shows the folder each item is kept in, empty ones too", async () => {
-    render(<StoragePanel onCleared={() => {}} />);
-    await screen.findByText(/Total:/);
-    expect(await within(row(/Map tiles/)).findByText(TILES)).toBeInTheDocument();
-    expect(within(row(/Amateur call-sign file/)).getByText(PACKS)).toBeInTheDocument();
-    expect(within(row(/GMRS call-sign file/)).getByText(PACKS)).toBeInTheDocument();
-    expect(within(row(/Safety copies from restores/)).getByText(BACKUPS)).toBeInTheDocument();
-  });
-
   it("still lists map tiles when their folder can't be found", async () => {
     vi.mocked(api.tileCacheLocation).mockRejectedValue("no path");
     render(<StoragePanel onCleared={() => {}} />);

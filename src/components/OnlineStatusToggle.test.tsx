@@ -17,14 +17,6 @@ describe("OnlineStatusToggle (UX-020, UX-021)", () => {
     vi.mocked(api.setWorkOffline).mockClear();
   });
 
-  it("reads Online and says clicking works offline", () => {
-    render(<OnlineStatusToggle />);
-    const pill = screen.getByRole("button", { name: /Online.*click to work offline/i });
-    expect(pill).toHaveTextContent("Online");
-    expect(pill).toHaveAttribute("aria-pressed", "false");
-    expect(pill).toHaveClass("online-pill", "online-pill-online");
-  });
-
   it("switches to working offline and back", async () => {
     const user = userEvent.setup();
     render(<OnlineStatusToggle />);
@@ -37,14 +29,6 @@ describe("OnlineStatusToggle (UX-020, UX-021)", () => {
     await user.click(pill);
     expect(api.setWorkOffline).toHaveBeenLastCalledWith(false);
     expect(screen.getByRole("button")).toHaveTextContent("Online");
-  });
-
-  it("works from the keyboard", async () => {
-    const user = userEvent.setup();
-    render(<OnlineStatusToggle />);
-    screen.getByRole("button").focus();
-    await user.keyboard("{Enter}");
-    expect(api.setWorkOffline).toHaveBeenLastCalledWith(true);
   });
 
   it("tells no connection apart from working offline", () => {

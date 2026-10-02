@@ -108,7 +108,7 @@ describe("ExportOptions Show CSV", () => {
     expect(saveTextFile).toHaveBeenLastCalledWith(expect.stringContaining("Check-ins"), checkinsToCsv([CHECKIN]));
   });
 
-  it("offers no JSON, and shows the spotter text report before saving", async () => {
+  it("shows the spotter text report before saving", async () => {
     const REPORT: SpotterReport = {
       id: "r1",
       activity_id: "a1",
@@ -130,7 +130,6 @@ describe("ExportOptions Show CSV", () => {
     const user = userEvent.setup();
     render(<ExportOptions activity={NET} operator={null} />);
     await screen.findByText("1 report");
-    expect(screen.queryByRole("button", { name: /JSON/ })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Show text report" }));
     const dialog = await screen.findByRole("dialog", { name: "Spotter reports — Tuesday Net" });

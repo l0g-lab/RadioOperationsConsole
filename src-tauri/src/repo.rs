@@ -1049,7 +1049,7 @@ mod lifecycle_tests {
     #[test]
     fn walks_the_lifecycle_and_records_each_step() {
         let r = repo();
-        let id = r.create_activity("Net", "weekly_net", Some("2026-09-21"), None).unwrap();
+        let id = r.create_activity("Net", "directed_net", Some("2026-09-21"), None).unwrap();
         assert_eq!(r.get_activity(&id).unwrap().state, "scheduled");
 
         r.transition_activity(&id, "active", None, None, None).unwrap();
@@ -1083,7 +1083,7 @@ mod lifecycle_tests {
     #[test]
     fn refuses_invalid_transitions_and_reopening_without_a_reason() {
         let r = repo();
-        let id = r.create_activity("Net", "weekly_net", None, None).unwrap();
+        let id = r.create_activity("Net", "directed_net", None, None).unwrap();
         // Can't close what never started, or start twice.
         assert!(r.transition_activity(&id, "closed", None, None, None).is_err());
         r.transition_activity(&id, "active", None, None, None).unwrap();
@@ -1097,7 +1097,7 @@ mod lifecycle_tests {
     #[test]
     fn summary_counts_what_happened() {
         let r = repo();
-        let id = r.create_activity("Net", "weekly_net", None, None).unwrap();
+        let id = r.create_activity("Net", "directed_net", None, None).unwrap();
         for call in ["K4ABC", "k4abc", "W1XYZ"] {
             r.create_checkin(&id, call, None, None, None, None, None, None, None, None, false, None, &ContactDetails::default()).unwrap();
         }

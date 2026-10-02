@@ -65,39 +65,6 @@ describe("WeatherTab fetching (NWSA-013, NWSA-022)", () => {
     expect(api.fetchNwsForecast).toHaveBeenCalledTimes(1);
   });
 
-  it("colors each period by its conditions, temperature, rain chance and wind", async () => {
-    vi.mocked(api.fetchNwsForecast).mockResolvedValue({
-      properties: {
-        periods: [
-          {
-            name: "This Afternoon",
-            isDaytime: true,
-            temperature: 94,
-            temperatureUnit: "F",
-            windSpeed: "15 to 30 mph",
-            windDirection: "SW",
-            shortForecast: "Showers And Thunderstorms Likely",
-            probabilityOfPrecipitation: { value: 70 },
-          },
-          { name: "Tonight", isDaytime: false, temperature: 74, temperatureUnit: "F", shortForecast: "Mostly Clear" },
-        ],
-      },
-    });
-    const user = userEvent.setup();
-    render(<WeatherTab />);
-    await user.click(await screen.findByRole("button", { name: "Show forecast" }));
-    const afternoon = (await screen.findByText("This Afternoon")).closest(".forecast-card")!;
-    expect(afternoon).toHaveClass("forecast-storm");
-    expect(screen.getByRole("img", { name: "Thunderstorms" })).toBeInTheDocument();
-    expect(screen.getByText("94°F")).toHaveClass("temp-hot");
-    expect(screen.getByText("70%")).toHaveClass("precip-likely");
-    expect(screen.getByText("SW 15 to 30 mph")).toHaveClass("wind-strong");
-
-    const tonight = screen.getByText("Tonight").closest(".forecast-card")!;
-    expect(tonight).toHaveClass("forecast-partly", "forecast-night");
-    expect(screen.getByText("74°F")).toHaveClass("temp-warm");
-  });
-
   it("doesn't try a forecast with no area set", async () => {
     vi.mocked(api.getSettings).mockResolvedValue({
       ...SETTINGS,

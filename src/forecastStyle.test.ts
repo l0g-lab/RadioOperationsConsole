@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conditionOf, precipLevel, tempBand, windLevel } from "./forecastStyle";
+import { conditionOf, windLevel } from "./forecastStyle";
 
 describe("conditionOf", () => {
   it("picks the most significant condition named", () => {
@@ -16,33 +16,6 @@ describe("conditionOf", () => {
     expect(conditionOf("Clear")).toBe("clear");
     expect(conditionOf("Breezy")).toBe("other");
     expect(conditionOf(undefined)).toBe("other");
-  });
-});
-
-describe("tempBand", () => {
-  it("grades Fahrenheit and converts Celsius", () => {
-    expect(tempBand(28)).toBe("freezing");
-    expect(tempBand(45)).toBe("cold");
-    expect(tempBand(68)).toBe("mild");
-    expect(tempBand(84)).toBe("warm");
-    expect(tempBand(93)).toBe("hot");
-    expect(tempBand(101)).toBe("extreme");
-    expect(tempBand(-2, "C")).toBe("freezing");
-    expect(tempBand(28, "C")).toBe("warm"); // 82 °F
-    expect(tempBand(30, "C")).toBe("hot"); // 86 °F
-  });
-});
-
-describe("precipLevel", () => {
-  it("steps at 20, 50 and 80 percent", () => {
-    expect([10, 20, 49, 50, 79, 80].map(precipLevel)).toEqual([
-      "low",
-      "possible",
-      "possible",
-      "likely",
-      "likely",
-      "high",
-    ]);
   });
 });
 

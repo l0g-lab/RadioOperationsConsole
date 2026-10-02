@@ -56,10 +56,10 @@ describe("exportFilename (EXPORT-007)", () => {
 
   it("removes characters that aren't allowed in filenames and names an untitled activity", () => {
     expect(
-      exportFilename(activity({ title: '  SKYWARN: "Storm" 9/21?  ' }), "Package", "json")
-    ).toBe("SKYWARN Storm 9 21 - Package.json");
-    expect(exportFilename(activity({ title: "  " }), "Package", "json")).toBe(
-      "Activity - Package.json"
+      exportFilename(activity({ title: '  SKYWARN: "Storm" 9/21?  ' }), "Summary", "txt")
+    ).toBe("SKYWARN Storm 9 21 - Summary.txt");
+    expect(exportFilename(activity({ title: "  " }), "Summary", "txt")).toBe(
+      "Activity - Summary.txt"
     );
   });
 });

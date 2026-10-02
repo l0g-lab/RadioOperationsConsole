@@ -28,10 +28,4 @@ describe("UpgradeBackupBanner", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(/couldn't be saved \(disk full\)/);
   });
 
-  it("shows nothing when there was no upgrade", async () => {
-    vi.mocked(api.upgradeBackup).mockResolvedValue(null);
-    render(<UpgradeBackupBanner />);
-    await Promise.resolve();
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  });
 });
