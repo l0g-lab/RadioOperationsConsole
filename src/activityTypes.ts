@@ -24,6 +24,12 @@ export interface ActivityTypeDef {
    * notes) instead of check-ins with traffic.
    */
   log?: boolean;
+  /**
+   * A repeater range check: a net whose check-ins must each give a cross
+   * street pinned on the map, station type, power, and signal reports both
+   * ways, and which must have the repeater's location (rangeCheck.ts).
+   */
+  rangeCheck?: boolean;
 }
 
 export const ACTIVITY_TYPES: ActivityTypeDef[] = [
@@ -54,6 +60,14 @@ export const ACTIVITY_TYPES: ActivityTypeDef[] = [
     log: true,
   },
   {
+    id: "range_check",
+    label: "Range check",
+    description:
+      "A repeater range check: each station's cross street pinned on the map, station type, power, and how each side hears the other.",
+    sections: ["checkins"],
+    rangeCheck: true,
+  },
+  {
     id: "other",
     label: "Other",
     description: "Anything else. Shows everything.",
@@ -75,6 +89,11 @@ export function activityTypeDef(id: string): ActivityTypeDef {
 /** Whether this type is a running contact log rather than a net. */
 export function isLog(id: string): boolean {
   return activityTypeDef(id).log === true;
+}
+
+/** Whether this type is a repeater range check. */
+export function isRangeCheck(id: string): boolean {
+  return activityTypeDef(id).rangeCheck === true;
 }
 
 export function activityTypeLabel(id: string): string {

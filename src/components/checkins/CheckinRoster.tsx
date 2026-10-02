@@ -25,6 +25,16 @@ import {
   toContactDetails,
   type ContactDraft,
 } from "./ContactFields";
+import { RangeReportFields } from "./RangeReportFields";
+import {
+  EMPTY_RANGE,
+  missingMessage,
+  missingRangeFields,
+  rangeDraftFromCheckin,
+  stationKindLabel,
+  toRangeContact,
+  type RangeDraft,
+} from "../../rangeCheck";
 
 interface Props {
   activity: Activity;
@@ -42,6 +52,8 @@ interface Props {
   onShowMap: () => void;
   /** A station log: contacts with radio details instead of check-ins with traffic. */
   log?: boolean;
+  /** A range check: reports with a cross street, station type and signal reports (RANGE-020). */
+  rangeCheck?: boolean;
   /**
    * Where distances are measured from in a log: the activity's location,
    * else the operator's (the same point the map uses). None, no distances.
@@ -71,6 +83,7 @@ export default function CheckinRoster({
   onCheckinsChanged,
   onShowMap,
   log = false,
+  rangeCheck = false,
   distanceFrom = null,
 }: Props) {
   const [editingCheckinId, setEditingCheckinId] = useState<string | null>(null);
@@ -83,6 +96,9 @@ export default function CheckinRoster({
   const [editTraffic, setEditTraffic] = useState("");
   const [editContact, setEditContact] = useState<ContactDraft>(EMPTY_CONTACT);
   const [editSaveRefused, setEditSaveRefused] = useState(false);
+  const [editRange, setEditRange] = useState<RangeDraft>(EMPTY_RANGE);
+  const [editError, setEditError] = useState<string | null>(null);
+  const editRangeMissing = rangeCheck && editSaveRefused ? missingRangeFields(editRange) : [];
   /** Contacts whose details (power, antenna, notes, address…) are expanded. */
   const [openDetails, setOpenDetails] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -130,7 +146,9 @@ export default function CheckinRoster({
     setEditHasTraffic(c.has_traffic);
     setEditTraffic(c.traffic);
     setEditContact(draftFromCheckin(c));
+    setEditRange(rangeDraftFromCheckin(c));
     setEditSaveRefused(false);
+    setEditError(null);
     removal.cancelRemove();
   }
 
@@ -156,6 +174,7 @@ export default function CheckinRoster({
     if (!editingCheckinId) return;
     const call = editCallSign.trim();
     if (!call) return;
+    if (rangeCheck) return saveRangeEdit(editingCheckinId, call);
     if (log && contactTimeError(editContact)) {
       setEditSaveRefused(true);
       return;
@@ -201,6 +220,38 @@ export default function CheckinRoster({
       editHasTraffic ? editTraffic.trim() || null : null,
       log ? toContactDetails(editContact) : null
     );
+    setEditingCheckinId(null);
+    onCheckinsChanged();
+  }
+
+  // A correction meets the same rules as a new report (RANGE-017); the
+  // point is moved on the map within the edit row.
+  async function saveRangeEdit(id: string, call: string) {
+    if (missingRangeFields(editRange).length > 0) {
+      setEditSaveRefused(true);
+      return;
+    }
+    const current = checkins.find((c) => c.id === id);
+    try {
+      await api.updateCheckin(
+        id,
+        call,
+        editName.trim() || null,
+        current?.qth_location || null,
+        current?.grid_square || null,
+        current?.address || null,
+        operatorId,
+        editRange.lat,
+        editRange.lon,
+        editRange.crossStreet.trim(),
+        false,
+        null,
+        toRangeContact(editRange)
+      );
+    } catch (e) {
+      setEditError(String(e));
+      return;
+    }
     setEditingCheckinId(null);
     onCheckinsChanged();
   }
@@ -285,7 +336,9 @@ export default function CheckinRoster({
     if (!selectedCheckin) return;
     setLocationError(null);
     try {
-      await api.setCheckinLocationCoords(selectedCheckin.id, lat, lon, label || null);
+      // A range check's point is labeled with its cross street (RANGE-014).
+      const pointLabel = rangeCheck ? selectedCheckin.cross_street : label;
+      await api.setCheckinLocationCoords(selectedCheckin.id, lat, lon, pointLabel || null);
       onCheckinsChanged();
       setShowLocationPicker(false);
     } catch (e) {
@@ -313,7 +366,7 @@ export default function CheckinRoster({
   const query = search.trim().toLowerCase();
   const shown = query
     ? checkins.filter((c) =>
-        [c.call_sign, c.name, c.qth_location, c.notes].some((v) =>
+        [c.call_sign, c.name, c.qth_location, c.cross_street, c.notes].some((v) =>
           v.toLowerCase().includes(query)
         )
       )
@@ -355,20 +408,52 @@ export default function CheckinRoster({
             </button>
           </div>
         </div>
-        {log && checkins.length > 0 && (
+        {(log || rangeCheck) && checkins.length > 0 && (
           <input
             className="checkin-roster-search"
             type="search"
-            aria-label="Search contacts"
-            placeholder="Search by call sign, name, location, or notes"
+            aria-label={rangeCheck ? "Search check-ins" : "Search contacts"}
+            placeholder={
+              rangeCheck
+                ? "Search by call sign, name, cross street, or notes"
+                : "Search by call sign, name, location, or notes"
+            }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         )}
         {/* Column headings and rows scroll sideways together when the window is
             too narrow for every column, keeping them lined up. */}
-        <div className={"checkin-roster-scroll" + (log ? " checkin-roster-scroll-log" : "")}>
+        <div
+          className={
+            "checkin-roster-scroll" +
+            (log ? " checkin-roster-scroll-log" : rangeCheck ? " checkin-roster-scroll-range" : "")
+          }
+        >
           <div className="checkin-roster">
+            {rosterNewestFirst.length > 0 && rangeCheck && (
+              <div className="checkin-row checkin-row-range checkin-row-columns">
+                <span>Call Sign</span>
+                <span>Name</span>
+                <span>Cross Street</span>
+                <span
+                  title={
+                    distanceFrom
+                      ? `Straight-line distance from ${distanceFrom.label}`
+                      : "Set the repeater's location (Operations tab) to see distances"
+                  }
+                >
+                  Distance
+                </span>
+                <span>Station</span>
+                <span>Antenna</span>
+                <span>Power</span>
+                <span title="How net control hears the station">We Hear Them</span>
+                <span title="How the station hears the repeater">They Hear Rptr</span>
+                <span>Notes</span>
+                <span className="checkin-row-time">Time</span>
+              </div>
+            )}
             {rosterNewestFirst.length > 0 && log && (
               <div className="checkin-row checkin-row-log checkin-row-columns">
                 <span>Call Sign</span>
@@ -395,7 +480,7 @@ export default function CheckinRoster({
                 <span>Details</span>
               </div>
             )}
-            {rosterNewestFirst.length > 0 && !log && (
+            {rosterNewestFirst.length > 0 && !log && !rangeCheck && (
               <div className="checkin-row checkin-row-columns">
                 <span>Call Sign</span>
                 <span>Name</span>
@@ -417,7 +502,49 @@ export default function CheckinRoster({
               </p>
             )}
             {rosterNewestFirst.map((c) =>
-              c.id === editingCheckinId ? (
+              c.id === editingCheckinId && rangeCheck ? (
+                <div key={c.id} className="checkin-row checkin-row-editing checkin-row-editing-log">
+                  <input
+                    autoFocus
+                    aria-label="Call sign"
+                    className="checkin-edit-call"
+                    value={editCallSign}
+                    onChange={(e) => setEditCallSign(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                  />
+                  <input
+                    aria-label="Name"
+                    className="checkin-edit-name"
+                    placeholder="Name"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") cancelEdit();
+                    }}
+                  />
+                  <RangeReportFields
+                    value={editRange}
+                    onChange={setEditRange}
+                    onEnter={saveEdit}
+                    invalid={editRangeMissing}
+                    repeater={distanceFrom}
+                    callSign={editCallSign}
+                  />
+                  {(editRangeMissing.length > 0 || editError) && (
+                    <p className="weather-area-error contact-time-error" role="alert">
+                      {editRangeMissing.length > 0 ? missingMessage(editRangeMissing) : editError}
+                    </p>
+                  )}
+                  <div className="checkin-edit-actions">
+                    <button onClick={saveEdit}>Save</button>
+                    <button onClick={cancelEdit}>Cancel</button>
+                  </div>
+                </div>
+              ) : c.id === editingCheckinId ? (
                 <div
                   key={c.id}
                   className={"checkin-row checkin-row-editing" + (log ? " checkin-row-editing-log" : "")}
@@ -512,6 +639,65 @@ export default function CheckinRoster({
                 (() => {
                   const t = formatTimeLines(c.checked_in_at);
                   const trafficOpen = c.has_traffic && openTraffic.has(c.id);
+                  if (rangeCheck) {
+                    const distanceKm =
+                      distanceFrom && c.location_lat != null && c.location_lon != null
+                        ? haversineKm(distanceFrom.lat, distanceFrom.lon, c.location_lat, c.location_lon)
+                        : null;
+                    return (
+                      <div
+                        key={c.id}
+                        className={
+                          "checkin-row checkin-row-range" +
+                          (selectedCheckinId === c.id ? " selected" : "")
+                        }
+                        onClick={() => onSelectCheckin(c.id)}
+                      >
+                        <span className="checkin-row-call">{c.call_sign}</span>
+                        <span className="checkin-row-name">{c.name}</span>
+                        <span
+                          className="checkin-row-clip"
+                          title={
+                            c.location_lat != null && c.location_lon != null
+                              ? `${c.cross_street} — ${formatCoords(c.location_lat, c.location_lon)}`
+                              : c.cross_street || undefined
+                          }
+                        >
+                          {c.cross_street}
+                        </span>
+                        {distanceKm == null ? (
+                          <span />
+                        ) : (
+                          <span
+                            className="checkin-row-mono checkin-row-nowrap"
+                            title={`${formatDistance(distanceKm)} from ${distanceFrom!.label}`}
+                          >
+                            {shortMiles(distanceKm)}
+                          </span>
+                        )}
+                        <span>{c.station_kind ? stationKindLabel(c.station_kind) : ""}</span>
+                        <span className="checkin-row-clip" title={c.antenna || undefined}>
+                          {c.antenna}
+                        </span>
+                        <span className="checkin-row-clip" title={c.power || undefined}>
+                          {c.power}
+                        </span>
+                        <span className="checkin-row-clip" title={c.rst_sent || undefined}>
+                          {c.rst_sent}
+                        </span>
+                        <span className="checkin-row-clip" title={c.rst_received || undefined}>
+                          {c.rst_received}
+                        </span>
+                        <span className="checkin-row-clip" title={c.notes || undefined}>
+                          {c.notes}
+                        </span>
+                        <span className="checkin-row-time">
+                          <span>{t.local}</span>
+                          <span>{t.utc}</span>
+                        </span>
+                      </div>
+                    );
+                  }
                   if (log) {
                     const detailsOpen = openDetails.has(c.id);
                     const coords =
@@ -694,7 +880,7 @@ export default function CheckinRoster({
               {checkinLookupStatus === "error" && (
                 <span className="qrz-status qrz-status-muted">QRZ lookup failed</span>
               )}
-              {!log && (
+              {!log && !rangeCheck && (
                 <button
                   onClick={() =>
                     api.createAuditEvent(
@@ -748,8 +934,15 @@ export default function CheckinRoster({
           initialLon={selectedCheckin.location_lon}
           initialLabel={selectedCheckin.location_label}
           onSave={handleSaveCheckinLocation}
-          onClear={selectedCheckin.location_lat != null ? handleClearCheckinLocation : undefined}
+          onClear={
+            // A range-check point can be moved, never cleared (RANGE-017).
+            !rangeCheck && selectedCheckin.location_lat != null
+              ? handleClearCheckinLocation
+              : undefined
+          }
           onClose={() => setShowLocationPicker(false)}
+          mapOnly={rangeCheck}
+          startAt={rangeCheck ? distanceFrom : null}
         />
       )}
     </>

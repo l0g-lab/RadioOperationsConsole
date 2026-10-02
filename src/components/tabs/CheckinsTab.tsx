@@ -6,7 +6,7 @@ import CheckinLocationMap from "../CheckinLocationMap";
 import CheckinEntryForm from "../checkins/CheckinEntryForm";
 import CheckinRoster from "../checkins/CheckinRoster";
 import ClosedBanner from "../lifecycle/ClosedBanner";
-import { isLog } from "../../activityTypes";
+import { isLog, isRangeCheck } from "../../activityTypes";
 
 interface Props {
   activities: Activity[];
@@ -38,12 +38,14 @@ export default function CheckinsTab({
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
   const closed = focusedActivity?.state === "closed";
   const log = focusedActivity ? isLog(focusedActivity.activity_type) : false;
+  const rangeCheck = focusedActivity ? isRangeCheck(focusedActivity.activity_type) : false;
   const focusedOperator = operators.find((o) => o.id === selectedOperatorId) ?? null;
 
   // A per-activity location (e.g. a field site) takes precedence over the
   // operator's own default location for the check-in map's reference point
   // (CIMAP-060), since an operator may run a given activity from somewhere
   // other than their usual QTH.
+  // A range check measures from the repeater only, never the operator (RANGE-002).
   const mapReferenceLocation =
     focusedActivity?.location_lat != null && focusedActivity?.location_lon != null
       ? {
@@ -51,7 +53,7 @@ export default function CheckinsTab({
           lon: focusedActivity.location_lon,
           label: focusedActivity.location_label || focusedActivity.title,
         }
-      : focusedOperator?.location_lat != null && focusedOperator?.location_lon != null
+      : !rangeCheck && focusedOperator?.location_lat != null && focusedOperator?.location_lon != null
         ? {
             lat: focusedOperator.location_lat,
             lon: focusedOperator.location_lon,
@@ -106,7 +108,7 @@ export default function CheckinsTab({
         )}
         {focusedActivity?.location_lat != null && focusedActivity.location_lon != null && (
           <span className="checkin-context-frequency">
-            Location: {focusedActivity.location_label && `${focusedActivity.location_label} — `}
+            {rangeCheck ? "Repeater" : "Location"}: {focusedActivity.location_label && `${focusedActivity.location_label} — `}
             {formatCoordsWithGrid(focusedActivity.location_lat, focusedActivity.location_lon)}
           </span>
         )}
@@ -127,6 +129,13 @@ export default function CheckinsTab({
         </p>
       )}
 
+      {focusedActivity && rangeCheck && !mapReferenceLocation && !closed && (
+        <p className="weather-area-error" role="alert">
+          Set the repeater's location on this range check (Operations tab) before taking
+          check-ins.
+        </p>
+      )}
+
       {focusedActivity && (
         <>
           {closed ? (
@@ -142,6 +151,8 @@ export default function CheckinsTab({
               onSaved={handleCheckinSaved}
               log={log}
               activityFrequency={focusedActivity.frequency}
+              rangeCheck={rangeCheck}
+              repeater={mapReferenceLocation}
             />
           )}
 
@@ -158,6 +169,7 @@ export default function CheckinsTab({
             onCheckinsChanged={refreshCheckins}
             onShowMap={() => setShowMap(true)}
             log={log}
+            rangeCheck={rangeCheck}
             distanceFrom={mapReferenceLocation}
           />
         </>
@@ -169,6 +181,7 @@ export default function CheckinsTab({
           operatorLat={mapReferenceLocation?.lat ?? null}
           operatorLon={mapReferenceLocation?.lon ?? null}
           operatorLabel={mapReferenceLocation?.label ?? ""}
+          rangeCheck={rangeCheck}
           onClose={() => setShowMap(false)}
         />
       )}

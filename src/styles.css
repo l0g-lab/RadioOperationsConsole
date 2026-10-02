@@ -1766,3 +1766,90 @@ button.online-pill-working-offline:hover {
   gap: 8px;
   flex-wrap: wrap;
 }
+
+/* ---- Range check (RangeReportFields.tsx, RANGE-010–021) ---- */
+
+.range-fields select {
+  font-size: 14px;
+  padding: 6px 8px;
+}
+
+.range-field-point {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.range-field-point-text {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-family: "Consolas", "Menlo", monospace;
+}
+
+/* Station type: three buttons, one chosen. */
+.range-kinds {
+  display: inline-flex;
+  border-radius: 4px;
+}
+
+.range-kinds button {
+  border-radius: 0;
+  margin: 0;
+}
+
+.range-kinds button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.range-kinds button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.range-kinds button.range-kind-chosen {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  font-weight: 600;
+}
+
+/* Marked after a refused save until filled in. */
+.range-fields [aria-invalid="true"],
+.range-field-missing {
+  border-color: var(--danger, #e05252);
+  outline: 1px solid var(--danger, #e05252);
+}
+
+/* Call, name, cross street, distance, station, antenna, power, we hear,
+   they hear, notes, time: 1210px of minimums + 10 gaps + padding + scrollbar. */
+.checkin-row-range {
+  grid-template-columns:
+    100px minmax(80px, 1fr) minmax(140px, 1.4fr) 80px 70px minmax(90px, 1fr) 70px 140px 140px
+    minmax(100px, 1.2fr) 180px;
+}
+
+.checkin-roster-scroll-range > .checkin-roster {
+  min-width: 1380px;
+}
+
+.range-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  list-style: none;
+  margin: 0 0 8px 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.range-map-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.range-map-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid;
+}

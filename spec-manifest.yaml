@@ -45,6 +45,7 @@ reading_order:
   - docs/features/activity-lifecycle-and-wrap-up.md
   - docs/features/ics-form-exports.md
   - docs/features/activity-exports.md
+  - docs/features/range-check.md
   - docs/agent/BUILD_PROTOCOL.md
 
 # Every normative requirement ID uses one of these prefixes. When drafting a
@@ -83,6 +84,7 @@ id_prefixes:
   LIFE: docs/features/activity-lifecycle-and-wrap-up.md
   ICSF: docs/features/ics-form-exports.md
   EXPORT: docs/features/activity-exports.md
+  RANGE: docs/features/range-check.md
 
 documents:
   - id: VISION
@@ -190,6 +192,10 @@ documents:
     path: docs/features/activity-exports.md
     status: draft
     depends_on: [SCOPE, FEATURE_WEEKLY_NET, FEATURE_SPOT, FEATURE_LIFE, FEATURE_ICSF]
+  - id: FEATURE_RANGE
+    path: docs/features/range-check.md
+    status: draft
+    depends_on: [EVENTS, FEATURE_WEEKLY_NET, FEATURE_LOCRES, FEATURE_CIMAP, FEATURE_LIFE]
   - id: BUILD_PROTOCOL
     path: docs/agent/BUILD_PROTOCOL.md
     status: draft

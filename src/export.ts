@@ -2,6 +2,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { mkdir, writeTextFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import type { Activity, ActivitySummary, Checkin, HistoryEvent, SpotterReport } from "./types";
+import { stationKindLabel } from "./rangeCheck";
 import { formatTimeLines, pad2, splitScheduledAt } from "./utils";
 import { activityTypeLabel } from "./activityTypes";
 import { latLonToGridSquare } from "./grid";
@@ -130,6 +131,8 @@ const CSV_COLUMNS = [
   "Power",
   "Antenna",
   "Notes",
+  "Station Type",
+  "Cross Street",
 ];
 
 /** The active (non-voided) roster as CSV, with everything the roster shows. */
@@ -157,6 +160,8 @@ export function checkinsToCsv(checkins: Checkin[]): string {
       c.power,
       c.antenna,
       c.notes,
+      c.station_kind ? stationKindLabel(c.station_kind) : "",
+      c.cross_street,
     ]);
   }
   return csv(rows);
@@ -184,6 +189,8 @@ function checkinRecord(c: Checkin) {
     power: c.power,
     antenna: c.antenna,
     notes: c.notes,
+    station_kind: c.station_kind,
+    cross_street: c.cross_street,
   };
 }
 

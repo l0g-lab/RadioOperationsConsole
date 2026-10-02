@@ -51,6 +51,8 @@ function contact(overrides: Partial<Checkin>): Checkin {
     power: "5 W",
     antenna: "J-pole",
     notes: "Mobile on I-75",
+    station_kind: "",
+    cross_street: "",
     ...overrides,
   };
 }
@@ -198,5 +200,81 @@ describe("CheckinRoster as a station log", () => {
     expect(args[1]).toBe("KD4ABC");
     expect(args[12]).toMatchObject({ mode: "SSB", notes: null, frequency: "146.550", rst_sent: "59" });
     expect(new Date(args[12]!.contacted_at!).getTime()).toBe(new Date(2026, 8, 15, 8, 30).getTime());
+  });
+});
+
+describe("CheckinRoster as a range check", () => {
+  const RANGE: Activity = {
+    ...LOG,
+    id: "rc1",
+    title: "Range check",
+    activity_type: "range_check",
+    location_label: "Repeater site",
+    location_lat: 28.5,
+    location_lon: -81.4,
+  };
+  const REPORT = contact({
+    frequency: "",
+    mode: "",
+    station_kind: "base",
+    cross_street: "Colonial & Mills",
+    location_lat: 28.55,
+    location_lon: -81.35,
+    antenna: "Diamond X50",
+    power: "50 W",
+    rst_sent: "Full quieting",
+    rst_received: "Broken",
+    notes: "",
+  });
+
+  function renderRange(selectedCheckinId: string | null = null) {
+    return render(
+      <CheckinRoster
+        activity={RANGE}
+        operatorId={null}
+        onOpenExports={() => {}}
+        checkins={[REPORT]}
+        qrzConfigured={false}
+        offlineCallsAvailable={false}
+        selectedCheckinId={selectedCheckinId}
+        onSelectCheckin={() => {}}
+        onCheckinsChanged={() => {}}
+        onShowMap={() => {}}
+        rangeCheck
+        distanceFrom={{ lat: 28.5, lon: -81.4, label: "Repeater site" }}
+      />
+    );
+  }
+
+  beforeEach(() => vi.mocked(api.updateCheckin).mockClear());
+
+  it("shows cross street, distance, station, antenna, power and both reports (RANGE-020)", () => {
+    renderRange();
+    for (const header of ["Cross Street", "Distance", "Station", "Antenna", "Power", "We Hear Them", "They Hear Rptr"]) {
+      expect(screen.getByText(header)).toBeInTheDocument();
+    }
+    expect(screen.getByText("Colonial & Mills")).toBeInTheDocument();
+    expect(screen.getByText("Base")).toBeInTheDocument();
+    expect(screen.getByText("Full quieting")).toBeInTheDocument();
+    expect(screen.getByText("Broken")).toBeInTheDocument();
+    expect(screen.getByText(/\d+(\.\d)? mi/)).toBeInTheDocument();
+  });
+
+  it("refuses a correction that leaves out a required field (RANGE-017)", async () => {
+    const user = userEvent.setup();
+    renderRange("c1");
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText("Cross street")).toHaveValue("Colonial & Mills");
+    await user.clear(screen.getByLabelText("Antenna"));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(api.updateCheckin).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Still needed: antenna.");
+
+    // Switching to a mobile drops the antenna requirement, and the antenna.
+    await user.click(screen.getByRole("radio", { name: "Mobile" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const args = vi.mocked(api.updateCheckin).mock.calls[0];
+    expect(args.slice(7, 10)).toEqual([28.55, -81.35, "Colonial & Mills"]);
+    expect(args[12]).toMatchObject({ station_kind: "mobile", antenna: null, rst_sent: "Full quieting" });
   });
 });

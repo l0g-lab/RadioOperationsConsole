@@ -105,6 +105,9 @@ pub struct Checkin {
     pub power: String,
     pub antenna: String,
     pub notes: String,
+    /// Range checks: "mobile", "base" or "ht", and the cross street given.
+    pub station_kind: String,
+    pub cross_street: String,
 }
 
 /// The radio details of a contact, as entered. Every field is optional.
@@ -120,11 +123,14 @@ pub struct ContactDetails {
     pub power: Option<String>,
     pub antenna: Option<String>,
     pub notes: Option<String>,
+    /// Range checks (see `range_check.rs`).
+    pub station_kind: Option<String>,
+    pub cross_street: Option<String>,
 }
 
 impl ContactDetails {
     /// Blank fields are stored as nothing, not as empty text.
-    fn field(v: &Option<String>) -> Option<&str> {
+    pub(crate) fn field(v: &Option<String>) -> Option<&str> {
         v.as_deref().map(str::trim).filter(|t| !t.is_empty())
     }
 }
@@ -153,7 +159,7 @@ pub struct PastContact {
 }
 
 /// Columns `map_checkin` reads, in order.
-const CHECKIN_COLUMNS: &str = "id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled, coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,'')";
+const CHECKIN_COLUMNS: &str = "id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled, coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,''), coalesce(station_kind,''), coalesce(cross_street,'')";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SpotterReport {
@@ -629,9 +635,9 @@ impl Repository {
         let at = ContactDetails::field(&contact.contacted_at).unwrap_or(&now);
         let f = ContactDetails::field;
         self.conn.execute(
-            "INSERT INTO checkins(id, activity_id, call_sign, name, qth_location, grid_square, address, checked_in_at, entered_at, operator_id, location_lat, location_lon, location_label, has_traffic, traffic, frequency, mode, rst_sent, rst_received, power, antenna, notes) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22)",
+            "INSERT INTO checkins(id, activity_id, call_sign, name, qth_location, grid_square, address, checked_in_at, entered_at, operator_id, location_lat, location_lon, location_label, has_traffic, traffic, frequency, mode, rst_sent, rst_received, power, antenna, notes, station_kind, cross_street) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)",
             params![id, activity_id, call_sign, name, qth_location, grid_square, address, at, now, operator_id, location_lat, location_lon, location_label, has_traffic, if has_traffic { traffic } else { None },
-                f(&contact.frequency), f(&contact.mode), f(&contact.rst_sent), f(&contact.rst_received), f(&contact.power), f(&contact.antenna), f(&contact.notes)],
+                f(&contact.frequency), f(&contact.mode), f(&contact.rst_sent), f(&contact.rst_received), f(&contact.power), f(&contact.antenna), f(&contact.notes), f(&contact.station_kind), f(&contact.cross_street)],
         )?;
         Ok(id)
     }
@@ -658,6 +664,8 @@ impl Repository {
             power: r.get(17)?,
             antenna: r.get(18)?,
             notes: r.get(19)?,
+            station_kind: r.get(20)?,
+            cross_street: r.get(21)?,
         })
     }
 
@@ -715,8 +723,8 @@ impl Repository {
         if let Some(c) = contact {
             let f = ContactDetails::field;
             self.conn.execute(
-                "UPDATE checkins SET frequency = ?1, mode = ?2, rst_sent = ?3, rst_received = ?4, power = ?5, antenna = ?6, notes = ?7, checked_in_at = coalesce(?8, checked_in_at) WHERE id = ?9",
-                params![f(&c.frequency), f(&c.mode), f(&c.rst_sent), f(&c.rst_received), f(&c.power), f(&c.antenna), f(&c.notes), f(&c.contacted_at), id],
+                "UPDATE checkins SET frequency = ?1, mode = ?2, rst_sent = ?3, rst_received = ?4, power = ?5, antenna = ?6, notes = ?7, checked_in_at = coalesce(?8, checked_in_at), station_kind = ?9, cross_street = ?10 WHERE id = ?11",
+                params![f(&c.frequency), f(&c.mode), f(&c.rst_sent), f(&c.rst_received), f(&c.power), f(&c.antenna), f(&c.notes), f(&c.contacted_at), f(&c.station_kind), f(&c.cross_street), id],
             )?;
         }
         Ok(())
@@ -1515,6 +1523,7 @@ mod contact_tests {
             power: Some("5 W".into()),
             antenna: Some("".into()),
             notes: Some("Mobile on I-75".into()),
+            ..Default::default()
         };
         let id = contact(&r, &log, "KD4ABC", None, &details);
         let c = r.get_checkin(&id).unwrap();
@@ -1527,6 +1536,27 @@ mod contact_tests {
         let bare = r.get_checkin(&contact(&r, &log, "W1AW", None, &ContactDetails::default())).unwrap();
         assert!(bare.checked_in_at > c.checked_in_at);
         assert!(bare.frequency.is_empty() && bare.notes.is_empty());
+    }
+
+    #[test]
+    fn range_check_station_type_and_cross_street_are_stored_and_corrected() {
+        // RANGE-010, RANGE-017
+        let r = repo();
+        let rc = r.create_activity("Repeater range check", "range_check", None, None).unwrap();
+        let report = ContactDetails {
+            station_kind: Some("base".into()),
+            cross_street: Some(" Colonial & Mills ".into()),
+            antenna: Some("Diamond X50".into()),
+            ..Default::default()
+        };
+        let id = contact(&r, &rc, "KD4ABC", None, &report);
+        let c = r.get_checkin(&id).unwrap();
+        assert_eq!((c.station_kind.as_str(), c.cross_street.as_str()), ("base", "Colonial & Mills"));
+
+        let moved = ContactDetails { station_kind: Some("ht".into()), cross_street: Some("Orange & Church".into()), ..Default::default() };
+        r.update_checkin(&id, "KD4ABC", None, None, None, None, None, None, None, false, None, Some(&moved)).unwrap();
+        let c = r.get_checkin(&id).unwrap();
+        assert_eq!((c.station_kind.as_str(), c.cross_street.as_str(), c.antenna.as_str()), ("ht", "Orange & Church", ""));
     }
 
     #[test]

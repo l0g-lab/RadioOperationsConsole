@@ -22,6 +22,14 @@ import {
   WorkedBefore,
   type ContactDraft,
 } from "./ContactFields";
+import { RangeReportFields } from "./RangeReportFields";
+import {
+  EMPTY_RANGE,
+  missingMessage,
+  missingRangeFields,
+  toRangeContact,
+  type RangeDraft,
+} from "../../rangeCheck";
 
 interface Props {
   activityId: string;
@@ -36,6 +44,13 @@ interface Props {
   log?: boolean;
   /** The activity's frequency, suggested when a contact's is left blank. */
   activityFrequency?: string;
+  /**
+   * A range check: each check-in needs a cross street, a point picked on the
+   * map, station type, power and both signal reports (RANGE-010–016).
+   */
+  rangeCheck?: boolean;
+  /** The repeater's location, where the range check's map opens. */
+  repeater?: { lat: number; lon: number } | null;
 }
 
 type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
@@ -67,6 +82,8 @@ export default function CheckinEntryForm({
   onSaved,
   log = false,
   activityFrequency = "",
+  rangeCheck = false,
+  repeater = null,
 }: Props) {
   const [callSign, setCallSign] = useState("");
   const [name, setName] = useState("");
@@ -77,6 +94,11 @@ export default function CheckinEntryForm({
   const [traffic, setTraffic] = useState("");
   const [contact, setContact] = useState<ContactDraft>(EMPTY_CONTACT);
   const [contactSaveRefused, setContactSaveRefused] = useState(false);
+  const [range, setRange] = useState<RangeDraft>(EMPTY_RANGE);
+  // Once a save is refused, the missing fields stay marked until filled in.
+  const [rangeSaveRefused, setRangeSaveRefused] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const rangeMissing = rangeCheck && rangeSaveRefused ? missingRangeFields(range) : [];
   const history = useStationHistory(callSign);
   // QRZ's exact point for the call sign currently being entered — held here
   // (not in a visible field) until the check-in is saved.
@@ -295,6 +317,7 @@ export default function CheckinEntryForm({
   async function handleSaveCheckin() {
     const call = callSign.trim();
     if (!call) return;
+    if (rangeCheck) return saveRangeReport(call);
     if (log && contactTimeError(contact)) {
       setContactSaveRefused(true);
       return;
@@ -352,6 +375,46 @@ export default function CheckinEntryForm({
     setAddress("");
     setQrzExact(null);
     resetCoords();
+    setQrzStatus("idle");
+    qrzRequestedForRef.current = null;
+    onSaved(id);
+    if (rapidEntryMode) callSignRef.current?.focus();
+  }
+
+  // A range check's point comes only from the map, never from the lookup,
+  // address or coordinates box (RANGE-014, RANGE-015).
+  async function saveRangeReport(call: string) {
+    if (missingRangeFields(range).length > 0) {
+      setRangeSaveRefused(true);
+      return;
+    }
+    setSaveError(null);
+    let id: string;
+    try {
+      id = await api.createCheckin(
+        activityId,
+        call,
+        name.trim() || null,
+        null,
+        null,
+        null,
+        operatorId,
+        range.lat,
+        range.lon,
+        range.crossStreet.trim(),
+        false,
+        null,
+        toRangeContact(range)
+      );
+    } catch (e) {
+      setSaveError(String(e));
+      return;
+    }
+    // Every station is different: nothing carries over (RANGE-016).
+    setRange(EMPTY_RANGE);
+    setRangeSaveRefused(false);
+    setCallSign("");
+    setName("");
     setQrzStatus("idle");
     qrzRequestedForRef.current = null;
     onSaved(id);
@@ -417,64 +480,86 @@ export default function CheckinEntryForm({
         </div>
         <button onClick={handleSaveCheckin}>{log ? "Save contact" : "Save check-in"}</button>
       </div>
-      <div className="checkin-entry-row checkin-entry-row-secondary">
-        <input
-          className="checkin-entry-qth"
-          placeholder={HINTS.qth}
-          style={hintWidth(HINTS.qth)}
-          value={qthLocation}
-          onChange={(e) => setQthLocation(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSaveCheckin();
-          }}
+      {!rangeCheck && (
+        <div className="checkin-entry-row checkin-entry-row-secondary">
+          <input
+            className="checkin-entry-qth"
+            placeholder={HINTS.qth}
+            style={hintWidth(HINTS.qth)}
+            value={qthLocation}
+            onChange={(e) => setQthLocation(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveCheckin();
+            }}
+          />
+          <input
+            className="checkin-entry-grid"
+            placeholder={HINTS.grid}
+            style={hintWidth(HINTS.grid, { uppercase: true })}
+            value={gridSquare}
+            onChange={(e) => setGridSquare(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveCheckin();
+            }}
+          />
+          <input
+            className="checkin-entry-address"
+            placeholder={HINTS.address}
+            style={hintWidth(HINTS.address)}
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveCheckin();
+            }}
+          />
+          <input
+            className="checkin-entry-coords"
+            placeholder={HINTS.coords}
+            style={hintWidth(HINTS.coords)}
+            title="Auto-filled from QRZ / ZIP / grid square — type over it with lat, lon or a mile marker (e.g. 'mile marker 182 on I-95')"
+            aria-invalid={
+              coordsText.trim() !== "" && parseCoords(coordsText) == null && phrase.status === "miss"
+            }
+            value={coordsText}
+            onChange={(e) => {
+              coordsEditedRef.current = e.target.value.trim() !== "";
+              if (coordsEditedRef.current) setCoordsNote(null);
+              setCoordsText(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveCheckin();
+            }}
+          />
+          <button
+            type="button"
+            className="link-button checkin-entry-clear"
+            onClick={clearQrzData}
+            disabled={!name && !qthLocation && !gridSquare && !address && !coordsText}
+          >
+            Clear
+          </button>
+        </div>
+      )}
+      {rangeCheck && (
+        <RangeReportFields
+          value={range}
+          onChange={setRange}
+          onEnter={handleSaveCheckin}
+          invalid={rangeMissing}
+          repeater={repeater}
+          callSign={callSign}
         />
-        <input
-          className="checkin-entry-grid"
-          placeholder={HINTS.grid}
-          style={hintWidth(HINTS.grid, { uppercase: true })}
-          value={gridSquare}
-          onChange={(e) => setGridSquare(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSaveCheckin();
-          }}
-        />
-        <input
-          className="checkin-entry-address"
-          placeholder={HINTS.address}
-          style={hintWidth(HINTS.address)}
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSaveCheckin();
-          }}
-        />
-        <input
-          className="checkin-entry-coords"
-          placeholder={HINTS.coords}
-          style={hintWidth(HINTS.coords)}
-          title="Auto-filled from QRZ / ZIP / grid square — type over it with lat, lon or a mile marker (e.g. 'mile marker 182 on I-95')"
-          aria-invalid={
-            coordsText.trim() !== "" && parseCoords(coordsText) == null && phrase.status === "miss"
-          }
-          value={coordsText}
-          onChange={(e) => {
-            coordsEditedRef.current = e.target.value.trim() !== "";
-            if (coordsEditedRef.current) setCoordsNote(null);
-            setCoordsText(e.target.value);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSaveCheckin();
-          }}
-        />
-        <button
-          type="button"
-          className="link-button checkin-entry-clear"
-          onClick={clearQrzData}
-          disabled={!name && !qthLocation && !gridSquare && !address && !coordsText}
-        >
-          Clear
-        </button>
-      </div>
+      )}
+      {rangeMissing.length > 0 && (
+        <p className="weather-area-error checkin-entry-hint" role="alert">
+          {missingMessage(rangeMissing)}
+        </p>
+      )}
+      {saveError && (
+        <p className="weather-area-error checkin-entry-hint" role="alert">
+          {saveError}
+        </p>
+      )}
       {log && (
         <ContactFieldsInputs
           idPrefix="checkin-entry"
@@ -487,7 +572,7 @@ export default function CheckinEntryForm({
         />
       )}
       <WorkedBefore history={history} label={log ? "Worked before" : "Checked in before"} />
-      {!log && (
+      {!log && !rangeCheck && (
         <div className="checkin-entry-row checkin-entry-row-traffic">
           <label className="checkbox-row">
             <input
@@ -517,18 +602,18 @@ export default function CheckinEntryForm({
           street addresses were included. Update it in Settings → Offline Data.
         </p>
       )}
-      {coordsNote && phrase.status === "idle" && (
+      {!rangeCheck && coordsNote && phrase.status === "idle" && (
         <p className="settings-hint checkin-entry-hint">
           Map point: {coordsNote}. Type over it to set an exact spot, or a mile marker.
         </p>
       )}
-      {phrase.status === "hit" && (
+      {!rangeCheck && phrase.status === "hit" && (
         <p className="settings-hint checkin-entry-hint">
           ✓ {phrase.hit.label} → {formatCoords(phrase.hit.lat, phrase.hit.lon)} (estimated from road
           data)
         </p>
       )}
-      {phrase.status === "miss" && (
+      {!rangeCheck && phrase.status === "miss" && (
         <p className="settings-hint checkin-entry-hint">
           Not coordinates or a known mile marker — the check-in will use its address/grid instead.
         </p>

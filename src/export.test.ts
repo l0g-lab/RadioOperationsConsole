@@ -52,6 +52,8 @@ function checkin(overrides: Partial<Checkin> = {}): Checkin {
     power: "",
     antenna: "",
     notes: "",
+    station_kind: "",
+    cross_street: "",
     ...overrides,
   };
 }
@@ -102,7 +104,7 @@ describe("checkinsToCsv", () => {
     expect(header).toBe(
       "Call Sign,Name,Location,Grid Square,Address,Latitude,Longitude,Location Label," +
         "Checked In (Local),Checked In (UTC),Has Traffic,Traffic,Traffic Handled," +
-        "Frequency,Mode,RST Sent,RST Received,Power,Antenna,Notes"
+        "Frequency,Mode,RST Sent,RST Received,Power,Antenna,Notes,Station Type,Cross Street"
     );
     expect(row).toContain("K4ABC");
     expect(row).toContain('"Need ""generator"""'); // quotes are doubled and the field is wrapped
@@ -122,7 +124,19 @@ describe("checkinsToCsv", () => {
         notes: "Mobile, I-75",
       }),
     ]);
-    expect(csv.trim().split("\r\n")[1]).toMatch(/,146\.520,FM,59,57,5 W,J-pole,"Mobile, I-75"$/);
+    expect(csv.trim().split("\r\n")[1]).toMatch(/,146\.520,FM,59,57,5 W,J-pole,"Mobile, I-75",,$/);
+  });
+
+  it("includes a range check's station type and cross street (RANGE-022)", () => {
+    const csv = checkinsToCsv([
+      checkin({
+        station_kind: "ht",
+        cross_street: "Colonial & Mills",
+        rst_sent: "Full quieting",
+        rst_received: "Slight noise",
+      }),
+    ]);
+    expect(csv.trim().split("\r\n")[1]).toMatch(/,Full quieting,Slight noise,.*,HT,Colonial & Mills$/);
   });
 
   it("uses CRLF line endings and ends with one", () => {

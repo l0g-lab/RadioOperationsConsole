@@ -1,6 +1,13 @@
 use super::{ensure_checkin_open, ensure_open, AppState};
-use crate::repo::{Checkin, ContactDetails, StationHistory};
+use crate::range_check;
+use crate::repo::{Checkin, ContactDetails, Repository, StationHistory};
 use tauri::State;
+
+/// The activity type of the activity a check-in belongs to, if it can be found.
+fn checkin_activity_type(repo: &Repository, checkin_id: &str) -> Option<String> {
+    let activity_id = repo.activity_id_of_checkin(checkin_id)?;
+    repo.get_activity(&activity_id).ok().map(|a| a.activity_type)
+}
 
 /// Checks the contact's time and stores it in one form (UTC, RFC 3339), so
 /// contacts sort correctly whatever offset the interface sent.
@@ -34,9 +41,18 @@ pub fn create_checkin(
     traffic: Option<String>,
     contact: Option<ContactDetails>,
 ) -> Result<String, String> {
-    let contact = normalize_contact(contact)?.unwrap_or_default();
+    let mut contact = normalize_contact(contact)?.unwrap_or_default();
     let repo = state.repo.lock().unwrap();
     ensure_open(&repo, &activity_id)?;
+    let activity = repo.get_activity(&activity_id).map_err(|e| e.to_string())?;
+    if range_check::is_range_check(&activity.activity_type) {
+        // RANGE-002, RANGE-011
+        if activity.location_lat.is_none() || activity.location_lon.is_none() {
+            return Err(range_check::NEEDS_REPEATER.to_string());
+        }
+        range_check::normalize(&mut contact);
+        range_check::validate(&contact, location_lat.is_some() && location_lon.is_some())?;
+    }
     repo.create_checkin(
             &activity_id,
             &call_sign,
@@ -103,9 +119,22 @@ pub fn update_checkin(
     traffic: Option<String>,
     contact: Option<ContactDetails>,
 ) -> Result<(), String> {
-    let contact = normalize_contact(contact)?;
+    let mut contact = normalize_contact(contact)?;
     let repo = state.repo.lock().unwrap();
     ensure_checkin_open(&repo, &checkin_id)?;
+    if checkin_activity_type(&repo, &checkin_id).is_some_and(|t| range_check::is_range_check(&t)) {
+        // RANGE-017: a correction meets the same rules. Without contact
+        // details (a call-sign lookup) they're unchanged, but the point stays.
+        let has_point = location_lat.is_some() && location_lon.is_some();
+        match contact.as_mut() {
+            Some(c) => {
+                range_check::normalize(c);
+                range_check::validate(c, has_point)?;
+            }
+            None if !has_point => return Err(range_check::POINT_CANNOT_CLEAR.to_string()),
+            None => {}
+        }
+    }
     let before = repo.get_checkin(&checkin_id).map_err(|e| e.to_string())?;
     repo.update_checkin(
         &checkin_id,
@@ -231,6 +260,9 @@ pub fn clear_checkin_location(
 ) -> Result<Checkin, String> {
     let repo = state.repo.lock().unwrap();
     ensure_checkin_open(&repo, &checkin_id)?;
+    if checkin_activity_type(&repo, &checkin_id).is_some_and(|t| range_check::is_range_check(&t)) {
+        return Err(range_check::POINT_CANNOT_CLEAR.to_string());
+    }
     repo.clear_checkin_location(&checkin_id)
         .map_err(|e| e.to_string())?;
     repo.get_checkin(&checkin_id).map_err(|e| e.to_string())
@@ -271,6 +303,8 @@ fn contact_fields(c: &Checkin) -> serde_json::Value {
         "power": c.power,
         "antenna": c.antenna,
         "notes": c.notes,
+        "station_kind": c.station_kind,
+        "cross_street": c.cross_street,
     })
 }
 

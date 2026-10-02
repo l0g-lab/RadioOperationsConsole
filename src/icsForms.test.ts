@@ -49,6 +49,8 @@ function checkin(overrides: Partial<Checkin> = {}): Checkin {
     power: "",
     antenna: "",
     notes: "",
+    station_kind: "",
+    cross_street: "",
     ...overrides,
   };
 }

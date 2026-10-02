@@ -4,6 +4,7 @@ import {
   activityTypeDef,
   activityTypeLabel,
   isLog,
+  isRangeCheck,
   visibleSections,
 } from "./activityTypes";
 import type { ActivitySummary } from "./types";
@@ -88,5 +89,15 @@ describe("isLog", () => {
     expect(ACTIVITY_TYPES.filter((t) => t.log).map((t) => t.id)).toEqual(["station_log"]);
     expect(isLog("directed_net")).toBe(false);
     expect(isLog("something_newer")).toBe(false);
+  });
+});
+
+describe("range check (RANGE-001)", () => {
+  it("is a type of its own, run as a net rather than a log", () => {
+    expect(ACTIVITY_TYPES.map((t) => t.id)).toContain("range_check");
+    expect(activityTypeLabel("range_check")).toBe("Range check");
+    expect(isRangeCheck("range_check")).toBe(true);
+    expect(isLog("range_check")).toBe(false);
+    expect(isRangeCheck("directed_net")).toBe(false);
   });
 });

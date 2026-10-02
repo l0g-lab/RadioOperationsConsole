@@ -69,6 +69,9 @@ export interface Checkin {
   power: string;
   antenna: string;
   notes: string;
+  /** Range checks: "mobile", "base" or "ht", and the cross street given; "" when not recorded. */
+  station_kind: string;
+  cross_street: string;
 }
 
 /**
@@ -85,6 +88,8 @@ export interface ContactDetails {
   power?: string | null;
   antenna?: string | null;
   notes?: string | null;
+  station_kind?: string | null;
+  cross_street?: string | null;
 }
 
 /** Earlier records of a call sign across every activity ("worked before"). */

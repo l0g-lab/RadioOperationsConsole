@@ -8,6 +8,7 @@ mod connectors;
 mod datapacks;
 mod db;
 mod net;
+mod range_check;
 mod repo;
 mod routes;
 mod storage;

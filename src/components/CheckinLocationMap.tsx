@@ -5,6 +5,7 @@ import { haversineKm, formatDistance } from "../geo";
 import { BASEMAP_ATTRIBUTION, ZIP_ATTRIBUTION, createBaseMap } from "../map/baseMap";
 import { spreadDuplicates } from "../map/spreadDuplicates";
 import { MapPinned } from "lucide-react";
+import { SIGNAL_COLORS, SIGNAL_REPORTS, stationKindLabel } from "../rangeCheck";
 
 interface Props {
   checkins: Checkin[];
@@ -12,6 +13,11 @@ interface Props {
   operatorLon: number | null;
   operatorLabel: string;
   onClose: () => void;
+  /**
+   * A range check: the reference point is the repeater, and each station is
+   * colored by how net control hears it, with a legend (RANGE-021).
+   */
+  rangeCheck?: boolean;
 }
 
 interface ResolvedPin {
@@ -21,6 +27,11 @@ interface ResolvedPin {
   lat: number;
   lon: number;
   label: string;
+  /** Range check only: how we hear them, how they hear the repeater, station type, power. */
+  weHear: string;
+  theyHear: string;
+  kind: string;
+  power: string;
 }
 
 const CHECKIN_MARKER_RADIUS = 5;
@@ -31,12 +42,18 @@ const CHECKIN_MARKER_STROKE = "#7a0000";
 // distinct color, so it reads as "one of these dots" rather than an
 // unrelated icon.
 const OPERATOR_MARKER_RADIUS = 6;
+// Range-check stations are colored by signal, so a touch larger to read the color.
+const RANGE_MARKER_RADIUS = 7;
 const OPERATOR_MARKER_COLOR = "#2b8cff";
 const OPERATOR_MARKER_STROKE = "#0a3d7a";
 
 const DISTANCE_LINE_COLOR = "#7b2ff7";
 
-function popupContentFor(pin: ResolvedPin, distanceKm: number | null): HTMLElement {
+function popupContentFor(
+  pin: ResolvedPin,
+  distanceKm: number | null,
+  rangeCheck: boolean
+): HTMLElement {
   const container = document.createElement("div");
   const callLine = document.createElement("strong");
   callLine.textContent = pin.name ? `${pin.callSign} (${pin.name})` : pin.callSign;
@@ -48,19 +65,30 @@ function popupContentFor(pin: ResolvedPin, distanceKm: number | null): HTMLEleme
     container.appendChild(locLine);
   }
 
+  const line = (text: string) => {
+    const el = document.createElement("div");
+    el.textContent = text;
+    container.appendChild(el);
+  };
+
+  if (rangeCheck) {
+    if (pin.weHear) line(`We hear them: ${pin.weHear}`);
+    if (pin.theyHear) line(`They hear the repeater: ${pin.theyHear}`);
+    const station = [pin.kind && stationKindLabel(pin.kind), pin.power].filter(Boolean).join(" · ");
+    if (station) line(station);
+  }
+
   if (distanceKm != null) {
-    const distLine = document.createElement("div");
-    distLine.textContent = `Distance to operator: ${formatDistance(distanceKm)}`;
-    container.appendChild(distLine);
+    line(`Distance to ${rangeCheck ? "repeater" : "operator"}: ${formatDistance(distanceKm)}`);
   }
 
   return container;
 }
 
-function operatorPopupContent(label: string): HTMLElement {
+function operatorPopupContent(label: string, rangeCheck: boolean): HTMLElement {
   const container = document.createElement("div");
   const title = document.createElement("strong");
-  title.textContent = "Operator";
+  title.textContent = rangeCheck ? "Repeater" : "Operator";
   container.appendChild(title);
   const labelLine = document.createElement("div");
   labelLine.textContent = label;
@@ -82,6 +110,7 @@ export default function CheckinLocationMap({
   operatorLon,
   operatorLabel,
   onClose,
+  rangeCheck = false,
 }: Props) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -114,11 +143,15 @@ export default function CheckinLocationMap({
         name: c.name,
         lat: c.location_lat,
         lon: c.location_lon,
-        label: c.location_label,
+        label: rangeCheck ? c.cross_street || c.location_label : c.location_label,
+        weHear: c.rst_sent,
+        theyHear: c.rst_received,
+        kind: c.station_kind,
+        power: c.power,
       });
     }
     return resolved;
-  }, [checkins]);
+  }, [checkins, rangeCheck]);
 
   const unresolvedCount = checkins.length - pins.length;
 
@@ -142,14 +175,15 @@ export default function CheckinLocationMap({
         ? haversineKm(pin.lat, pin.lon, operatorLat as number, operatorLon as number)
         : null;
 
+      const signal = rangeCheck ? SIGNAL_COLORS[pin.weHear] : undefined;
       const marker = L.circleMarker([pin.lat, pin.lon], {
-        radius: CHECKIN_MARKER_RADIUS,
-        color: CHECKIN_MARKER_STROKE,
+        radius: rangeCheck ? RANGE_MARKER_RADIUS : CHECKIN_MARKER_RADIUS,
+        color: signal?.stroke ?? CHECKIN_MARKER_STROKE,
         weight: 2,
-        fillColor: CHECKIN_MARKER_COLOR,
+        fillColor: signal?.fill ?? CHECKIN_MARKER_COLOR,
         fillOpacity: 0.9,
       }).addTo(map);
-      marker.bindPopup(popupContentFor(pin, distanceKm));
+      marker.bindPopup(popupContentFor(pin, distanceKm, rangeCheck));
       markersRef.current.push(marker);
 
       if (hasOperatorLocation) {
@@ -178,7 +212,7 @@ export default function CheckinLocationMap({
         fillColor: OPERATOR_MARKER_COLOR,
         fillOpacity: 0.9,
       }).addTo(map);
-      marker.bindPopup(operatorPopupContent(operatorLabel));
+      marker.bindPopup(operatorPopupContent(operatorLabel, rangeCheck));
       operatorMarkerRef.current = marker;
     }
 
@@ -187,20 +221,44 @@ export default function CheckinLocationMap({
     if (boundsPoints.length > 0) {
       map.fitBounds(L.latLngBounds(boundsPoints).pad(0.2));
     }
-  }, [pins, hasOperatorLocation, operatorLat, operatorLon, operatorLabel]);
+  }, [pins, hasOperatorLocation, operatorLat, operatorLon, operatorLabel, rangeCheck]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel checkin-map-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3><MapPinned className="heading-icon" />Check-in Locations</h3>
+          <h3>
+            <MapPinned className="heading-icon" />
+            {rangeCheck ? "Range Check Map" : "Check-in Locations"}
+          </h3>
           <button onClick={onClose}>Close</button>
         </div>
         <p className="leaflet-map-status">
           {pins.length} of {checkins.length} check-ins plotted
           {unresolvedCount > 0 && ` — ${unresolvedCount} without a resolvable location`}
-          {!hasOperatorLocation && " — no operator location set"}
+          {!hasOperatorLocation &&
+            (rangeCheck ? " — no repeater location set" : " — no operator location set")}
         </p>
+        {rangeCheck && (
+          <ul className="range-map-legend" aria-label="How we hear them">
+            {SIGNAL_REPORTS.map((r) => (
+              <li key={r}>
+                <span
+                  className="range-map-swatch"
+                  style={{ background: SIGNAL_COLORS[r].fill, borderColor: SIGNAL_COLORS[r].stroke }}
+                />
+                {r}
+              </li>
+            ))}
+            <li>
+              <span
+                className="range-map-swatch"
+                style={{ background: OPERATOR_MARKER_COLOR, borderColor: OPERATOR_MARKER_STROKE }}
+              />
+              Repeater
+            </li>
+          </ul>
+        )}
         <div ref={mapContainerRef} className="leaflet-map-container" />
       </div>
     </div>

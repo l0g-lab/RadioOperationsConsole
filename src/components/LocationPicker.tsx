@@ -14,6 +14,16 @@ interface Props {
   onSave: (lat: number, lon: number, label: string) => void;
   onClear?: () => void;
   onClose: () => void;
+  /**
+   * The point may only be set by clicking the map: no typed coordinates or
+   * label, and a search only moves the map (RANGE-014). The label passed to
+   * `onSave` is then always empty; the caller supplies its own.
+   */
+  mapOnly?: boolean;
+  /** Where the map opens when there's no point yet (e.g. the repeater). */
+  startAt?: { lat: number; lon: number } | null;
+  /** Shown under the search instead of the usual how-to. */
+  hint?: string;
 }
 
 const PIN_ZOOM = 12;
@@ -40,6 +50,9 @@ export default function LocationPicker({
   onSave,
   onClear,
   onClose,
+  mapOnly = false,
+  startAt = null,
+  hint,
 }: Props) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -99,8 +112,13 @@ export default function LocationPicker({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
     const startCenter: [number, number] =
-      initialLat != null && initialLon != null ? [initialLat, initialLon] : DEFAULT_CENTER;
-    const startZoom = initialLat != null && initialLon != null ? PIN_ZOOM : DEFAULT_ZOOM;
+      initialLat != null && initialLon != null
+        ? [initialLat, initialLon]
+        : startAt
+          ? [startAt.lat, startAt.lon]
+          : DEFAULT_CENTER;
+    const startZoom =
+      (initialLat != null && initialLon != null) || startAt ? PIN_ZOOM : DEFAULT_ZOOM;
     const map = createBaseMap(mapContainerRef.current, startCenter, startZoom);
     map.on("click", (e: L.LeafletMouseEvent) => {
       placePin(e.latlng.lat, e.latlng.lng, false);
@@ -144,11 +162,20 @@ export default function LocationPicker({
     setSearching(true);
     setError(null);
     setNote(null);
+    // Map-only: a search just takes the map there; the pin is still clicked.
+    const goTo = (lat: number, lon: number) => {
+      mapRef.current?.setView([lat, lon], Math.max(mapRef.current.getZoom(), 16));
+      setNote("Map moved there — now click the exact spot.");
+    };
     try {
       // "mile marker 182 on turnpike" and the like resolve locally, from
       // the offline road data — no internet needed — before falling back to
       // the online address/place search.
       const mile = await api.resolveMileMarker(trimmed).catch(() => null);
+      if (mile && mapOnly) {
+        goTo(mile.lat, mile.lon);
+        return;
+      }
       if (mile) {
         placePin(mile.lat, mile.lon, true);
         setLabel(mile.label);
@@ -156,7 +183,9 @@ export default function LocationPicker({
         return;
       }
       const result = await api.geocodeLocation(trimmed);
-      if (result) {
+      if (result && mapOnly) {
+        goTo(result.lat, result.lon);
+      } else if (result) {
         placePin(result.lat, result.lon, true);
         setLabel(result.display_name || trimmed);
       } else {
@@ -175,7 +204,7 @@ export default function LocationPicker({
 
   function handleSave() {
     if (lat == null || lon == null) return;
-    onSave(lat, lon, label.trim());
+    onSave(lat, lon, mapOnly ? "" : label.trim());
   }
 
   return (
@@ -201,45 +230,60 @@ export default function LocationPicker({
         </div>
 
         <p className="settings-hint">
-          Or click anywhere on the map to drop a pin, or type exact GPS coordinates below.
+          {hint ??
+            (mapOnly
+              ? "Click the map at the exact spot to drop the pin. Searching only moves the map."
+              : "Or click anywhere on the map to drop a pin, or type exact GPS coordinates below.")}
         </p>
 
         <div ref={mapContainerRef} className="location-picker-map" />
 
-        <div className="location-picker-coords">
-          <label>
-            Latitude
-            <input
-              value={latText}
-              onChange={(e) => setLatText(e.target.value)}
-              onBlur={handleCoordsCommit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCoordsCommit();
-              }}
-              placeholder={PLACEHOLDER[getCoordFormat()].lat}
-            />
-          </label>
-          <label>
-            Longitude
-            <input
-              value={lonText}
-              onChange={(e) => setLonText(e.target.value)}
-              onBlur={handleCoordsCommit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCoordsCommit();
-              }}
-              placeholder={PLACEHOLDER[getCoordFormat()].lon}
-            />
-          </label>
-          <label className="location-picker-label-field">
-            Label (optional)
-            <input
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Field site, county EOC"
-            />
-          </label>
-        </div>
+        {mapOnly ? (
+          <p className="weather-area-status">
+            {lat != null && lon != null ? (
+              <>
+                Pin: <strong>{formatAxis(lat, "lat")}, {formatAxis(lon, "lon")}</strong>
+              </>
+            ) : (
+              "No pin yet."
+            )}
+          </p>
+        ) : (
+          <div className="location-picker-coords">
+            <label>
+              Latitude
+              <input
+                value={latText}
+                onChange={(e) => setLatText(e.target.value)}
+                onBlur={handleCoordsCommit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCoordsCommit();
+                }}
+                placeholder={PLACEHOLDER[getCoordFormat()].lat}
+              />
+            </label>
+            <label>
+              Longitude
+              <input
+                value={lonText}
+                onChange={(e) => setLonText(e.target.value)}
+                onBlur={handleCoordsCommit}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCoordsCommit();
+                }}
+                placeholder={PLACEHOLDER[getCoordFormat()].lon}
+              />
+            </label>
+            <label className="location-picker-label-field">
+              Label (optional)
+              <input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="e.g. Field site, county EOC"
+              />
+            </label>
+          </div>
+        )}
 
         {note && !error && <p className="settings-hint">{note}</p>}
         {error && <p className="weather-area-error">{error}</p>}
