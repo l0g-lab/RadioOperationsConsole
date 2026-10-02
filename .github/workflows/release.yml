@@ -3,11 +3,11 @@ name: Release
 # Builds installers for Linux and Windows and publishes them to the GitHub
 # Releases page.
 #
-# Trigger: push a tag like "v1.0.0" (a plain `git tag v1.0.0 && git push
-# --tags` after bumping the version in package.json, src-tauri/Cargo.toml,
-# and src-tauri/tauri.conf.json — those three MUST agree, or Tauri refuses to
-# build). "Run workflow" from the Actions tab also works, for a dry run
-# without creating a tag or a release.
+# Trigger: push a tag like "v1.4.0" after `npm run version:set -- 1.4.0` and
+# giving the release its section in CHANGELOG.md (see CONTRIBUTING.md). The
+# release is created as a draft, with that section as its description, to be
+# published by hand. "Run workflow" from the Actions tab also works, for a dry
+# run without creating a tag.
 #
 # The test job (shared with ci.yml — see reusable-test.yml) gates the
 # release: nothing is published unless the full test suite passes first.
@@ -75,6 +75,26 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # A tag that doesn't match the version in the files would publish a
+      # release whose installers say a different version.
+      - name: Check the tag matches the version
+        if: github.ref_type == 'tag'
+        run: node scripts/version.mjs check --tag "${{ github.ref_name }}"
+
+      # The release description is this version's section of CHANGELOG.md
+      # (the Unreleased section for a dry run from the Actions tab).
+      - name: Release notes from CHANGELOG.md
+        id: notes
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [ "$GITHUB_REF_TYPE" != "tag" ]; then version="Unreleased"; fi
+          {
+            echo "body<<CHANGELOG_EOF"
+            node scripts/version.mjs notes "$version"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and publish
         uses: tauri-apps/tauri-action@v1
         env:
@@ -83,6 +103,10 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "Radio Operations Console ${{ github.ref_name }}"
           releaseBody: |
+            ${{ steps.notes.outputs.body }}
+
+            ## Download
+
             See the assets below for your platform:
 
             - **Linux:** `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), or `.AppImage` (runs on most distributions)

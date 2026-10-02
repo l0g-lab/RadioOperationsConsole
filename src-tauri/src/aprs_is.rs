@@ -102,7 +102,7 @@ pub async fn start_stream(
         if read == 0 {
             return Err("APRS-IS closed the connection before responding to login".to_string());
         }
-        let trimmed = line.trim_end_matches(|c| c == '\r' || c == '\n');
+        let trimmed = line.trim_end_matches(['\r', '\n']);
         let lower = trimmed.to_ascii_lowercase();
         if lower.contains("logresp") {
             // "unverified" here is normal and expected for a read-only
@@ -139,7 +139,7 @@ pub async fn start_stream(
                             break;
                         }
                         Ok(_) => {
-                            let trimmed = line.trim_end_matches(|c| c == '\r' || c == '\n');
+                            let trimmed = line.trim_end_matches(['\r', '\n']);
                             // Server comment/keepalive lines start with '#'.
                             if trimmed.is_empty() || trimmed.starts_with('#') {
                                 continue;

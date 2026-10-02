@@ -1204,7 +1204,7 @@ HD|5|||KC1TST|C
                 l.to_lowercase()
                     .starts_with(&format!("{}:", name.to_lowercase()))
             })
-            .map(|l| l.splitn(2, ':').nth(1).unwrap().trim().to_string())
+            .map(|l| l.split_once(':').unwrap().1.trim().to_string())
     }
 
     fn payload() -> Vec<u8> {

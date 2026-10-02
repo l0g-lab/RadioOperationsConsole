@@ -7,9 +7,13 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   mkdir: vi.fn(),
 }));
 vi.mock("@tauri-apps/api/path", () => ({ join: vi.fn() }));
+vi.mock("./api", () => ({
+  allowExportExtension: vi.fn((path: string, ext: string) => Promise.resolve(`${path}.${ext}`)),
+}));
 
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { allowExportExtension } from "./api";
 import { exportFilename, saveTextFile } from "./export";
 
 function activity(overrides: Partial<Activity> = {}): Activity {
@@ -84,6 +88,8 @@ describe("saveTextFile extension (EXPORT-008)", () => {
   it("adds the extension back when the chosen name has lost it", async () => {
     vi.mocked(save).mockResolvedValue("/home/op/my log");
     expect(await saveTextFile("Net - Check-ins.csv", "x")).toBe("/home/op/my log.csv");
+    // Only the backend can allow that name, since the dialog allowed the one typed.
+    expect(allowExportExtension).toHaveBeenCalledWith("/home/op/my log", "csv");
     expect(writeTextFile).toHaveBeenCalledWith("/home/op/my log.csv", "x");
   });
 

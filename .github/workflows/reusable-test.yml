@@ -36,6 +36,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Check the version agrees across the five files that hold it
+        run: npm run version:check
+
       - name: Type-check and build the frontend
         run: npm run build
 
@@ -45,3 +48,7 @@ jobs:
       - name: Run backend tests
         working-directory: src-tauri
         run: cargo test --locked
+
+      - name: Lint the backend (any warning fails the build)
+        working-directory: src-tauri
+        run: cargo clippy --locked --all-targets -- -D warnings

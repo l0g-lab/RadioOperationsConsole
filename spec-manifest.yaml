@@ -17,7 +17,7 @@ product_constraints:
   agent_vendor_specific_instructions: prohibited
 
 reading_order:
-  - README.md
+  - docs/README.md
   - docs/00-product-vision.md
   - docs/01-product-principles.md
   - docs/02-scope-and-release-boundaries.md
@@ -44,6 +44,7 @@ reading_order:
   - docs/features/activity-lifecycle-and-wrap-up.md
   - docs/features/ics-form-exports.md
   - docs/features/activity-exports.md
+  - docs/features/station-log.md
   - docs/features/range-check.md
   - docs/features/repeater-directory.md
   - docs/features/net-listings.md
@@ -88,6 +89,7 @@ id_prefixes:
   RANGE: docs/features/range-check.md
   RPT: docs/features/repeater-directory.md
   NETL: docs/features/net-listings.md
+  LOG: docs/features/station-log.md
 
 documents:
   - id: VISION
@@ -203,6 +205,10 @@ documents:
     path: docs/features/net-listings.md
     status: draft
     depends_on: [FEATURE_RPT, FEATURE_LIFE, FEATURE_BACKUP]
+  - id: FEATURE_LOG
+    path: docs/features/station-log.md
+    status: draft
+    depends_on: [EVENTS, FEATURE_LIFE, FEATURE_LOCRES, FEATURE_EXPORT]
   - id: BUILD_PROTOCOL
     path: docs/agent/BUILD_PROTOCOL.md
     status: draft

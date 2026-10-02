@@ -1,0 +1,44 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      placeholder: |
+        1. Go to the Check-ins tab
+        2. ...
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown at the bottom of the Settings tab.
+      placeholder: e.g. 1.3.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - Linux (.deb)
+        - Linux (.rpm)
+        - Linux (AppImage)
+        - Built from source
+    validations:
+      required: true
+  - type: checkboxes
+    id: offline
+    attributes:
+      label: Connection
+      options:
+        - label: It happened while working offline or with no internet

@@ -102,6 +102,7 @@ fn main() {
             commands::fetch_nws_forecast,
             commands::start_aprs_is_stream,
             commands::stop_aprs_is_stream,
+            commands::allow_export_extension,
             commands::backup_database,
             commands::inspect_backup,
             commands::restore_database,

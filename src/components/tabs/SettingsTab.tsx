@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
+import { getVersion } from "@tauri-apps/api/app";
 import type { AppSettings } from "../../types";
 import { getThemeMode, setThemeMode, type ThemeMode } from "../../theme";
 import { COORD_FORMAT_LABELS, getCoordFormat, setCoordFormat, type CoordFormat } from "../../geo";
@@ -210,6 +211,24 @@ export default function SettingsTab() {
         <h2><Package className="heading-icon" />Your data</h2>
       </div>
       <BackupPanel />
+
+      <AppVersion />
     </>
+  );
+}
+
+/** Which release this is, for bug reports and checking for updates. */
+function AppVersion() {
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    getVersion()
+      .then(setVersion)
+      .catch(() => setVersion(null));
+  }, []);
+  if (!version) return null;
+  return (
+    <p className="settings-hint app-version">
+      Radio Operations Console {version} · GPL-3.0-or-later · github.com/l0g-lab/RadioOperationsConsole
+    </p>
   );
 }

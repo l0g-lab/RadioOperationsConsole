@@ -1,6 +1,7 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { mkdir, writeTextFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
+import * as api from "./api";
 import type { Activity, ActivitySummary, Checkin, HistoryEvent, SpotterReport } from "./types";
 import { stationKindLabel } from "./rangeCheck";
 import { formatTimeLines, pad2, splitScheduledAt } from "./utils";
@@ -36,8 +37,12 @@ export async function saveTextFile(
   if (!chosen) return null;
   // Some dialogs (GTK in particular) don't add the filter's extension when the
   // operator types a name without one, which leaves a file nothing will open.
+  // The app may only write where the dialog allowed, so the backend grants
+  // that one name with the extension added.
   const path =
-    ext && !chosen.toLowerCase().endsWith(`.${ext.toLowerCase()}`) ? `${chosen}.${ext}` : chosen;
+    ext && !chosen.toLowerCase().endsWith(`.${ext.toLowerCase()}`)
+      ? await api.allowExportExtension(chosen, ext)
+      : chosen;
   await writeTextFile(path, content);
   return path;
 }
@@ -219,6 +224,8 @@ export async function saveFilesToFolder(
   const chosen = await open({
     directory: true,
     multiple: false,
+    // Lets the app write into subfolders it creates there, and nowhere else.
+    recursive: true,
     title: "Choose a folder to save into",
   });
   if (!chosen || Array.isArray(chosen)) return null;

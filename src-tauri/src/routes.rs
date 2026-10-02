@@ -296,7 +296,7 @@ fn match_pack<'a>(packs: &'a [RoutePack], rest: &[String]) -> Option<&'a RoutePa
             } else {
                 contains_sequence(rest, &alias_tokens)
             };
-            if matched && best.map_or(true, |(_, len)| alias_tokens.len() > len) {
+            if matched && best.is_none_or(|(_, len)| alias_tokens.len() > len) {
                 best = Some((pack, alias_tokens.len()));
             }
         }

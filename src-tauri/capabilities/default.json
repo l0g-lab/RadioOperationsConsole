@@ -8,13 +8,7 @@
     "core:webview:allow-set-webview-zoom",
     "dialog:allow-save",
     "dialog:allow-open",
-    {
-      "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "**" }]
-    },
-    {
-      "identifier": "fs:allow-write-text-file",
-      "allow": [{ "path": "**" }]
-    }
+    "fs:allow-mkdir",
+    "fs:allow-write-text-file"
   ]
 }

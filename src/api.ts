@@ -144,6 +144,13 @@ export const activityDeletePreview = (activity_id: string) =>
 export const deleteActivity = (activity_id: string, operator_id: string | null) =>
   invoke<DeletedCounts>("delete_activity", { activityId: activity_id, operatorId: operator_id });
 
+/**
+ * Lets an export add its extension to a name chosen in a save dialog (which
+ * only allowed the name as typed). Returns the path to write.
+ */
+export const allowExportExtension = (path: string, ext: string) =>
+  invoke<string>("allow_export_extension", { path, ext });
+
 // Net listings (net-listings.md).
 export const listNetListings = (retired = false) =>
   invoke<NetListing[]>("list_net_listings", { retired });

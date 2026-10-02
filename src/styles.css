@@ -2251,3 +2251,10 @@ button.online-pill-working-offline:hover {
   max-height: 60vh;
   white-space: pre;
 }
+
+/* Which release this is, at the bottom of Settings. */
+.app-version {
+  margin-top: 24px;
+  text-align: center;
+  user-select: text;
+}

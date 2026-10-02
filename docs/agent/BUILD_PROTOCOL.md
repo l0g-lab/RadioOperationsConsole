@@ -8,7 +8,7 @@ This protocol defines how a human developer or automated implementation agent us
 
 Before changing code:
 
-1. Read `README.md` and `spec-manifest.yaml`.
+1. Read `docs/README.md` and `spec-manifest.yaml`.
 2. Read all documents listed before the target document in `reading_order` when they govern the task.
 3. Read every feature, contract, and architecture decision directly touched by the task.
 4. Identify the stable requirement IDs being implemented.
