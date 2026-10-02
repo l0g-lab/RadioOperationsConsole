@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity, ActivitySummary } from "../../types";
-import { activitySummaryToText } from "../../export";
-import { ActionMessage, SummaryView, useSummaryTextActions } from "../exports/SummaryView";
+import { activitySummaryToText, exportFilename } from "../../export";
+import { ActionMessage, SummaryView } from "../exports/SummaryView";
+import { useTextFileActions } from "../exports/PreviewWindow";
 import { SummaryTextDialog } from "../exports/SummaryDialog";
 
 /**
@@ -22,7 +23,11 @@ export default function ActivitySummaryPanel({ activity }: { activity: Activity 
   }, [activity]);
 
   const text = summary ? activitySummaryToText(activity, summary) : null;
-  const { save, message } = useSummaryTextActions(activity, text);
+  const { save, message } = useTextFileActions(
+    exportFilename(activity, "Summary", "txt"),
+    text,
+    "the summary"
+  );
 
   if (!summary) return null;
   return (

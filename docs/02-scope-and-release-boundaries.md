@@ -57,7 +57,6 @@ The initial usable release covers one trusted workstation and local data store.
 - Printable HTML or native print preview
 - PDF
 - CSV for tabular records
-- Full-fidelity JSON event package
 - Architecture for official ICS-form renderers
 - Architecture for versioned Winlink Standard Forms load-data text adapters
 

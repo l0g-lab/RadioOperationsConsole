@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { Activity, ActivitySummary } from "../../types";
-import { formatDuration, saveTextFile, exportFilename } from "../../export";
+import { formatDuration } from "../../export";
 import { summaryFacts } from "../../summaryFacts";
 import { activityTypeLabel } from "../../activityTypes";
 import { formatTimeLines } from "../../utils";
@@ -87,34 +87,6 @@ export function SummaryView({
       </div>
     </div>
   );
-}
-
-/** Copy and Save for a summary's text, with a message saying how it went. */
-export function useSummaryTextActions(activity: Activity, text: string | null) {
-  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
-  useEffect(() => setMessage(null), [activity.id]);
-
-  async function copy() {
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      setMessage({ text: "Copied the summary.", error: false });
-    } catch {
-      setMessage({ text: "Couldn't copy to the clipboard — use Save instead.", error: true });
-    }
-  }
-
-  async function save() {
-    if (!text) return;
-    try {
-      const path = await saveTextFile(exportFilename(activity, "Summary", "txt"), text);
-      if (path) setMessage({ text: `Saved to ${path}`, error: false });
-    } catch (e) {
-      setMessage({ text: `Couldn't save: ${e}`, error: true });
-    }
-  }
-
-  return { copy, save, message };
 }
 
 /** The outcome of a Copy or Save. */

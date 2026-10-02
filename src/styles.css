@@ -2205,3 +2205,49 @@ button.online-pill-working-offline:hover {
   white-space: pre-wrap;
   user-select: text;
 }
+
+/* Previewing an export before saving it (PreviewWindow.tsx). */
+.preview-modal-wide {
+  width: min(1200px, 95vw);
+}
+
+.csv-table-wrap {
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.csv-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.csv-table th,
+.csv-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+/* Headings stay in view while scrolling down. */
+.csv-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-input);
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+/* A field with a line break in it keeps it. */
+.csv-table td {
+  white-space: pre;
+}
+
+.csv-raw {
+  max-height: 60vh;
+  white-space: pre;
+}

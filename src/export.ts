@@ -44,7 +44,6 @@ export async function saveTextFile(
 
 const FILE_TYPE_NAMES: Record<string, string> = {
   csv: "CSV spreadsheet",
-  json: "JSON",
   txt: "Text",
   html: "Web page (HTML)",
   xml: "XML",
@@ -110,6 +109,48 @@ function csv(rows: string[][]): string {
   return rows.map((row) => row.map(csvField).join(",")).join("\r\n") + "\r\n";
 }
 
+/**
+ * Reads CSV back into rows — the reverse of `csv`, so a preview shows exactly
+ * what's saved: quoted fields, doubled quotes, and line breaks inside quotes.
+ */
+export function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (c === '"') {
+        quoted = false;
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      quoted = true;
+    } else if (c === ",") {
+      row.push(field);
+      field = "";
+    } else if (c === "\r" || c === "\n") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += c;
+    }
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
 const CSV_COLUMNS = [
   "Call Sign",
   "Name",
@@ -165,56 +206,6 @@ export function checkinsToCsv(checkins: Checkin[]): string {
     ]);
   }
   return csv(rows);
-}
-
-function checkinRecord(c: Checkin) {
-  return {
-    call_sign: c.call_sign,
-    name: c.name,
-    qth_location: c.qth_location,
-    grid_square: c.grid_square,
-    address: c.address,
-    lat: c.location_lat,
-    lon: c.location_lon,
-    location_label: c.location_label,
-    checked_in_local: localStamp(c.checked_in_at),
-    checked_in_utc: utcStamp(c.checked_in_at),
-    has_traffic: c.has_traffic,
-    traffic: c.traffic,
-    traffic_handled: c.traffic_handled,
-    frequency: c.frequency,
-    mode: c.mode,
-    rst_sent: c.rst_sent,
-    rst_received: c.rst_received,
-    power: c.power,
-    antenna: c.antenna,
-    notes: c.notes,
-    station_kind: c.station_kind,
-    cross_street: c.cross_street,
-  };
-}
-
-/** The active (non-voided) roster as JSON, with activity context for reference. */
-export function checkinsToJson(activity: Activity | null, checkins: Checkin[]): string {
-  return JSON.stringify(
-    {
-      exported_at: new Date().toISOString(),
-      activity: activity && {
-        id: activity.id,
-        title: activity.title,
-        activity_type: activity.activity_type,
-        scheduled_at: activity.scheduled_at,
-        frequency: activity.frequency,
-        repeater:
-          activity.repeater_lat != null
-            ? { name: activity.repeater_name, lat: activity.repeater_lat, lon: activity.repeater_lon }
-            : null,
-      },
-      checkins: checkins.map(checkinRecord),
-    },
-    null,
-    2
-  );
 }
 
 /**
@@ -330,42 +321,6 @@ export function spotterReportsToCsv(reports: SpotterReport[]): string {
   return csv(rows);
 }
 
-function reportRecord(r: SpotterReport) {
-  return {
-    reporter: r.reporter,
-    source: r.source,
-    reported_local: localStamp(r.reported_at),
-    reported_utc: utcStamp(r.reported_at),
-    hazard_type: r.hazard_type,
-    magnitude: r.magnitude,
-    notes: r.notes,
-    county: r.county,
-    location_text: r.location_text,
-    lat: r.lat,
-    lon: r.lon,
-    grid_square: reportGrid(r) || null,
-    linked_checkin_id: r.checkin_id,
-  };
-}
-
-/** Spotter reports as JSON, with the activity for context. */
-export function spotterReportsToJson(activity: Activity | null, reports: SpotterReport[]): string {
-  return JSON.stringify(
-    {
-      exported_at: new Date().toISOString(),
-      activity: activity && {
-        id: activity.id,
-        title: activity.title,
-        activity_type: activity.activity_type,
-        scheduled_at: activity.scheduled_at,
-      },
-      spotter_reports: chronological(reports).map(reportRecord),
-    },
-    null,
-    2
-  );
-}
-
 /** A readable text report, for pasting into an email or message. */
 export function spotterReportsToText(activity: Activity | null, reports: SpotterReport[]): string {
   const sorted = chronological(reports);
@@ -419,43 +374,4 @@ export function historyToCsv(events: HistoryEvent[]): string {
     ["Time (Local)", "Time (UTC)", "Record Type", "Action", "Operator", "Detail", "Record Id"],
     ...eventRows(events),
   ]);
-}
-
-/**
- * Everything about one activity in a single JSON file: the activity itself,
- * its summary, check-ins, spotter reports, and history.
- */
-export function activityPackageToJson(
-  activity: Activity,
-  summary: ActivitySummary | null,
-  checkins: Checkin[],
-  reports: SpotterReport[],
-  history: HistoryEvent[]
-): string {
-  return JSON.stringify(
-    {
-      format: "radio-ops-console-activity",
-      format_version: 1,
-      exported_at: new Date().toISOString(),
-      activity: {
-        ...activity,
-        opened_at_local: localStamp(activity.opened_at) || null,
-        closed_at_local: localStamp(activity.closed_at) || null,
-      },
-      summary,
-      checkins: checkins.map(checkinRecord),
-      spotter_reports: chronological(reports).map(reportRecord),
-      history: history.map((e) => ({
-        time_local: localStamp(e.created_at),
-        time_utc: utcStamp(e.created_at),
-        record_type: e.entity_type,
-        action: e.action,
-        operator: e.operator,
-        detail: e.data,
-        record_id: e.entity_id,
-      })),
-    },
-    null,
-    2
-  );
 }

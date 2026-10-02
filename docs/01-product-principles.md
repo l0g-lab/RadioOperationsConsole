@@ -9,7 +9,7 @@
 - **PRINCIPLE-005:** Reported, mapped, and directory locations are different. The exact location words reported over the air, a normalized/geocoded location, map coordinates, a participant's directory location, and an APRS position are separate facts. The application MUST NOT silently substitute one for another.
 - **PRINCIPLE-006:** External data has provenance and age. Every item from NWS, radar, APRS, QRZ, a geocoder, or another connector shows or retains its source, retrieval time, and freshness state.
 - **PRINCIPLE-007:** Useful defaults without hidden automation. The application may prefill data, but operators review consequential associations such as report locations, reporter identity, alert linkage, and formal exports.
-- **PRINCIPLE-008:** Structured source, multiple outputs. PDF, print, CSV, JSON, ICS, and Winlink-compatible artifacts are renderings of validated structured records. Output generation MUST NOT mutate the source record or imply transmission.
+- **PRINCIPLE-008:** Structured source, multiple outputs. PDF, print, CSV, text, ICS, and Winlink-compatible artifacts are renderings of validated structured records. Output generation MUST NOT mutate the source record or imply transmission.
 - **PRINCIPLE-009:** Accessible information density. The interface may evoke weather, amateur radio, and Linux operations consoles, but clarity, contrast, readable typography, and discoverability take priority over decoration. Color MUST NOT be the sole carrier of severity, connectivity, verification, or exercise state.
 - **PRINCIPLE-010:** Integrations fail independently. Failure of one connector MUST NOT disable unrelated connectors or core local operation.
 

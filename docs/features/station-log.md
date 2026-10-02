@@ -102,7 +102,7 @@ or end, and each record is a contact carrying its radio details.
   and the column's hover text says how to set one.
 - **LOG-021:** The log MUST be searchable by call sign, name, location, and
   notes, saying so when nothing matches.
-- **LOG-022:** Roster exports (CSV and JSON) MUST include the contact fields.
+- **LOG-022:** The roster CSV export MUST include the contact fields.
 
 ## Worked before
 

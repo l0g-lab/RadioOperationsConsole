@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  activityPackageToJson,
   activitySummaryToText,
   checkinsToCsv,
-  checkinsToJson,
+  parseCsv,
   formatDuration,
   historyToCsv,
   spotterReportsToCsv,
-  spotterReportsToJson,
   spotterReportsToText,
 } from "./export";
 import type { Activity, ActivitySummary, Checkin, HistoryEvent, SpotterReport } from "./types";
@@ -154,26 +152,6 @@ describe("checkinsToCsv", () => {
   });
 });
 
-describe("checkinsToJson", () => {
-  it("includes activity context and every check-in field", () => {
-    const parsed = JSON.parse(checkinsToJson(activity(), [checkin()]));
-    expect(parsed.activity.title).toBe("Tuesday Net");
-    expect(parsed.checkins).toHaveLength(1);
-    expect(parsed.checkins[0]).toMatchObject({
-      call_sign: "K4ABC",
-      lat: 25.77,
-      lon: -80.19,
-      checked_in_utc: "2026-09-21T23:04:00Z",
-    });
-  });
-
-  it("tolerates a null activity", () => {
-    const parsed = JSON.parse(checkinsToJson(null, []));
-    expect(parsed.activity).toBeNull();
-    expect(parsed.checkins).toEqual([]);
-  });
-});
-
 describe("spotter report exports", () => {
   it("CSV follows the who/what/where column order and includes both times", () => {
     const csv = spotterReportsToCsv([report()]);
@@ -205,17 +183,6 @@ describe("spotter report exports", () => {
     const rows = csv.trim().split("\r\n").slice(1);
     expect(rows[0]).toContain("19:00");
     expect(rows[1]).toContain("20:00");
-  });
-
-  it("JSON includes the grid square and linked check-in", () => {
-    const parsed = JSON.parse(spotterReportsToJson(activity(), [report({ checkin_id: "c9" })]));
-    expect(parsed.spotter_reports[0].grid_square).toBe("EL98ba");
-    expect(parsed.spotter_reports[0].linked_checkin_id).toBe("c9");
-  });
-
-  it("JSON grid_square is null when there are no coordinates", () => {
-    const parsed = JSON.parse(spotterReportsToJson(null, [report({ lat: null, lon: null })]));
-    expect(parsed.spotter_reports[0].grid_square).toBeNull();
   });
 
   it("text report numbers entries, in chronological order, with who/what/where", () => {
@@ -274,43 +241,6 @@ describe("historyToCsv", () => {
   });
 });
 
-describe("activityPackageToJson", () => {
-  it("bundles the activity, summary, check-ins, reports, and history under one format marker", () => {
-    const events: HistoryEvent[] = [
-      {
-        id: "e1",
-        entity_type: "activity",
-        entity_id: "a1",
-        action: "started",
-        data: "",
-        operator: "",
-        created_at: "2026-09-21T22:00:00Z",
-      },
-    ];
-    const pkg = JSON.parse(
-      activityPackageToJson(
-        activity({ opened_at: "2026-09-21T22:00:00Z" }),
-        summary(),
-        [checkin()],
-        [report()],
-        events
-      )
-    );
-    expect(pkg.format).toBe("radio-ops-console-activity");
-    expect(pkg.format_version).toBe(1);
-    expect(pkg.checkins).toHaveLength(1);
-    expect(pkg.spotter_reports).toHaveLength(1);
-    expect(pkg.history).toHaveLength(1);
-    expect(pkg.summary.checkins).toBe(1);
-    expect(pkg.activity.opened_at_local).toBeTruthy();
-  });
-
-  it("tolerates a null summary", () => {
-    const pkg = JSON.parse(activityPackageToJson(activity(), null, [], [], []));
-    expect(pkg.summary).toBeNull();
-  });
-});
-
 describe("formatDuration", () => {
   it("formats minutes only under an hour", () => {
     expect(formatDuration("2026-09-21T19:00:00Z", "2026-09-21T19:45:00Z")).toBe("45 min");
@@ -350,5 +280,30 @@ describe("activitySummaryToText", () => {
   it("never leaves more than one blank line in a row", () => {
     const text = activitySummaryToText(activity(), summary({ conclusion: "" }));
     expect(text).not.toMatch(/\n\n\n/);
+  });
+});
+
+describe("parseCsv", () => {
+  it("reads back exactly what the CSV export writes", () => {
+    const tricky = checkin({
+      name: 'Al "the Pal", Jr.',
+      address: "1 Main St\nApt 2",
+      traffic: "",
+      has_traffic: true,
+    });
+    const text = checkinsToCsv([tricky, checkin()]);
+    const rows = parseCsv(text);
+    expect(rows).toHaveLength(3);
+    expect(rows[0][0]).toBe("Call Sign");
+    expect(rows[1]).toContain('Al "the Pal", Jr.');
+    expect(rows[1]).toContain("1 Main St\nApt 2");
+    expect(rows.every((r) => r.length === rows[0].length)).toBe(true);
+  });
+
+  it("handles a last line without a line break, and empty fields", () => {
+    expect(parseCsv("a,,c\r\n1,2,")).toEqual([
+      ["a", "", "c"],
+      ["1", "2", ""],
+    ]);
   });
 });

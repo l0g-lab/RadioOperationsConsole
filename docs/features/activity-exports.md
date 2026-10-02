@@ -54,10 +54,11 @@ be in one predictable place, complete, and unambiguous about time.
 
 ## What can be exported
 
-- **EXPORT-010:** Check-ins as CSV and JSON, holding everything the roster shows:
+- **EXPORT-010:** Check-ins as CSV, holding everything the roster shows:
   call sign, name, location, grid square, address, coordinates and location label,
   traffic and whether it was handled, and the check-in time.
-- **EXPORT-011:** Spotter reports as CSV, JSON, and a readable text report.
+- **EXPORT-011:** Spotter reports as CSV and a readable text report, each
+  viewable before saving (`EXPORT-017`, `EXPORT-018`).
 - **EXPORT-012:** *(Retired.)* There is no separate activity log; what happened
   during an activity is recorded on its check-ins, traffic, spotter reports, and
   closing notes, and in its history.
@@ -72,16 +73,22 @@ be in one predictable place, complete, and unambiguous about time.
   restoring it. Wherever the summary is saved — the Operations tab and the
   export list — the exact text it saves as (`EXPORT-014`) MUST be viewable
   first ("Show summary text"), with Copy and Save.
-- **EXPORT-015:** A single JSON package holding the activity, its summary,
-  check-ins, spotter reports, and history, marked with a format name and
-  version so it can be recognised and read later.
+- **EXPORT-018:** Each CSV export (check-ins, spotter reports, full history)
+  MUST be viewable before saving ("Show CSV"): as a table read back from the
+  exact text that would be saved, with its row and column counts, the raw text
+  on request, and Copy and Save of that text.
+- **EXPORT-015:** *(Retired.)* There are no JSON exports — not of check-ins,
+  spotter reports, or the whole activity as one package. The people using the
+  app work with spreadsheets and readable text; JSON can be added back if a
+  need for it appears. A database backup ([database-backup-restore.md](database-backup-restore.md))
+  keeps everything.
 - **EXPORT-016:** The ICS 309 (from the check-ins) and ICS 213 (from spotter
   reports, all or one) as Winlink import data and as printable forms
   ([ics-form-exports.md](ics-form-exports.md)).
 
 ## Time
 
-- **EXPORT-020:** Every time in a CSV, JSON, or text export MUST be given both as
+- **EXPORT-020:** Every time in a CSV or text export MUST be given both as
   local time and as UTC (`TIME-002`, `TIME-003`). A time recorded without a zone
   (a spotter report's observed time) MUST be read as local time for the UTC value.
 - **EXPORT-021:** UTC times MUST be written in a fixed, sortable form

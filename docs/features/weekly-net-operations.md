@@ -166,7 +166,7 @@ the application — handing it to another system, or to another operator
 over Winlink when there's no other path to deliver it.
 
 - **NETOPS-046:** The active (non-voided) roster for the focused activity MUST
-  be exportable as CSV and as JSON, each containing the fields shown in the roster
+  be exportable as CSV, containing the fields shown in the roster
   (`NETOPS-015`), including coordinates and traffic (`NETOPS-050`). The export is
   offered on the Exports tab ([activity-exports.md](activity-exports.md)), not in
   the Check-ins workspace itself.
@@ -199,7 +199,7 @@ in a separate list.
 - **NETOPS-054:** The revealed traffic MUST offer a "Handled" checkbox, which
   is recorded with an audit event (`AUDIT-001`).
 - **NETOPS-055:** Traffic details and the handled state MUST be included in
-  the CSV and JSON roster exports.
+  the CSV roster export.
 - **NETOPS-056:** The activity summary and end-of-net step MUST count check-ins
   with traffic and warn (without blocking) about any not marked handled
   ([activity-lifecycle-and-wrap-up.md](activity-lifecycle-and-wrap-up.md), `LIFE-031`).

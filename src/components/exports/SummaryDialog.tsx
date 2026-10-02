@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity, ActivitySummary } from "../../types";
-import { activitySummaryToText } from "../../export";
-import { ScrollText } from "lucide-react";
-import { ActionMessage, SummaryView, useEscape, useSummaryTextActions } from "./SummaryView";
+import { activitySummaryToText, exportFilename } from "../../export";
+import { SummaryView } from "./SummaryView";
+import { PreviewWindow } from "./PreviewWindow";
 
 /** An activity's summary, loaded by id; with closing notes still being written in place of saved ones. */
 function useSummary(activity: Activity, conclusion?: string) {
@@ -18,55 +18,6 @@ function useSummary(activity: Activity, conclusion?: string) {
   const notes = summary ? (conclusion ?? summary.conclusion).trim() : "";
   const text = summary ? activitySummaryToText(activity, { ...summary, conclusion: notes }) : null;
   return { summary, failed, notes, text };
-}
-
-function SummaryWindow({
-  activity,
-  heading,
-  onClose,
-  children,
-  text,
-  failed,
-}: {
-  activity: Activity;
-  heading: string;
-  onClose: () => void;
-  children: React.ReactNode;
-  text: string | null;
-  failed: boolean;
-}) {
-  useEscape(onClose);
-  const { copy, save, message } = useSummaryTextActions(activity, text);
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal-panel lifecycle-modal summary-modal"
-        role="dialog"
-        aria-label={`${heading} — ${activity.title}`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="modal-header">
-          <h3>
-            <ScrollText className="heading-icon" />
-            {heading} — {activity.title}
-          </h3>
-          <button onClick={onClose}>Close</button>
-        </div>
-        {failed && <p className="weather-area-error">Couldn't load the summary.</p>}
-        {!failed && !text && <p className="settings-hint">Loading…</p>}
-        {text && children}
-        <div className="inline-form">
-          <button onClick={copy} disabled={!text} title="Copy the summary as plain text">
-            Copy
-          </button>
-          <button onClick={save} disabled={!text} title="Save the summary as a text file">
-            Save…
-          </button>
-          <ActionMessage message={message} />
-        </div>
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -85,9 +36,16 @@ export default function SummaryDialog({
 }) {
   const { summary, failed, notes, text } = useSummary(activity, conclusion);
   return (
-    <SummaryWindow activity={activity} heading="Summary" onClose={onClose} text={text} failed={failed}>
+    <PreviewWindow
+      heading={`Summary — ${activity.title}`}
+      filename={exportFilename(activity, "Summary", "txt")}
+      text={text}
+      what="the summary"
+      failed={failed}
+      onClose={onClose}
+    >
       {summary && <SummaryView activity={activity} summary={summary} notes={notes} />}
-    </SummaryWindow>
+    </PreviewWindow>
   );
 }
 
@@ -106,8 +64,15 @@ export function SummaryTextDialog({
 }) {
   const { failed, text } = useSummary(activity, conclusion);
   return (
-    <SummaryWindow activity={activity} heading="Summary text" onClose={onClose} text={text} failed={failed}>
+    <PreviewWindow
+      heading={`Summary text — ${activity.title}`}
+      filename={exportFilename(activity, "Summary", "txt")}
+      text={text}
+      what="the summary"
+      failed={failed}
+      onClose={onClose}
+    >
       <pre className="summary-text">{text}</pre>
-    </SummaryWindow>
+    </PreviewWindow>
   );
 }

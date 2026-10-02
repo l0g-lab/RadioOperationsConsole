@@ -82,7 +82,7 @@ any of it.
 - **RANGE-021:** The check-in map MUST mark the repeater as "Repeater" and
   color each station by how net control hears it, with a legend. A station's
   popup MUST show both signal reports, its station type, and its power.
-- **RANGE-022:** Roster exports (CSV and JSON) MUST include the station type
+- **RANGE-022:** The roster CSV export MUST include the station type
   and cross street.
 
 ## Not yet built

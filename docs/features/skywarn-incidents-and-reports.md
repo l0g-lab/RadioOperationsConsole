@@ -138,12 +138,11 @@ they saw, and where.
 ## Exporting spotter reports
 
 - **SPOT-050:** The activity's active (non-removed) reports MUST be exportable as
-  CSV, JSON, and a readable text report, in chronological order, from the Exports
+  CSV and a readable text report, in chronological order, from the Exports
   tab ([activity-exports.md](activity-exports.md)).
 - **SPOT-051:** CSV columns MUST follow the form's order — reporter, source,
   time (local and UTC), hazard type, magnitude, notes, county, location, latitude, longitude,
-  grid square — and JSON MUST carry the same fields, plus the linked check-in
-  when there is one, and the activity for context.
+  grid square.
 - **SPOT-052:** The text report MUST list, for each report, the time, hazard
   and magnitude, reporter and source, location, coordinates with grid square,
   and notes, so it can be pasted into an email or message.
@@ -267,7 +266,7 @@ bolted on to the Spotter Reports data model.
   printer-specific integrations outside this application's current scope.
 - An End-of-Action summary report combining alerts, incidents, and
   spotter reports — worth revisiting once Incidents exists, alongside the
-  CSV/JSON/Winlink ICS-213 exports already built for check-ins
+  CSV/Winlink ICS-213 exports already built for check-ins
   (`NETOPS-046`–`048`).
 
 ## Acceptance examples

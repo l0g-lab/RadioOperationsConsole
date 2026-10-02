@@ -9,20 +9,18 @@ import type {
   SpotterReport,
 } from "../../types";
 import {
-  activityPackageToJson,
   activitySummaryToText,
   checkinsToCsv,
-  checkinsToJson,
   exportFilename,
   historyToCsv,
   saveTextFile,
   spotterReportsToCsv,
-  spotterReportsToJson,
   spotterReportsToText,
 } from "../../export";
 import { ics213FromReport, ics213FromReports, type GeneralMessage213Input } from "../../icsForms";
 import IcsFormDialog from "./IcsFormDialog";
 import { SummaryTextDialog } from "./SummaryDialog";
+import { CsvPreviewDialog, PreviewWindow } from "./PreviewWindow";
 
 /**
  * `unavailable` is the reason there's nothing to do. The button stays clickable,
@@ -78,11 +76,11 @@ function Row({
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * Every export for one activity, in one list: the records as CSV or JSON, the
- * log and history, the summary, everything as a single package, and the ICS
- * forms. Used by the Exports tab and by the end-of-net step, so they always
- * offer the same things. Files are saved where the operator chooses and nothing
- * needs a network.
+ * Every export for one activity, in one list: the records as CSV, the spotter
+ * reports and summary as readable text, the history, and the ICS forms, each
+ * viewable before saving. Used by the Exports tab and by the end-of-net step,
+ * so they always offer the same things. Files are saved where the operator
+ * chooses and nothing needs a network.
  */
 export default function ExportOptions({
   activity,
@@ -108,6 +106,19 @@ export default function ExportOptions({
   >(null);
   const [reportId, setReportId] = useState("");
   const [showingSummary, setShowingSummary] = useState(false);
+  // A CSV being looked at before it's saved (EXPORT-018).
+  const [textPreview, setTextPreview] = useState<{
+    heading: string;
+    filename: string;
+    text: string;
+    what: string;
+  } | null>(null);
+  const [csvPreview, setCsvPreview] = useState<{
+    heading: string;
+    filename: string;
+    csv: string;
+    what: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,7 +164,7 @@ export default function ExportOptions({
       <section className="export-section">
         <h4 className="export-section-title">Records and reports</h4>
         <p className="settings-hint">
-          The activity's own data, as spreadsheets and files, or in one package.
+          The activity's own data, as spreadsheets and readable text. Use Show to see one before saving it.
         </p>
         <Row
           notify={notify}
@@ -161,6 +172,20 @@ export default function ExportOptions({
           count={plural(checkins.length, "record", "records")}
           note="Everything the roster shows, with coordinates, traffic, and local and UTC times."
           actions={[
+            {
+              label: "Show CSV",
+              unavailable: noCheckins
+                ? "There are no check-ins yet, so there's nothing to show."
+                : undefined,
+              title: "See it as a table, exactly as the CSV file will hold it",
+              onClick: () =>
+                setCsvPreview({
+                  heading: `Check-ins — ${activity.title}`,
+                  filename: exportFilename(activity, "Check-ins", "csv"),
+                  csv: checkinsToCsv(checkins),
+                  what: "the check-ins",
+                }),
+            },
             {
               label: "CSV",
               unavailable: noCheckins
@@ -173,18 +198,6 @@ export default function ExportOptions({
                   "the check-ins"
                 ),
             },
-            {
-              label: "JSON",
-              unavailable: noCheckins
-                ? "There are no check-ins yet, so there's nothing to export."
-                : undefined,
-              onClick: () =>
-                save(
-                  exportFilename(activity, "Check-ins", "json"),
-                  checkinsToJson(activity, checkins),
-                  "the check-ins"
-                ),
-            },
           ]}
         />
         <Row
@@ -192,6 +205,20 @@ export default function ExportOptions({
           title="Spotter reports"
           count={plural(reports.length, "report", "reports")}
           actions={[
+            {
+              label: "Show CSV",
+              unavailable: noReports
+                ? "There are no spotter reports yet, so there's nothing to show."
+                : undefined,
+              title: "See it as a table, exactly as the CSV file will hold it",
+              onClick: () =>
+                setCsvPreview({
+                  heading: `Spotter reports — ${activity.title}`,
+                  filename: exportFilename(activity, "Spotter reports", "csv"),
+                  csv: spotterReportsToCsv(reports),
+                  what: "the reports",
+                }),
+            },
             {
               label: "CSV",
               unavailable: noReports
@@ -205,16 +232,18 @@ export default function ExportOptions({
                 ),
             },
             {
-              label: "JSON",
+              label: "Show text report",
               unavailable: noReports
-                ? "There are no spotter reports yet, so there's nothing to export."
+                ? "There are no spotter reports yet, so there's nothing to show."
                 : undefined,
+              title: "See the readable report before saving or copying it",
               onClick: () =>
-                save(
-                  exportFilename(activity, "Spotter reports", "json"),
-                  spotterReportsToJson(activity, reports),
-                  "the reports"
-                ),
+                setTextPreview({
+                  heading: `Spotter reports — ${activity.title}`,
+                  filename: exportFilename(activity, "Spotter reports", "txt"),
+                  text: spotterReportsToText(activity, reports),
+                  what: "the report",
+                }),
             },
             {
               label: "Text report",
@@ -237,6 +266,20 @@ export default function ExportOptions({
           count={plural(history.length, "event", "events")}
           note="Every start, close, correction, removal and restore, with the operator and time."
           actions={[
+            {
+              label: "Show CSV",
+              unavailable: history.length === 0
+                  ? "Nothing has been recorded for this activity yet."
+                  : undefined,
+              title: "See it as a table, exactly as the CSV file will hold it",
+              onClick: () =>
+                setCsvPreview({
+                  heading: `Full history — ${activity.title}`,
+                  filename: exportFilename(activity, "History", "csv"),
+                  csv: historyToCsv(history),
+                  what: "the history",
+                }),
+            },
             {
               label: "CSV",
               unavailable:
@@ -276,25 +319,6 @@ export default function ExportOptions({
                     conclusion: (conclusion ?? summary.conclusion).trim(),
                   }),
                   "the summary"
-                ),
-            },
-          ]}
-        />
-        <Row
-          notify={notify}
-          title="Everything for this activity"
-          note="One JSON file: the activity, summary, check-ins, reports, and history."
-          actions={[
-            {
-              label: "JSON package",
-              unavailable: !summary
-                ? "The summary hasn't loaded yet. Try again in a moment."
-                : undefined,
-              onClick: () =>
-                save(
-                  exportFilename(activity, "Package", "json"),
-                  activityPackageToJson(activity, summary, checkins, reports, history),
-                  "the package"
                 ),
             },
           ]}
@@ -387,6 +411,18 @@ export default function ExportOptions({
         </p>
       )}
 
+      {textPreview && (
+        <PreviewWindow
+          heading={textPreview.heading}
+          filename={textPreview.filename}
+          text={textPreview.text}
+          what={textPreview.what}
+          onClose={() => setTextPreview(null)}
+        >
+          <pre className="summary-text">{textPreview.text}</pre>
+        </PreviewWindow>
+      )}
+      {csvPreview && <CsvPreviewDialog {...csvPreview} onClose={() => setCsvPreview(null)} />}
       {showingSummary && (
         <SummaryTextDialog
           activity={activity}
