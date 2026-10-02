@@ -30,7 +30,7 @@ Coordinates can be shown as decimal degrees, degrees & decimal minutes, or degre
 
 ### 1. Install the prerequisites
 
-You need **Node.js 18 or newer**, the **Rust toolchain** (1.77+), and the system libraries Tauri uses to draw its window.
+You need **Node.js 18 or newer**, the **Rust toolchain** (1.88+), and the system libraries Tauri uses to draw its window.
 
 <details>
 <summary><strong>Linux (Debian / Ubuntu)</strong></summary>

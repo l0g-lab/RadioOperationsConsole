@@ -99,16 +99,16 @@ if (cmd === "check") {
     write(f.file, after);
   }
   console.log(`Set ${arg} in ${FILES.length} files.`);
-  if (!notes(arg)) {
+  if (notes(arg) === null) {
     console.log(`Next: rename "## [Unreleased]" in CHANGELOG.md to "## [${arg}] - <date>".`);
   }
 } else if (cmd === "notes") {
   const text = notes(arg ?? "");
-  if (!text) {
+  if (text === null) {
     console.error(`CHANGELOG.md has no section for ${arg}.`);
     process.exit(1);
   }
-  console.log(text);
+  console.log(text || "No changes recorded yet.");
 } else {
   console.error("Usage: node scripts/version.mjs check [--tag vX.Y.Z] | set X.Y.Z | notes X.Y.Z");
   process.exit(1);
