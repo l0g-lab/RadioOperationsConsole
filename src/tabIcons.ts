@@ -1,4 +1,5 @@
 import {
+  CalendarClock,
   ClipboardCheck,
   CloudSunRain,
   FileDown,
@@ -20,5 +21,6 @@ export const TAB_ICONS: Record<Tab, LucideIcon> = {
   APRS: SatelliteDish,
   Exports: FileDown,
   History: History,
+  Nets: CalendarClock,
   Settings: Settings,
 };

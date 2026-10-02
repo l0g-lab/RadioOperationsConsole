@@ -1936,3 +1936,104 @@ button.online-pill-working-offline:hover {
   border-top-style: dashed;
   border-top-width: 2px;
 }
+
+/* ---- Net listings (NetsTab.tsx) ---- */
+
+.nets-panel {
+  max-width: 1100px;
+}
+
+.net-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.net-row {
+  display: grid;
+  grid-template-columns: minmax(170px, 220px) 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* A net meeting right now stands out (NETL-020). */
+.net-row-underway {
+  border-left: 3px solid var(--accent);
+  background: var(--bg-input);
+}
+
+.net-row-when,
+.net-row-what {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.net-choices {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.net-choices button.range-kind-chosen {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .net-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+/* The week ahead: one heading per day (NETL-020). */
+.net-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.net-day-heading {
+  margin: 6px 0 2px 0;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--border);
+  color: var(--text-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.net-day-empty {
+  margin: 4px 6px;
+}
+
+.net-row-badge {
+  align-self: flex-start;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--bg-panel);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.net-run-section {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 10px 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.net-run-section legend {
+  padding: 0 4px;
+  color: var(--text-dim);
+  font-size: 12px;
+}

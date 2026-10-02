@@ -106,6 +106,7 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 | APRS | Live APRS-IS feed for an area |
 | Exports | Everything that leaves the app, in one place: records, log and history, the full package, and the ICS forms |
 | History | The audit trail of everything that changed |
+| Nets | Nets you can join, day by day for the coming week — when, how to tune in, how far the repeater is, how to check in; start an activity from one |
 | Settings | QRZ login, theme, coordinate format, offline data, backup & restore |
 
 **Shortcuts:** `Ctrl+1`–`9` jump to a tab · `Ctrl+K` focus the call-sign box · `Ctrl+[` / `Ctrl+]` previous/next activity · `Ctrl+Shift+ +/-/0` zoom.

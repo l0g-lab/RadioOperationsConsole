@@ -12,6 +12,8 @@ import MapAprsTab from "./components/tabs/MapAprsTab";
 import ExportsTab from "./components/tabs/ExportsTab";
 import HistoryTab from "./components/tabs/HistoryTab";
 import SettingsTab from "./components/tabs/SettingsTab";
+import NetsTab from "./components/tabs/NetsTab";
+import type { ActivityPrefill } from "./components/operations/activityPrefill";
 import UpgradeBackupBanner from "./components/UpgradeBackupBanner";
 import type { Activity, Operator, Tab } from "./types";
 import { TABS } from "./types";
@@ -41,6 +43,8 @@ export default function App() {
   // Set by the header's Edit link; the activity panel opens its edit form and clears it.
   const [editActivityRequested, setEditActivityRequested] = useState(false);
   const [focusCallSignSignal, setFocusCallSignSignal] = useState(0);
+  // Set by a net listing's "Start activity"; the create form fills from it and clears it.
+  const [activityPrefill, setActivityPrefill] = useState<ActivityPrefill | null>(null);
   const [zoom, setZoom] = useState(loadSavedZoom);
 
   const refreshOperators = useCallback(() => {
@@ -185,6 +189,8 @@ export default function App() {
               onSelectOperator={setSelectedOperatorId}
               editActivityRequested={editActivityRequested}
               onEditActivityHandled={() => setEditActivityRequested(false)}
+              activityPrefill={activityPrefill}
+              onActivityPrefillHandled={() => setActivityPrefill(null)}
             />
           )}
           {currentTab === "Check-ins" && (
@@ -219,6 +225,16 @@ export default function App() {
             />
           )}
           {currentTab === "History" && <HistoryTab />}
+          {currentTab === "Nets" && (
+            <NetsTab
+              operators={operators}
+              selectedOperatorId={selectedOperatorId}
+              onStartActivity={(prefill) => {
+                setActivityPrefill(prefill);
+                setCurrentTab("Operations");
+              }}
+            />
+          )}
           {currentTab === "Settings" && <SettingsTab />}
         </main>
       </div>

@@ -88,6 +88,14 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0021_drop_activity_templates.sql",
         include_str!("../migrations/0021_drop_activity_templates.sql"),
     ),
+    (
+        "0022_net_listings.sql",
+        include_str!("../migrations/0022_net_listings.sql"),
+    ),
+    (
+        "0023_net_listing_checkin_info.sql",
+        include_str!("../migrations/0023_net_listing_checkin_info.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't

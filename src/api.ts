@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   Activity,
+  NetListing,
+  NetListingDetails,
   Repeater,
   RepeaterDetails,
   HistoryEvent,
@@ -141,6 +143,20 @@ export const activityDeletePreview = (activity_id: string) =>
 
 export const deleteActivity = (activity_id: string, operator_id: string | null) =>
   invoke<DeletedCounts>("delete_activity", { activityId: activity_id, operatorId: operator_id });
+
+// Net listings (net-listings.md).
+export const listNetListings = (retired = false) =>
+  invoke<NetListing[]>("list_net_listings", { retired });
+
+/** Adds a listing, or with an id replaces its details. Returns its id. */
+export const saveNetListing = (
+  listing_id: string | null,
+  details: NetListingDetails,
+  operator_id: string | null
+) => invoke<string>("save_net_listing", { listingId: listing_id, details, operatorId: operator_id });
+
+export const setNetListingRetired = (listing_id: string, retired: boolean, operator_id: string | null) =>
+  invoke<void>("set_net_listing_retired", { listingId: listing_id, retired, operatorId: operator_id });
 
 // Repeater directory (repeater-directory.md).
 export const listRepeaters = (retired = false) => invoke<Repeater[]>("list_repeaters", { retired });

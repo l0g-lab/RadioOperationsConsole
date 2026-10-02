@@ -42,8 +42,8 @@ function describe(s: BackupSummary): string {
 }
 
 /**
- * Backs up everything in the app (operators, activities, repeaters, check-ins,
- * reports, the audit log) to one file, and restores it from one. Downloaded
+ * Backs up everything in the app (operators, activities, repeaters, nets,
+ * check-ins, reports, the audit log) to one file, and restores it from one. Downloaded
  * offline data and the QRZ login are not part of it.
  */
 export default function BackupPanel() {
@@ -118,7 +118,7 @@ export default function BackupPanel() {
         Backup &amp; Restore
         <InfoToggle label="backup and restore">
           A backup is one file holding everything you've entered: operators, activities,
-          repeaters, check-ins, spotter reports, traffic and the history log. Keep copies somewhere safe, such
+          repeaters, nets, check-ins, spotter reports, traffic and the history log. Keep copies somewhere safe, such
           as a USB stick or cloud folder. Restoring replaces everything currently in the app with
           the backup's contents, after saving a copy of what's there now so a restore can be undone
           (the last few of these are kept next to the database). It doesn't include the downloaded

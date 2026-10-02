@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import * as api from "../../api";
-import type { Activity, Operator, Repeater } from "../../types";
+import type { Activity, NetListing, Operator, Repeater } from "../../types";
+import type { ActivityPrefill } from "../operations/activityPrefill";
 import SelectedActivityPanel from "../operations/SelectedActivityPanel";
 import CreateActivityPanel from "../operations/CreateActivityPanel";
 import ArchivedActivitiesPanel from "../operations/ArchivedActivitiesPanel";
@@ -19,6 +20,9 @@ interface Props {
   onSelectOperator: (id: string | null) => void;
   editActivityRequested: boolean;
   onEditActivityHandled: () => void;
+  /** From a net listing's "Start activity": fills the create form. */
+  activityPrefill: ActivityPrefill | null;
+  onActivityPrefillHandled: () => void;
 }
 
 export default function OperationsTab({
@@ -32,6 +36,8 @@ export default function OperationsTab({
   onSelectOperator,
   editActivityRequested,
   onEditActivityHandled,
+  activityPrefill,
+  onActivityPrefillHandled,
 }: Props) {
 
   // The repeater directory, shared by its panel and the activity forms.
@@ -43,6 +49,19 @@ export default function OperationsTab({
       .catch(() => setRepeaters([]));
   }, []);
   useEffect(refreshRepeaters, [refreshRepeaters]);
+
+  // How many nets meet on each repeater, shown in the directory (NETL-022).
+  const [listings, setListings] = useState<NetListing[]>([]);
+  useEffect(() => {
+    api
+      .listNetListings()
+      .then(setListings)
+      .catch(() => setListings([]));
+  }, []);
+  const netCounts = new Map<string, number>();
+  for (const l of listings) {
+    if (l.repeater_id) netCounts.set(l.repeater_id, (netCounts.get(l.repeater_id) ?? 0) + 1);
+  }
 
 
   const isFirstRun = activities.length === 0 && operators.length === 0;
@@ -77,6 +96,8 @@ export default function OperationsTab({
             operators={operators}
             selectedOperatorId={selectedOperatorId}
             repeaters={repeaters}
+            prefill={activityPrefill}
+            onPrefillHandled={onActivityPrefillHandled}
           />
           <ArchivedActivitiesPanel
             activities={activities}
@@ -94,6 +115,7 @@ export default function OperationsTab({
           />
           <RepeatersPanel
             repeaters={repeaters}
+            netCounts={netCounts}
             onRepeatersChanged={refreshRepeaters}
             selectedOperatorId={selectedOperatorId}
           />

@@ -13,8 +13,9 @@ details an operator needs to tell someone how to reach it, and lets an
 activity be set up from it.
 
 It is local reference data the operator maintains, available offline. It is
-also the base for net listings (planned), which name the repeater a net meets
-on, and for opening/closing scripts that read out frequency and tone.
+also the base for net listings ([net-listings.md](net-listings.md)), which
+name the repeater a net meets on, and for opening/closing scripts that read
+out frequency and tone.
 
 ## Relationship to other documents
 
@@ -90,8 +91,6 @@ on, and for opening/closing scripts that read out frequency and tone.
 
 ## Not yet built
 
-- Net listings: the nets that meet on each repeater and when. This will be a
-  separate spec.
 - Importing and exporting the directory as a CHIRP-format CSV, to load an
   existing radio programming file or spreadsheet.
 - Online repeater-directory lookup (for example, RepeaterBook), as an

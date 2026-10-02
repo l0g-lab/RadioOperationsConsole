@@ -55,7 +55,7 @@ existing references stay valid.) A type defines, or will define:
 - Closeout checklist
 
 Recurring details of a particular net — its title, repeater, day and time,
-and opening and closing scripts — belong to net listings (planned), not to
+and opening and closing scripts — belong to net listings ([features/net-listings.md](features/net-listings.md)), not to
 the type. Saved activity templates were removed in favor of the repeater
 directory and net listings.
 

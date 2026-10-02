@@ -13,7 +13,9 @@ Initial primary tabs:
 5. Map / APRS
 6. Exports
 7. History
-8. Settings
+8. Nets — the net listings ([features/net-listings.md](features/net-listings.md)); placed
+   before Settings so the working tabs' shortcuts didn't change when it was added
+9. Settings
 
 Traffic is recorded on the check-in it came from (`NETOPS-050`–`056`) rather than in a tab of its own.
 

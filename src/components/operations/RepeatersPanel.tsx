@@ -19,6 +19,8 @@ interface Props {
   onRepeatersChanged: () => void;
   /** The current operator, recorded on each change. */
   selectedOperatorId: string | null;
+  /** How many net listings meet on each repeater (NETL-022). */
+  netCounts?: Map<string, number>;
 }
 
 /** "+" / "-" / simplex; blank until chosen, since the direction is never assumed (RPT-002). */
@@ -340,7 +342,12 @@ function RepeaterForm({
 }
 
 /** The repeater directory on the Operations tab (RPT-010–012). */
-export default function RepeatersPanel({ repeaters, onRepeatersChanged, selectedOperatorId }: Props) {
+export default function RepeatersPanel({
+  repeaters,
+  onRepeatersChanged,
+  selectedOperatorId,
+  netCounts,
+}: Props) {
   // null: not editing; "new": adding; otherwise the id being edited.
   const [editing, setEditing] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -421,6 +428,12 @@ export default function RepeatersPanel({ repeaters, onRepeatersChanged, selected
               <span className="repeater-row-text">
                 <strong>{r.name}</strong>
                 <span className="checkin-row-mono">{formatRepeater(r)}</span>
+                {(netCounts?.get(r.id) ?? 0) > 0 && (
+                  <span className="settings-hint">
+                    {netCounts!.get(r.id)} {netCounts!.get(r.id) === 1 ? "net" : "nets"} — see the
+                    Nets tab
+                  </span>
+                )}
                 {r.notes && <span className="settings-hint">{r.notes}</span>}
               </span>
               <span className="operator-row-actions">

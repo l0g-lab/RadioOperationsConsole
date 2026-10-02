@@ -116,4 +116,41 @@ describe("CreateActivityPanel", () => {
     expect(api.setActivityRepeater).toHaveBeenCalledWith("new", "W4ABC Orlando", 28.54, -81.38);
     expect(api.setActivityLocationCoords).not.toHaveBeenCalled();
   });
+
+  it("fills the form from a net listing without creating anything (NETL-030, NETL-031)", async () => {
+    const user = userEvent.setup();
+    render(
+      <CreateActivityPanel
+        activities={[]}
+        onActivitiesChanged={() => {}}
+        onSelectActivity={() => {}}
+        operators={[]}
+        selectedOperatorId={null}
+        repeaters={[W4ABC]}
+        prefill={{
+          title: "Tuesday Night Net",
+          activityType: "directed_net",
+          date: "2026-10-06",
+          time: "19:00",
+          frequency: "146.940 -0.600 PL 100.0",
+          repeater: { name: "W4ABC Orlando", lat: 28.54, lon: -81.38 },
+        }}
+        onPrefillHandled={() => {}}
+      />
+    );
+    expect(screen.getByPlaceholderText("Activity title")).toHaveValue("Tuesday Night Net");
+    expect(screen.getByDisplayValue("2026-10-06")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("e.g. 19:00")).toHaveValue("19:00");
+    expect(screen.getByText(/W4ABC Orlando —/, { selector: "strong" })).toBeInTheDocument();
+    expect(api.createActivity).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Create activity" }));
+    expect(api.createActivity).toHaveBeenCalledWith(
+      "Tuesday Night Net",
+      "directed_net",
+      "2026-10-06 19:00",
+      "146.940 -0.600 PL 100.0"
+    );
+    expect(api.setActivityRepeater).toHaveBeenCalledWith("new", "W4ABC Orlando", 28.54, -81.38);
+  });
 });

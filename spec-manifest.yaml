@@ -46,6 +46,7 @@ reading_order:
   - docs/features/activity-exports.md
   - docs/features/range-check.md
   - docs/features/repeater-directory.md
+  - docs/features/net-listings.md
   - docs/agent/BUILD_PROTOCOL.md
 
 # Every normative requirement ID uses one of these prefixes. When drafting a
@@ -86,6 +87,7 @@ id_prefixes:
   EXPORT: docs/features/activity-exports.md
   RANGE: docs/features/range-check.md
   RPT: docs/features/repeater-directory.md
+  NETL: docs/features/net-listings.md
 
 documents:
   - id: VISION
@@ -197,6 +199,10 @@ documents:
     path: docs/features/repeater-directory.md
     status: draft
     depends_on: [FEATURE_LOCRES, FEATURE_RANGE, FEATURE_BACKUP]
+  - id: FEATURE_NETL
+    path: docs/features/net-listings.md
+    status: draft
+    depends_on: [FEATURE_RPT, FEATURE_LIFE, FEATURE_BACKUP]
   - id: BUILD_PROTOCOL
     path: docs/agent/BUILD_PROTOCOL.md
     status: draft

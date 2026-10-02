@@ -8,6 +8,7 @@ mod connectors;
 mod datapacks;
 mod db;
 mod net;
+mod net_listings;
 mod range_check;
 mod repeaters;
 mod repo;
@@ -62,6 +63,9 @@ fn main() {
             commands::save_repeater,
             commands::set_repeater_retired,
             commands::set_activity_repeater,
+            commands::list_net_listings,
+            commands::save_net_listing,
+            commands::set_net_listing_retired,
             commands::create_checkin,
             commands::list_checkins,
             commands::station_history,

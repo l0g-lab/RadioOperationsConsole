@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as api from "../../api";
 import type { Activity, Operator, Repeater } from "../../types";
 import { formatCoords } from "../../geo";
 import LocationPicker from "../LocationPicker";
 import ActivityTypeSelect from "./ActivityTypeSelect";
 import ActivityRepeaterField, { type ActivityRepeater } from "./ActivityRepeaterField";
+import type { ActivityPrefill } from "./activityPrefill";
 import { DEFAULT_ACTIVITY_TYPE, isLog, isRangeCheck } from "../../activityTypes";
 import { combineScheduledAt, todayIso } from "../../utils";
 import { CirclePlus } from "lucide-react";
@@ -17,6 +18,9 @@ interface Props {
   selectedOperatorId: string | null;
   /** The repeater directory, to pick from. */
   repeaters: Repeater[];
+  /** Values to fill the form with, e.g. from a net listing (NETL-030). */
+  prefill?: ActivityPrefill | null;
+  onPrefillHandled?: () => void;
 }
 
 export default function CreateActivityPanel({
@@ -26,7 +30,10 @@ export default function CreateActivityPanel({
   operators,
   selectedOperatorId,
   repeaters,
+  prefill = null,
+  onPrefillHandled,
 }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
   const hasActivities = activities.length > 0;
   // Collapsed by default once activities exist, so returning users aren't
   // shown a form they rarely need — but always open for a brand-new setup
@@ -52,6 +59,27 @@ export default function CreateActivityPanel({
   const [repeater, setRepeater] = useState<ActivityRepeater | null>(null);
   const rangeCheck = isRangeCheck(activityType);
   const missingRepeater = rangeCheck && !repeater;
+
+  // Opens the form (even if collapsed), fills it from a net listing, and
+  // brings it into view. Nothing is created until Create (NETL-031).
+  useEffect(() => {
+    if (!prefill) return;
+    setCollapsed(false);
+    setActivityTitle(prefill.title);
+    setActivityType(prefill.activityType);
+    setActivityDate(prefill.date);
+    setActivityTime(prefill.time);
+    setActivityFrequency(prefill.frequency);
+    setRepeater(prefill.repeater);
+    onPrefillHandled?.();
+    requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      panelRef.current
+        ?.querySelector<HTMLInputElement>('input[placeholder="Activity title"]')
+        ?.focus();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   // The acting operator's own location: what the activity defaults to when
   // no location is chosen.
@@ -110,7 +138,7 @@ export default function CreateActivityPanel({
   }
 
   return (
-    <div className="panel">
+    <div className="panel" ref={panelRef}>
       <div className="panel-header-row">
         <h3><CirclePlus className="heading-icon" />Create New Activity</h3>
         {hasActivities && (

@@ -53,6 +53,37 @@ export interface RepeaterDetails {
   notes: string;
 }
 
+/** How often a listed net meets (net-listings.md). */
+export type ScheduleKind = "weekly" | "monthly" | "as_needed";
+
+/** What's entered for a net listing. */
+export interface NetListingDetails {
+  name: string;
+  activity_type: string;
+  /** A repeater from the directory, or null for free-text frequency. */
+  repeater_id: string | null;
+  frequency: string;
+  schedule_kind: ScheduleKind;
+  /** 0 = Sunday … 6 = Saturday. */
+  weekdays: number[];
+  /** Monthly only: "1"–"4" or "last". */
+  weeks: string[];
+  /** Local "HH:MM"; "" for as needed. */
+  start_time: string;
+  /** Optional local "HH:MM". */
+  end_time: string;
+  run_by: string;
+  /** What to know before checking in ("call sign and name, mobiles first"). */
+  checkin_info: string;
+  notes: string;
+}
+
+export interface NetListing extends NetListingDetails {
+  id: string;
+  /** When it was retired, or "" while in use. */
+  retired_at: string;
+}
+
 export interface Repeater extends RepeaterDetails {
   id: string;
   /** When it was retired, or "" while in use. */
@@ -394,6 +425,8 @@ export const TABS = [
   "APRS",
   "Exports",
   "History",
+  // Before Settings, so the working tabs keep their Ctrl+number (NETL-019).
+  "Nets",
   "Settings",
 ] as const;
 

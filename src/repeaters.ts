@@ -56,6 +56,25 @@ export function formatRepeater(r: RepeaterDetails): string {
   return parts.join(" ");
 }
 
+/**
+ * Everything needed to program a radio for it, for someone joining a net:
+ * "Output 146.940 · Input 146.340 (-0.600) · Tone PL 100.0 · FM".
+ */
+export function tuningDetails(r: RepeaterDetails): string {
+  const parts = [`Output ${formatMhz(r.output_mhz)}`];
+  parts.push(
+    r.offset_mhz === 0
+      ? "Simplex"
+      : `Input ${formatMhz(inputMhz(r))} (${r.offset_mhz > 0 ? "+" : "-"}${Math.abs(r.offset_mhz).toFixed(3)})`
+  );
+  const input = toneText(r.tone_in_kind, r.tone_in);
+  const output = toneText(r.tone_out_kind, r.tone_out);
+  parts.push(input ? `Tone ${input}` : "No tone");
+  if (output && output !== input) parts.push(`Output tone ${output}`);
+  parts.push(r.mode || "FM");
+  return parts.join(" · ");
+}
+
 /** Where a station transmits: output plus offset. */
 export function inputMhz(r: Pick<RepeaterDetails, "output_mhz" | "offset_mhz">): number {
   return Math.round((r.output_mhz + r.offset_mhz) * 10000) / 10000;
