@@ -49,7 +49,10 @@ fn files_for(id: &str, dirs: &Dirs) -> Option<Vec<PathBuf>> {
             .flat_map(|d| existing(dirs.datapacks.join(format!("{}.json", d.id))))
             .collect(),
         "partial-downloads" => names_in(dirs.datapacks, |n| n.ends_with(".part") || n.ends_with(".part.meta")),
-        "restore-copies" => names_in(dirs.restore_copies, |n| n.starts_with("before-restore-") && n.ends_with(".db")),
+        // Safety copies from restores and from upgrades (db.rs), kept together.
+        "restore-copies" => names_in(dirs.restore_copies, |n| {
+            (n.starts_with("before-restore-") || n.starts_with("before-upgrade-")) && n.ends_with(".db")
+        }),
         _ => return None,
     })
 }
@@ -115,6 +118,7 @@ mod tests {
         write(&packs, "notes.txt", 7);
         write(&backups, "before-restore-20260101-000000.db", 2000);
         write(&backups, "before-restore-20260102-000000.db", 2500);
+        write(&backups, "before-upgrade-20260103-000000.db", 500);
         write(&backups, "my-own-backup.db", 9);
         (packs, backups)
     }
@@ -134,7 +138,7 @@ mod tests {
         assert_eq!(item(&items, "callsigns-gmrs"), (1, 300));
         assert_eq!(item(&items, "road-data"), (2, 100));
         assert_eq!(item(&items, "partial-downloads"), (2, 505));
-        assert_eq!(item(&items, "restore-copies"), (2, 4500));
+        assert_eq!(item(&items, "restore-copies"), (3, 5000));
         let location = |id: &str| items.iter().find(|i| i.id == id).unwrap().location.clone();
         assert_eq!(location("callsigns-amateur"), packs.display().to_string());
         assert_eq!(location("road-data"), packs.display().to_string());

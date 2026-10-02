@@ -12,7 +12,8 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-/// How many "before restore" safety copies to keep.
+/// How many "before restore" (and, separately, "before upgrade") safety
+/// copies to keep.
 const KEEP_SAFETY_COPIES: usize = 5;
 
 /// What's inside a backup file, shown before restoring it.
@@ -103,14 +104,14 @@ pub fn create_backup(live: &Connection, dest: &Path) -> Result<BackupSummary, St
     inspect(dest)
 }
 
-fn prune_safety_copies(dir: &Path) {
+fn prune_safety_copies(dir: &Path, prefix: &str) {
     let Ok(read) = std::fs::read_dir(dir) else { return };
     let mut files: Vec<PathBuf> = read
         .filter_map(|e| e.ok().map(|e| e.path()))
         .filter(|p| {
             p.file_name()
                 .and_then(|n| n.to_str())
-                .map(|n| n.starts_with("before-restore-") && n.ends_with(".db"))
+                .map(|n| n.starts_with(prefix) && n.ends_with(".db"))
                 .unwrap_or(false)
         })
         .collect();
@@ -148,8 +149,27 @@ pub fn restore_backup(live: &mut Connection, src: &Path, safety_dir: &Path) -> R
     let _ = live.pragma_update(None, "foreign_keys", "ON");
     let _ = live.pragma_update(None, "journal_mode", "WAL");
 
-    prune_safety_copies(safety_dir);
+    prune_safety_copies(safety_dir, "before-restore-");
     Ok(safety)
+}
+
+/// Saves a copy of the database as it is before this version upgrades it,
+/// under `dir`, keeping the newest few. Returns the copy's path.
+pub fn save_before_upgrade(live: &Connection, dir: &Path) -> Result<PathBuf, String> {
+    let stamp = Utc::now().format("%Y%m%d-%H%M%S");
+    let copy = dir.join(format!("before-upgrade-{stamp}.db"));
+    if let Some(parent) = copy.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    if copy.exists() {
+        std::fs::remove_file(&copy).map_err(|e| e.to_string())?;
+    }
+    // Not `create_backup`: that checks the copy is one this version can
+    // restore, and an older database may lack tables it looks for.
+    live.execute("VACUUM INTO ?1", [copy.to_string_lossy()])
+        .map_err(|e| format!("Couldn't save a copy before upgrading: {e}"))?;
+    prune_safety_copies(dir, "before-upgrade-");
+    Ok(copy)
 }
 
 #[cfg(test)]
@@ -251,7 +271,7 @@ mod tests {
             std::fs::write(dir.join(format!("before-restore-2026010{i}-000000.db")), b"x").unwrap();
         }
         std::fs::write(dir.join("keep-me.txt"), b"x").unwrap();
-        prune_safety_copies(&dir);
+        prune_safety_copies(&dir, "before-restore-");
         let left = std::fs::read_dir(&dir).unwrap().count();
         assert_eq!(left, KEEP_SAFETY_COPIES + 1);
         assert!(dir.join("keep-me.txt").exists());

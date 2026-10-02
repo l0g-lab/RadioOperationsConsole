@@ -1853,3 +1853,30 @@ button.online-pill-working-offline:hover {
   border-radius: 50%;
   border: 2px solid;
 }
+
+/* Shown once after an upgrade: where the pre-upgrade copy went (UpgradeBackupBanner). */
+.upgrade-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 12px 0 12px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-input);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.upgrade-banner > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.upgrade-banner-error {
+  border-left-color: var(--danger, #e05252);
+}
+
+.upgrade-banner-path {
+  user-select: all;
+  overflow-wrap: anywhere;
+}

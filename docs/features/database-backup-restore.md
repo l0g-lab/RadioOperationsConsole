@@ -67,6 +67,20 @@ change, without touching files by hand.
 - **BACKUP-026:** The application MUST refuse to restore from its own live
   database file.
 
+## Upgrades
+
+- **BACKUP-030:** Each database migration MUST be applied all or nothing: a
+  migration that fails partway MUST leave the database as it was, so the
+  next launch can apply it again.
+- **BACKUP-031:** Before a new version upgrades an existing database, it MUST
+  save a copy of it in the same `backups` folder (`before-upgrade-…`),
+  keeping the five most recent such copies. A brand-new database needs no
+  copy. If the copy can't be saved, the upgrade still goes ahead.
+- **BACKUP-032:** After an upgrade, the application MUST tell the operator
+  once where the copy was saved, or that saving it failed. These copies are
+  listed and can be cleared with the restore safety copies (Settings →
+  Storage).
+
 ## Acceptance examples
 
 ```gherkin

@@ -391,6 +391,12 @@ export interface BackupSummary {
   modified: string;
 }
 
+/** The copy saved before this launch upgraded the database (path, or why it failed). */
+export interface UpgradeBackup {
+  path: string | null;
+  error: string | null;
+}
+
 export interface RestoreResult {
   /** Where the data that was replaced was saved first. */
   safety_copy: string;

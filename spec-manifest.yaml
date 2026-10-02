@@ -46,6 +46,7 @@ reading_order:
   - docs/features/ics-form-exports.md
   - docs/features/activity-exports.md
   - docs/features/range-check.md
+  - docs/features/repeater-directory.md
   - docs/agent/BUILD_PROTOCOL.md
 
 # Every normative requirement ID uses one of these prefixes. When drafting a
@@ -85,6 +86,7 @@ id_prefixes:
   ICSF: docs/features/ics-form-exports.md
   EXPORT: docs/features/activity-exports.md
   RANGE: docs/features/range-check.md
+  RPT: docs/features/repeater-directory.md
 
 documents:
   - id: VISION
@@ -196,6 +198,10 @@ documents:
     path: docs/features/range-check.md
     status: draft
     depends_on: [EVENTS, FEATURE_WEEKLY_NET, FEATURE_LOCRES, FEATURE_CIMAP, FEATURE_LIFE]
+  - id: FEATURE_RPT
+    path: docs/features/repeater-directory.md
+    status: draft
+    depends_on: [FEATURE_LOCRES, FEATURE_RANGE, FEATURE_BACKUP]
   - id: BUILD_PROTOCOL
     path: docs/agent/BUILD_PROTOCOL.md
     status: draft

@@ -53,10 +53,11 @@ const ROWS: RowDef[] = [
   },
   {
     id: "restore-copies",
-    label: "Safety copies from restores",
+    label: "Safety copies from restores and updates",
     unit: ["copy", "copies"],
-    about: "Your data as it was just before each restore, in case a restore was a mistake.",
-    consequence: "A past restore can no longer be undone from these copies.",
+    about:
+      "Your data as it was just before each restore or app update, in case something went wrong.",
+    consequence: "A past restore or update can no longer be undone from these copies.",
   },
 ];
 

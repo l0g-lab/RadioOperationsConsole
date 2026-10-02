@@ -22,8 +22,10 @@ any of it.
 - Its check-ins are ordinary check-in records (`PRINCIPLE-002`) with extra
   fields, so call-sign fill-in, removal and restore, history, backup, and
   exports apply unchanged.
-- The repeater's location is the activity's own location (`LOCRES-020`), and
-  distances are measured from it (`CIMAP-060`, `LOG-023`).
+- The repeater is the activity's repeater
+  ([repeater-directory.md](repeater-directory.md), `RPT-021`–`023`), kept
+  apart from the activity's own location, which is net control's. Distances
+  are measured from the repeater (`RPT-031`).
 
 ## The type
 

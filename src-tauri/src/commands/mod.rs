@@ -81,10 +81,17 @@ pub struct AppState {
     pub callsign_update_running: std::sync::atomic::AtomicBool,
     /// Set by Cancel; the running download notices and stops (CALLDIR-037).
     pub callsign_update_cancel: std::sync::atomic::AtomicBool,
+    /// The copy saved before this launch upgraded the database, if it did.
+    pub upgrade_backup: Option<crate::db::UpgradeBackup>,
 }
 
 impl AppState {
-    pub fn new(repo: Repository, settings_path: PathBuf, datapacks_dir: PathBuf) -> Self {
+    pub fn new(
+        repo: Repository,
+        settings_path: PathBuf,
+        datapacks_dir: PathBuf,
+        upgrade_backup: Option<crate::db::UpgradeBackup>,
+    ) -> Self {
         let settings = if settings_path.exists() {
             fs::read_to_string(&settings_path)
                 .ok()
@@ -106,6 +113,7 @@ impl AppState {
             callsign_dbs: Mutex::new(std::collections::HashMap::new()),
             callsign_update_running: std::sync::atomic::AtomicBool::new(false),
             callsign_update_cancel: std::sync::atomic::AtomicBool::new(false),
+            upgrade_backup,
         }
     }
 }

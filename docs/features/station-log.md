@@ -25,8 +25,10 @@ or end, and each record is a contact carrying its radio details.
   exports all apply unchanged.
 - Leaves the lifecycle (`LIFE-001`–`007`) as it is; `LIFE-006` already lets an
   activity that was never started accept records.
-- Not a contest or award logbook: no dupe checking, scoring, or ADIF/LoTW
-  exchange (see "Not yet built").
+- Not a contest or award logbook, and not a general station logger: a
+  pen-and-paper replacement for simplex contacts from a set location. No dupe
+  checking, scoring, or LoTW/eQSL exchange; at most an ADIF export (see "Not
+  yet built").
 
 ## The type
 
@@ -114,7 +116,8 @@ or end, and each record is a contact carrying its radio details.
 
 ## Not yet built
 
-- ADIF export and import (for other logging programs and LoTW).
+- ADIF export, so contacts can be carried into a real logging program. This
+  is the limit: no ADIF import, LoTW, eQSL, or QRZ logbook upload.
 - A per-station view gathering every contact with one call sign.
 - Band derived from frequency, and validation of RST format.
 

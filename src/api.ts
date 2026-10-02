@@ -6,6 +6,7 @@ import type {
   DeletedCounts,
   BackupSummary,
   RestoreResult,
+  UpgradeBackup,
   ActivityTemplate,
   CallsignPackStatus,
   OfflineCallLookup,
@@ -473,6 +474,9 @@ export const backupDatabase = (path: string) => invoke<BackupSummary>("backup_da
 export const inspectBackup = (path: string) => invoke<BackupSummary>("inspect_backup", { path });
 
 export const restoreDatabase = (path: string) => invoke<RestoreResult>("restore_database", { path });
+
+/** The copy saved before this launch upgraded the database, if it did. */
+export const upgradeBackup = () => invoke<UpgradeBackup | null>("upgrade_backup");
 
 export const startActivity = (activity_id: string, operator_id: string | null) =>
   invoke<void>("start_activity", { activityId: activity_id, operatorId: operator_id });

@@ -24,7 +24,11 @@ fn main() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let db_path = data_dir.join("radio_ops.db");
-            let conn = db::open_db(&db_path).expect("failed to open database");
+            // Upgrading an existing database saves a copy of it first, next
+            // to the "before restore" copies.
+            let (conn, upgrade_backup) =
+                db::open_db_with_upgrade_backup(&db_path, Some(&data_dir.join("backups")))
+                    .expect("failed to open database");
             let repo = Repository::new(conn);
 
             let config_dir = app.path().app_config_dir()?;
@@ -33,7 +37,7 @@ fn main() {
 
             let datapacks_dir = data_dir.join("datapacks");
 
-            app.manage(AppState::new(repo, settings_path, datapacks_dir));
+            app.manage(AppState::new(repo, settings_path, datapacks_dir, upgrade_backup));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -96,6 +100,7 @@ fn main() {
             commands::backup_database,
             commands::inspect_backup,
             commands::restore_database,
+            commands::upgrade_backup,
             commands::list_data_packs,
             commands::update_data_pack,
             commands::resolve_mile_marker,

@@ -46,3 +46,10 @@ pub fn restore_database(state: State<AppState>, path: String) -> Result<RestoreR
         summary,
     })
 }
+
+/// The copy of the database saved before this launch upgraded it, if it
+/// did, so the app can say where it is.
+#[tauri::command]
+pub fn upgrade_backup(state: State<AppState>) -> Option<crate::db::UpgradeBackup> {
+    state.upgrade_backup.clone()
+}

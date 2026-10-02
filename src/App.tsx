@@ -12,6 +12,7 @@ import MapAprsTab from "./components/tabs/MapAprsTab";
 import ExportsTab from "./components/tabs/ExportsTab";
 import HistoryTab from "./components/tabs/HistoryTab";
 import SettingsTab from "./components/tabs/SettingsTab";
+import UpgradeBackupBanner from "./components/UpgradeBackupBanner";
 import type { Activity, Operator, Tab } from "./types";
 import { TABS } from "./types";
 import { isLog } from "./activityTypes";
@@ -153,6 +154,7 @@ export default function App() {
           setEditActivityRequested(true);
         }}
       />
+      <UpgradeBackupBanner />
       <div className="app-body">
         {currentTab === "Operations" && (
           <OperationsSidebar
