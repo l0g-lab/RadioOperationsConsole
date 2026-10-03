@@ -42,6 +42,18 @@ application comfortable without affecting any record.
   degrees and decimal minutes, or degrees/minutes/seconds for how
   coordinates are shown. Decimal degrees is the default.
 
+### Font and text size
+
+- **PREF-040:** The operator MUST be able to choose the interface font: the
+  system's (the default), Atkinson Hyperlegible (bundled with the app, so it
+  works offline), or a wide font already on the computer (Verdana on Windows,
+  DejaVu Sans on Linux). Fonts MUST NOT be downloaded.
+- **PREF-041:** The operator MUST be able to choose the text size: small,
+  normal (the default), large, or extra large. It scales text only, including
+  buttons and fields; zoom (`PREF-030`) scales everything.
+- **PREF-042:** Both MUST be applied before the first screen is drawn, as the
+  theme is (`PREF-003`).
+
 ### Zoom
 
 - **PREF-030:** The interface scale MUST be adjustable from the keyboard

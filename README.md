@@ -20,7 +20,7 @@ It's an operations logger first, not a contest logbook: one app that handles a r
 - **See it before you save it.** Every export (CSV, text, net summary) can be viewed first, then copied or saved.
 - **Never lose your data.** One-click database backup and restore in Settings, and a copy saved automatically before each update.
 
-Coordinates can be shown as decimal degrees, degrees & decimal minutes, or degrees/minutes/seconds, and you can type them in any of those. There's a light, dark, or follow-the-system theme.
+Coordinates can be shown as decimal degrees, degrees & decimal minutes, or degrees/minutes/seconds, and you can type them in any of those. There's a light, dark, or follow-the-system theme, a choice of font (including the easy-to-read Atkinson Hyperlegible), and four text sizes.
 
 ## Get it running
 
@@ -164,3 +164,5 @@ The product and engineering specification the app is built from is in [docs/](do
 ## Credits
 
 Created and maintained by [l0g-lab](https://github.com/l0g-lab). Contributions from the amateur-radio community are welcome.
+
+The bundled [Atkinson Hyperlegible](https://www.brailleinstitute.org/freefont/) font is © Braille Institute of America, used under the [SIL Open Font License 1.1](https://openfontlicense.org).

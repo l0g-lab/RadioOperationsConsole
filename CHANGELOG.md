@@ -6,6 +6,11 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **Font and text size** in Settings → Appearance. Choose the system font,
+  Atkinson Hyperlegible (designed for easy reading, and included with the
+  app), or a wide font, and text from small to extra large.
+
 ## [2.0.0] - 2026-10-02
 
 ### Added

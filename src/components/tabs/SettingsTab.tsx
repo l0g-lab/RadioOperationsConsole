@@ -4,6 +4,16 @@ import { getVersion } from "@tauri-apps/api/app";
 import { checkForUpdate, useUpdateState } from "../../updates";
 import type { AppSettings } from "../../types";
 import { getThemeMode, setThemeMode, type ThemeMode } from "../../theme";
+import {
+  FONT_CHOICES,
+  TEXT_SIZES,
+  getFontChoice,
+  getTextSize,
+  setFontChoice,
+  setTextSize,
+  type FontChoice,
+  type TextSize,
+} from "../../typography";
 import { COORD_FORMAT_LABELS, getCoordFormat, setCoordFormat, type CoordFormat } from "../../geo";
 import InfoToggle from "../settings/InfoToggle";
 import BackupPanel from "../settings/BackupPanel";
@@ -28,6 +38,8 @@ export default function SettingsTab() {
   const [dirty, setDirty] = useState(false);
   const [coordFormat, setCoordFormatState] = useState<CoordFormat>(getCoordFormat);
   const [themeMode, setThemeModeState] = useState<ThemeMode>(getThemeMode);
+  const [font, setFontState] = useState<FontChoice>(getFontChoice);
+  const [textSize, setTextSizeState] = useState<TextSize>(getTextSize);
   // Downloading in Offline data changes what Storage measures, and clearing in
   // Storage changes what Offline data shows: each remounts the other.
   const [offlineKey, setOfflineKey] = useState(0);
@@ -59,43 +71,94 @@ export default function SettingsTab() {
           <Palette className="heading-icon" />
           Appearance
           <InfoToggle label="appearance">
-            Theme (light, dark or system) and how coordinates are shown. Changes apply right away
-            and are remembered on this computer.
+            Theme (light, dark or system), font, text size, and how coordinates are shown. Changes
+            apply right away and are remembered on this computer.
           </InfoToggle>
         </h2>
       </div>
-      <div className="panel">
-        <div className="inline-form">
-          <label>Theme:</label>
-          <select
-            value={themeMode}
-            onChange={(e) => {
-              const mode = e.target.value as ThemeMode;
-              setThemeModeState(mode);
-              setThemeMode(mode);
-            }}
-          >
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
+      {/* One setting per row: labels in one column, dropdowns lined up and the
+          same width in the next, explanations after. */}
+      <div className="panel settings-grid">
+        <label htmlFor="pref-theme">Theme:</label>
+        <select
+          id="pref-theme"
+          value={themeMode}
+          onChange={(e) => {
+            const mode = e.target.value as ThemeMode;
+            setThemeModeState(mode);
+            setThemeMode(mode);
+          }}
+        >
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+        <span />
+
+        <label htmlFor="pref-font">Font:</label>
+        <select
+          id="pref-font"
+          value={font}
+          onChange={(e) => {
+            const f = e.target.value as FontChoice;
+            setFontState(f);
+            setFontChoice(f);
+          }}
+        >
+          {(Object.keys(FONT_CHOICES) as FontChoice[]).map((f) => (
+            <option key={f} value={f}>
+              {FONT_CHOICES[f].label}
+            </option>
+          ))}
+        </select>
+        <div>
+          <InfoToggle label="font">
+            Atkinson Hyperlegible was designed by the Braille Institute so letters that look alike
+            (I, l and 1; O and 0) are easy to tell apart — handy for call signs. It comes with the
+            app. Wide uses Verdana on Windows and DejaVu Sans on Linux.
+          </InfoToggle>
         </div>
-        <div className="inline-form">
-          <label>Coordinates:</label>
-          <select
-            value={coordFormat}
-            onChange={(e) => {
-              const fmt = e.target.value as CoordFormat;
-              setCoordFormatState(fmt);
-              setCoordFormat(fmt);
-            }}
-          >
-            {(Object.keys(COORD_FORMAT_LABELS) as CoordFormat[]).map((f) => (
-              <option key={f} value={f}>
-                {COORD_FORMAT_LABELS[f]}
-              </option>
-            ))}
-          </select>
+
+        <label htmlFor="pref-text-size">Text size:</label>
+        <select
+          id="pref-text-size"
+          value={textSize}
+          onChange={(e) => {
+            const size = e.target.value as TextSize;
+            setTextSizeState(size);
+            setTextSize(size);
+          }}
+        >
+          {(Object.keys(TEXT_SIZES) as TextSize[]).map((size) => (
+            <option key={size} value={size}>
+              {TEXT_SIZES[size].label}
+            </option>
+          ))}
+        </select>
+        <div>
+          <InfoToggle label="text size">
+            Changes the size of the text only. To make everything bigger or smaller, zoom with
+            Ctrl+Shift and + / − (0 resets).
+          </InfoToggle>
+        </div>
+
+        <label htmlFor="pref-coords">Coordinates:</label>
+        <select
+          id="pref-coords"
+          value={coordFormat}
+          onChange={(e) => {
+            const fmt = e.target.value as CoordFormat;
+            setCoordFormatState(fmt);
+            setCoordFormat(fmt);
+          }}
+        >
+          {(Object.keys(COORD_FORMAT_LABELS) as CoordFormat[]).map((f) => (
+            <option key={f} value={f}>
+              {COORD_FORMAT_LABELS[f]}
+            </option>
+          ))}
+        </select>
+        <div>
           <InfoToggle label="coordinate format">
             How coordinates are shown on the check-in, location and map screens. You can type
             coordinates in any of the three formats regardless of this choice.
