@@ -2317,3 +2317,47 @@ button.online-pill-working-offline:hover {
   padding-top: 10px;
   border-top: 1px solid var(--border);
 }
+
+/* ICS 214 activity logs (Ics214Dialog.tsx). */
+.ics214-modal {
+  width: min(1000px, 95vw);
+  max-height: 92vh;
+}
+
+.ics214-body {
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.ics214-activities {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ics214-resources {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px 8px;
+}
+
+.ics214-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ics214-line {
+  display: grid;
+  grid-template-columns: 17ch 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.ics214-modal input[aria-invalid="true"] {
+  border-color: var(--danger, #e05252);
+}

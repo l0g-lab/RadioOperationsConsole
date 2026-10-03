@@ -7,6 +7,7 @@ mod commands;
 mod connectors;
 mod datapacks;
 mod db;
+mod ics214;
 mod net;
 mod net_listings;
 mod places;
@@ -65,6 +66,9 @@ fn main() {
             commands::save_repeater,
             commands::set_repeater_retired,
             commands::set_activity_repeater,
+            commands::list_ics214_logs,
+            commands::save_ics214_log,
+            commands::delete_ics214_log,
             commands::list_places,
             commands::save_place,
             commands::delete_place,

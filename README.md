@@ -16,6 +16,7 @@ It's an operations logger first, not a contest logbook: one app that handles a r
 - **Watch the weather.** NWS alerts and forecast for your area, plus a radar loop from the nearest NEXRAD station.
 - **See live APRS.** A receive-only APRS-IS feed for a chosen area, on a map. Nothing is ever transmitted.
 - **Start it, end it, wrap it up.** Start a net, and when it ends get a summary, a warning about open traffic, your closing notes, and saved copies of the records. A closed net is locked until you reopen it (with a reason).
+- **Log your part in an exercise.** An ICS-214 activity log for a whole period of operation, filled in from every net and report in it, edited and kept, then exported for Winlink Express's ICS-214 form or printed.
 - **Keep a record.** Traffic noted on each check-in, and a full attributed, timestamped history of every change. Removed check-ins and reports can be restored; deleting a whole activity for good asks you to confirm first.
 - **See it before you save it.** Every export (CSV, text, net summary) can be viewed first, then copied or saved.
 - **Never lose your data.** One-click database backup and restore in Settings, and a copy saved automatically before each update.
@@ -105,7 +106,7 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 | Spotter Reports | Hazard reports and the report map |
 | Weather | NWS alerts, forecast, radar |
 | APRS | Live APRS-IS feed for an area |
-| Exports | Everything that leaves the app, in one place: check-ins, spotter reports, history and the net summary as CSV or text, and the ICS forms — each viewable before saving |
+| Exports | Everything that leaves the app, in one place: check-ins, spotter reports, history and the net summary as CSV or text, and the ICS forms — each viewable before saving — plus ICS-214 activity logs covering a whole period of operation |
 | History | The audit trail of everything that changed |
 | Nets | Nets you can join, day by day for the coming week — when, how to tune in, how far the repeater is, how to check in; start an activity from one |
 | Settings | QRZ login, theme, coordinate format, offline data, backup & restore |

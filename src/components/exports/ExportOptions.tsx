@@ -86,11 +86,14 @@ export default function ExportOptions({
   activity,
   operator,
   conclusion,
+  ics214,
 }: {
   activity: Activity;
   operator: Operator | null;
   /** Closing notes being written in the end-of-net step, used in the summary before they're saved. */
   conclusion?: string;
+  /** The Exports tab's ICS 214 row, which isn't tied to this activity; the forms are in number order. */
+  ics214?: ReactNode;
 }) {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [reports, setReports] = useState<SpotterReport[]>([]);
@@ -332,21 +335,6 @@ export default function ExportOptions({
         </p>
         <Row
           notify={notify}
-          title="ICS 309 — Communications Log"
-          count="from the check-in list"
-          note="For Winlink Express's Form-309, or printable."
-          actions={[
-            {
-              label: "Open…",
-              unavailable: noCheckins
-                ? "There are no check-ins yet, so there's nothing to export."
-                : undefined,
-              onClick: () => setIcs({ form: "309" }),
-            },
-          ]}
-        />
-        <Row
-          notify={notify}
           title="ICS 213 — General Message"
           count="from the spotter reports"
           note="For Winlink Express, or printable."
@@ -394,6 +382,22 @@ export default function ExportOptions({
             </>
           )}
         </Row>
+        {ics214}
+        <Row
+          notify={notify}
+          title="ICS 309 — Communications Log"
+          count="from the check-in list"
+          note="For Winlink Express's Form-309, or printable."
+          actions={[
+            {
+              label: "Open…",
+              unavailable: noCheckins
+                ? "There are no check-ins yet, so there's nothing to export."
+                : undefined,
+              onClick: () => setIcs({ form: "309" }),
+            },
+          ]}
+        />
       </section>
 
       {message && (

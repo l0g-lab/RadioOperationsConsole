@@ -100,6 +100,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0024_places.sql",
         include_str!("../migrations/0024_places.sql"),
     ),
+    (
+        "0025_ics214_logs.sql",
+        include_str!("../migrations/0025_ics214_logs.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't

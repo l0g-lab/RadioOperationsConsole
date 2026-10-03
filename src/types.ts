@@ -53,6 +53,44 @@ export interface RepeaterDetails {
   notes: string;
 }
 
+/** ICS 214 section 6: a resource assigned. */
+export interface Ics214Resource {
+  name: string;
+  position: string;
+  agency: string;
+}
+
+/** ICS 214 section 7: a line of the activity log. */
+export interface Ics214Line {
+  /** RFC 3339. */
+  at: string;
+  text: string;
+  /** The record it was made from ("start:<activity id>"), or null if added by hand. */
+  source: string | null;
+}
+
+/** An ICS 214 activity log as entered (ics-form-exports.md, ICSF-050–056). */
+export interface Ics214Details {
+  incident_name: string;
+  /** RFC 3339. */
+  period_from: string;
+  period_to: string;
+  name: string;
+  ics_position: string;
+  home_agency: string;
+  prepared_name: string;
+  resources: Ics214Resource[];
+  excluded_activities: string[];
+  lines: Ics214Line[];
+  /** Sources of generated lines the operator deleted. */
+  dismissed: string[];
+}
+
+export interface Ics214Log extends Ics214Details {
+  id: string;
+  updated_at: string;
+}
+
 /** A saved place net control often operates from (saved-places.md). */
 export interface PlaceDetails {
   name: string;

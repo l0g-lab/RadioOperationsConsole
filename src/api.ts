@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   Activity,
+  Ics214Details,
+  Ics214Log,
   NetListing,
   Place,
   PlaceDetails,
@@ -161,6 +163,16 @@ export const checkForUpdate = () => invoke<UpdateInfo | null>("check_for_update"
 /** Downloads the installer the last check found; returns where it was saved. */
 export const downloadUpdate = () => invoke<string>("download_update");
 export const openUpdateInstaller = () => invoke<InstallerOpened>("open_update_installer");
+
+// ICS 214 activity logs (ics-form-exports.md).
+export const listIcs214Logs = () => invoke<Ics214Log[]>("list_ics214_logs");
+
+/** Adds a log, or with an id replaces it. Returns it as saved (tidied, in time order). */
+export const saveIcs214Log = (log_id: string | null, details: Ics214Details, operator_id: string | null) =>
+  invoke<Ics214Log>("save_ics214_log", { logId: log_id, details, operatorId: operator_id });
+
+export const deleteIcs214Log = (log_id: string, operator_id: string | null) =>
+  invoke<void>("delete_ics214_log", { logId: log_id, operatorId: operator_id });
 
 // Saved places (saved-places.md).
 export const listPlaces = () => invoke<Place[]>("list_places");

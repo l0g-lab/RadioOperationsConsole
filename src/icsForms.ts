@@ -17,7 +17,7 @@ import { pad2 } from "./utils";
 
 // ------------------------------------------------------------------ helpers
 
-function esc(v: string): string {
+export function esc(v: string): string {
   return v
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -26,7 +26,7 @@ function esc(v: string): string {
 }
 
 /** Text with line breaks kept. */
-function multiline(v: string): string {
+export function multiline(v: string): string {
   return esc(v).replace(/\r?\n/g, "<br>");
 }
 
@@ -67,14 +67,14 @@ const STYLE = `
   .gap { height: 8px; }
 `;
 
-function page(title: string, body: string): string {
+export function page(title: string, body: string): string {
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${STYLE}</style></head>
 <body>${body}</body></html>
 `;
 }
 
-function field(label: string, value: string, extra = ""): string {
+export function field(label: string, value: string, extra = ""): string {
   return `<td${extra}><span class="label">${esc(label)}</span><div class="value">${multiline(value)}</div></td>`;
 }
 
@@ -101,16 +101,9 @@ export interface Comms309Input {
   entries: Comms309Entry[];
 }
 
+/** Just the station's traffic, so the line stays short; blank when it has none. */
 function checkinMessage(c: Checkin): string {
-  const parts = ["Checked in"];
-  const who = [c.name, c.qth_location].filter(Boolean).join(", ");
-  if (who) parts.push(who);
-  if (c.has_traffic) {
-    parts.push(
-      `Has traffic${c.traffic ? `: ${c.traffic}` : ""}${c.traffic_handled ? " (handled)" : ""}`
-    );
-  }
-  return parts.join(" — ");
+  return c.has_traffic ? c.traffic.trim() : "";
 }
 
 /**
@@ -183,7 +176,7 @@ export function winlinkText(v: string): string {
 }
 
 /** Cuts a value to a length the Winlink form will accept, marking a cut with an ellipsis. */
-function clip(v: string, max: number): string {
+export function clip(v: string, max: number): string {
   const flat = winlinkText(v)
     .replace(/[\t\r\n]+/g, " ")
     .trim();
@@ -478,7 +471,7 @@ const ICS213_VERSION = "ICS 213  v.43.8";
  * Winlink Express accepts, writes. The operator still addresses and sends the
  * message from Winlink Express; this app has no Winlink transport.
  */
-function winlinkFormXml(
+export function winlinkFormXml(
   displayForm: string,
   senderCall: string,
   variables: [string, string][]

@@ -6,6 +6,22 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **ICS 214 Activity Log:** on the Exports tab, make an activity log for a
+  period of operation — a whole SET, say. It gathers every activity that ran in
+  the period (leave any out with a checkbox) and fills itself in: nets opened
+  and closed with their counts, closing notes, traffic handled, and spotter
+  reports. Change, delete, or add lines as you like; logs are saved, and
+  filling again later adds only what's new without undoing your edits. Export
+  it for Winlink Express's ICS 214 form (a file for *Load ICS 214 Data*, the
+  lines for *Paste Data*, or form data to attach), 24 lines per page, or as a
+  printable form.
+
+### Changed
+- **ICS 309:** each line's message is now just the station's traffic, so lines
+  stay short; a station without traffic gets a blank message. Name and location
+  are no longer included.
+
 ## [2.1.0] - 2026-10-02
 
 ### Added

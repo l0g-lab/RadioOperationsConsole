@@ -1,9 +1,10 @@
-# Feature: ICS Form Exports (ICS 309 and ICS 213)
+# Feature: ICS Form Exports (ICS 309, ICS 213, and ICS 214)
 
 ## Status
 
 Draft — implemented. ICS 309 (Communications Log) is produced from the
-check-in list, and ICS 213 (General Message) from spotter reports. Each comes as
+check-in list, ICS 213 (General Message) from spotter reports, and ICS 214
+(Activity Log) from every activity in a period of operation. Each comes as
 data for Winlink Express and as a printable HTML file.
 
 ## Purpose
@@ -18,13 +19,14 @@ only they know.
 - The 309 draws on check-ins ([weekly-net-operations.md](weekly-net-operations.md))
   and the activity's start and end ([activity-lifecycle-and-wrap-up.md](activity-lifecycle-and-wrap-up.md)).
   The 213 draws on spotter reports ([skywarn-incidents-and-reports.md](skywarn-incidents-and-reports.md)).
+  The 214 draws on all of these, across the activities in its period.
 - Implements part of the output capability in
   [02-scope-and-release-boundaries.md](../02-scope-and-release-boundaries.md)
   (printable output; Winlink Standard Forms load-data adapters) and
   `SCOPE-005`/`SCOPE-006`.
 - Replaces the earlier Winlink ICS-213 export of the check-in roster
   (`NETOPS-047`): the roster is now the ICS 309.
-- Not covered: other ICS forms, agency-specific layouts, and any Winlink
+- Not covered: other ICS forms (including the ICS 214A), agency-specific layouts, and any Winlink
   transport (`SCOPE-NG-004`).
 
 ## Which record feeds which form
@@ -106,8 +108,8 @@ forms' own loading code and viewer pages. They are not guesses (`SCOPE-005`).
 
 - **ICSF-030:** The log MUST list every check-in, oldest first. Each line shows
   the time, the station's call sign as *from*, net control (the acting operator)
-  as *to*, and a message saying the station checked in, with its name and
-  location and any traffic, including whether it was handled.
+  as *to*, and as the message just the station's traffic, left blank for a
+  station without traffic, so lines stay short.
 - **ICSF-031:** Printed times MUST be local, 24-hour, with the date added when
   the entries span more than one day. The Winlink rows MUST always include the
   date (`ICSF-011`).
@@ -140,6 +142,44 @@ forms' own loading code and viewer pages. They are not guesses (`SCOPE-005`).
   now (all). *To*, approval, the reply, and the replied-by items MUST be left for
   the operator.
 
+## ICS 214 — Activity Log
+
+Unlike the 309 and 213, an activity log covers a period of operation — a whole
+exercise or a shift — rather than one activity, so it is kept as its own
+record, edited, and exported again as the period fills in.
+
+- **ICSF-050:** The operator MUST be able to create, reopen, change, and delete
+  activity logs, reached from the Exports tab whether or not an activity is
+  chosen. A log MUST hold the incident name, the operational period (from and
+  to, ending after it starts), name, ICS position, home agency, prepared-by,
+  up to 8 resources assigned, and the log lines. Each change MUST be recorded in
+  the history (`AUDIT-*`).
+- **ICSF-051:** The log MUST cover every activity that ran during the period
+  (opened before it ends and not closed before it starts), or that was
+  scheduled within it and never opened. The operator MUST be able to leave
+  individual activities out.
+- **ICSF-052:** The log MUST be fillable from the records of the included
+  activities, with one line each for: an activity opened; an activity closed,
+  with check-in, station, and traffic counts; its closing notes; traffic marked
+  handled (not for check-ins since removed); and each spotter report. Only
+  events within the period count. A new log MUST be filled once automatically.
+- **ICSF-053:** Filling again MUST add only what the records give that the log
+  doesn't have yet. Lines the operator changed or added MUST stay as they are,
+  and a line from the records the operator deleted MUST NOT come back. Lines
+  MUST be kept in time order.
+- **ICSF-054:** Fields MUST default as follows: the period from midnight today
+  to now; name from the acting operator; ICS position and home agency from the
+  operator's most recent log; resources from the operators recorded on the
+  included activities during the period, when the operator hasn't entered any.
+- **ICSF-055 (Winlink):** The application MUST produce the ICS 214 for Winlink's
+  *ICS214 Activity Log* form, 24 log lines per page, as many pages as needed: a
+  file for the form's *Load ICS 214 Data*, the log lines in the form's
+  *Paste Data* layout, and form data (`ICSF-014`) with its subject and message
+  text, one set per page. Text MUST be cut to the form's field lengths, and the
+  operator MUST be told when a line was shortened.
+- **ICSF-056 (printable):** The printable ICS 214 (`ICSF-020`) MUST carry every
+  line in full, on as many pages as needed.
+
 ## Acceptance examples
 
 ```gherkin
@@ -163,4 +203,15 @@ Scenario: Printing
   Given the same reports
   When the operator saves the printable form and opens it in a browser
   Then it prints as a letter-size ICS 213
+
+Scenario: An activity log for an exercise
+  Given a net and a SKYWARN activity both ran during the exercise
+  When the operator creates an activity log for the exercise's period
+  Then it lists when each opened and closed, the traffic handled, and each spotter report
+
+Scenario: Edits survive filling again
+  Given an activity log where the operator reworded one line, deleted another, and added their own
+  When more check-ins have traffic handled and the operator fills from the records again
+  Then only the new traffic lines are added
+  And the reworded, deleted, and added lines stay as the operator left them
 ```

@@ -152,23 +152,24 @@ describe("comms309Entries", () => {
     expect(entries).toHaveLength(0);
   });
 
-  it("the message includes name, location, and traffic (with handled state)", () => {
+  it("the message is just the station's traffic", () => {
     const [entry] = comms309Entries(
       [checkin({ has_traffic: true, traffic: "Need generator", traffic_handled: true })],
       "K4NCS"
     );
-    expect(entry.message).toBe("Checked in — Al, Miami, FL — Has traffic: Need generator (handled)");
+    expect(entry.message).toBe("Need generator");
   });
 
-  it("the message is minimal for a check-in with no name/location/traffic", () => {
-    const [entry] = comms309Entries([checkin({ name: "", qth_location: "" })], "K4NCS");
-    expect(entry.message).toBe("Checked in");
-  });
-
-  it("says traffic with no details recorded yet, without 'handled'", () => {
-    const [entry] = comms309Entries([checkin({ has_traffic: true, traffic: "" })], "K4NCS");
-    expect(entry.message).toContain("Has traffic");
-    expect(entry.message).not.toContain("(handled)");
+  it("the message is blank for a station without traffic", () => {
+    const [none, untyped] = comms309Entries(
+      [
+        checkin({ id: "a", checked_in_at: "2026-09-21T19:00:00Z" }),
+        checkin({ id: "b", checked_in_at: "2026-09-21T19:01:00Z", has_traffic: true, traffic: "" }),
+      ],
+      "K4NCS"
+    );
+    expect(none.message).toBe("");
+    expect(untyped.message).toBe("");
   });
 });
 
