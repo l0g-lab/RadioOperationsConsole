@@ -6,10 +6,22 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-02
+
 ### Added
 - **Font and text size** in Settings → Appearance. Choose the system font,
   Atkinson Hyperlegible (designed for easy reading, and included with the
-  app), or a wide font, and text from small to extra large.
+  app), or a wide font, and text from small to extra large. Buttons, fields
+  and lists follow the chosen font and size too.
+
+### Fixed
+- The settings in Settings → Appearance line up: one setting per row, with
+  their dropdowns the same width and starting at the same place.
+- **Create activity** and **Cancel** are at the bottom of the new-activity
+  form, below the repeater and net control location, instead of in the
+  middle of it.
+- **Save** and **Cancel** are at the bottom of the form for editing an
+  activity, the same way.
 
 ## [2.0.0] - 2026-10-02
 
@@ -126,7 +138,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v1.3.0...v2.0.0
 [1.3.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v1.2.0...v1.2.1
