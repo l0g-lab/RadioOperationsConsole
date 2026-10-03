@@ -291,15 +291,6 @@ export default function SelectedActivityPanel({
               }}
             />
           </label>
-          <button
-            onClick={saveEditFocused}
-            disabled={editNeedsRepeater}
-            title={editNeedsRepeater ? "Set the repeater first" : undefined}
-          >
-            Save
-          </button>
-          <button onClick={cancelEditFocused}>Cancel</button>
-          {editError && <span className="weather-area-error">{editError}</span>}
         </div>
       )}
       {focusedActivity && editingFocused && (
@@ -311,6 +302,20 @@ export default function SelectedActivityPanel({
           required={isRangeCheck(editType)}
           title={`Repeater — ${focusedActivity.title}`}
         />
+      )}
+      {/* Last, below the whole form, as when creating an activity. */}
+      {focusedActivity && editingFocused && (
+        <div className="inline-form create-activity-actions">
+          <button
+            onClick={saveEditFocused}
+            disabled={editNeedsRepeater}
+            title={editNeedsRepeater ? "Set the repeater first" : undefined}
+          >
+            Save
+          </button>
+          <button onClick={cancelEditFocused}>Cancel</button>
+          {editError && <span className="weather-area-error">{editError}</span>}
+        </div>
       )}
       {focusedActivity && archivingFocused && (
         <div className="inline-form confirm-row">
