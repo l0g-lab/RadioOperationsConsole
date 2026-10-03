@@ -192,14 +192,6 @@ export default function CreateActivityPanel({
               }}
             />
           </label>
-          <button
-            onClick={handleAddActivity}
-            disabled={missingRepeater}
-            title={missingRepeater ? "Set the repeater first" : undefined}
-          >
-            Create activity
-          </button>
-          <button onClick={handleCancel}>Cancel</button>
         </div>
       )}
       {expanded && (
@@ -237,6 +229,19 @@ export default function CreateActivityPanel({
               Use the operator's location
             </button>
           )}
+        </div>
+      )}
+      {/* Last, once everything above is filled in. */}
+      {expanded && (
+        <div className="inline-form create-activity-actions">
+          <button
+            onClick={handleAddActivity}
+            disabled={missingRepeater}
+            title={missingRepeater ? "Set the repeater first" : undefined}
+          >
+            Create activity
+          </button>
+          <button onClick={handleCancel}>Cancel</button>
         </div>
       )}
       {showPicker && (

@@ -2310,3 +2310,10 @@ button.online-pill-working-offline:hover {
 .settings-grid > label {
   color: var(--text-dim);
 }
+
+/* Create activity / Cancel, below the whole form (CreateActivityPanel). */
+.create-activity-actions {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
