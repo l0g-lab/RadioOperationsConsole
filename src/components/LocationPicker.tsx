@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import * as api from "../api";
-import { ERR_OFFLINE } from "../types";
+import { ERR_OFFLINE, type Place } from "../types";
 import { formatAxis, getCoordFormat, parseAxis, type CoordFormat } from "../geo";
 import { DEFAULT_CENTER, DEFAULT_ZOOM, createBaseMap } from "../map/baseMap";
 import { MapPin } from "lucide-react";
@@ -67,6 +67,39 @@ export default function LocationPicker({
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // Saved places (PLACE-020): picked to drop the pin, or the pin saved as one.
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [naming, setNaming] = useState<string | null>(null);
+  const [placeMessage, setPlaceMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (mapOnly) return;
+    api
+      .listPlaces()
+      .then(setPlaces)
+      .catch(() => setPlaces([]));
+  }, [mapOnly]);
+
+  function pickPlace(id: string) {
+    const p = places.find((x) => x.id === id);
+    if (!p) return;
+    placePin(p.lat, p.lon, true);
+    setLabel(p.name);
+    setNote(p.notes || null);
+    setError(null);
+  }
+
+  async function saveAsPlace() {
+    const name = (naming ?? "").trim();
+    if (!name || lat == null || lon == null) return;
+    try {
+      await api.savePlace(null, { name, lat, lon, notes: "" }, null);
+      setPlaces(await api.listPlaces());
+      setNaming(null);
+      setPlaceMessage(`Saved “${name}” to your places.`);
+    } catch (e) {
+      setPlaceMessage(String(e));
+    }
+  }
 
   // The map's click handler is registered once at mount, so anything it
   // reads has to come through a ref to see current values, not the first
@@ -215,6 +248,19 @@ export default function LocationPicker({
           <button onClick={onClose}>Close</button>
         </div>
 
+        {places.length > 0 && (
+          <div className="location-picker-search">
+            <select aria-label="Saved places" value="" onChange={(e) => pickPlace(e.target.value)}>
+              <option value="">Saved places…</option>
+              {places.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="location-picker-search">
           <input
             placeholder="Search by zip, city/state, address, or e.g. mile marker 182 on turnpike"
@@ -303,7 +349,42 @@ export default function LocationPicker({
             </button>
           )}
           <button onClick={onClose}>Cancel</button>
+          {!mapOnly && naming == null && (
+            <button
+              className="link-button"
+              disabled={lat == null || lon == null}
+              title="Keep this spot in your saved places, to pick it again later"
+              onClick={() => {
+                setNaming(label);
+                setPlaceMessage(null);
+              }}
+            >
+              Save as place
+            </button>
+          )}
         </div>
+        {naming != null && (
+          <div className="inline-form">
+            <input
+              autoFocus
+              aria-label="Place name"
+              placeholder="Name, e.g. Home, Club HQ"
+              value={naming}
+              onChange={(e) => setNaming(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveAsPlace();
+                if (e.key === "Escape") setNaming(null);
+              }}
+            />
+            <button onClick={saveAsPlace} disabled={!naming.trim()}>
+              Save place
+            </button>
+            <button className="link-button" onClick={() => setNaming(null)}>
+              Cancel
+            </button>
+          </div>
+        )}
+        {placeMessage && <p className="settings-hint">{placeMessage}</p>}
       </div>
     </div>
   );

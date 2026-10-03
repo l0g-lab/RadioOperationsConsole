@@ -53,6 +53,18 @@ export interface RepeaterDetails {
   notes: string;
 }
 
+/** A saved place net control often operates from (saved-places.md). */
+export interface PlaceDetails {
+  name: string;
+  lat: number;
+  lon: number;
+  notes: string;
+}
+
+export interface Place extends PlaceDetails {
+  id: string;
+}
+
 /** How often a listed net meets (net-listings.md). */
 export type ScheduleKind = "weekly" | "monthly" | "as_needed";
 

@@ -9,6 +9,7 @@ mod datapacks;
 mod db;
 mod net;
 mod net_listings;
+mod places;
 mod range_check;
 mod repeaters;
 mod repo;
@@ -64,6 +65,9 @@ fn main() {
             commands::save_repeater,
             commands::set_repeater_retired,
             commands::set_activity_repeater,
+            commands::list_places,
+            commands::save_place,
+            commands::delete_place,
             commands::list_net_listings,
             commands::save_net_listing,
             commands::set_net_listing_retired,

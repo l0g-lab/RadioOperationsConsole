@@ -48,6 +48,7 @@ reading_order:
   - docs/features/range-check.md
   - docs/features/repeater-directory.md
   - docs/features/net-listings.md
+  - docs/features/saved-places.md
   - docs/agent/BUILD_PROTOCOL.md
 
 # Every normative requirement ID uses one of these prefixes. When drafting a
@@ -90,6 +91,7 @@ id_prefixes:
   RPT: docs/features/repeater-directory.md
   NETL: docs/features/net-listings.md
   LOG: docs/features/station-log.md
+  PLACE: docs/features/saved-places.md
 
 documents:
   - id: VISION
@@ -209,6 +211,10 @@ documents:
     path: docs/features/station-log.md
     status: draft
     depends_on: [EVENTS, FEATURE_LIFE, FEATURE_LOCRES, FEATURE_EXPORT]
+  - id: FEATURE_PLACE
+    path: docs/features/saved-places.md
+    status: draft
+    depends_on: [FEATURE_LOCRES, FEATURE_CIMAP, FEATURE_BACKUP]
   - id: BUILD_PROTOCOL
     path: docs/agent/BUILD_PROTOCOL.md
     status: draft

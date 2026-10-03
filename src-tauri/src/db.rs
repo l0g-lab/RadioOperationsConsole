@@ -96,6 +96,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0023_net_listing_checkin_info.sql",
         include_str!("../migrations/0023_net_listing_checkin_info.sql"),
     ),
+    (
+        "0024_places.sql",
+        include_str!("../migrations/0024_places.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't

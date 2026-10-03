@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   Activity,
   NetListing,
+  Place,
+  PlaceDetails,
   NetListingDetails,
   Repeater,
   RepeaterDetails,
@@ -159,6 +161,16 @@ export const checkForUpdate = () => invoke<UpdateInfo | null>("check_for_update"
 /** Downloads the installer the last check found; returns where it was saved. */
 export const downloadUpdate = () => invoke<string>("download_update");
 export const openUpdateInstaller = () => invoke<InstallerOpened>("open_update_installer");
+
+// Saved places (saved-places.md).
+export const listPlaces = () => invoke<Place[]>("list_places");
+
+/** Adds a place, or with an id replaces its details. Returns its id. */
+export const savePlace = (place_id: string | null, details: PlaceDetails, operator_id: string | null) =>
+  invoke<string>("save_place", { placeId: place_id, details, operatorId: operator_id });
+
+export const deletePlace = (place_id: string, operator_id: string | null) =>
+  invoke<void>("delete_place", { placeId: place_id, operatorId: operator_id });
 
 // Net listings (net-listings.md).
 export const listNetListings = (retired = false) =>

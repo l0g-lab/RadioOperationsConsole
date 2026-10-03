@@ -21,7 +21,7 @@ change, without touching files by hand.
 ## What is backed up
 
 - **BACKUP-001:** A backup MUST contain the whole application database:
-  operators, activities, the repeater directory, net listings, check-ins, spotter reports,
+  operators, activities, the repeater directory, net listings, saved places, check-ins, spotter reports,
   the traffic noted on check-ins, and the audit history, including removed and
   archived records.
 - **BACKUP-002:** A backup MUST NOT contain downloaded offline data (road

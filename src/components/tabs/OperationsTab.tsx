@@ -7,6 +7,7 @@ import CreateActivityPanel from "../operations/CreateActivityPanel";
 import ArchivedActivitiesPanel from "../operations/ArchivedActivitiesPanel";
 import OperatorsPanel from "../operations/OperatorsPanel";
 import RepeatersPanel from "../operations/RepeatersPanel";
+import PlacesPanel from "../operations/PlacesPanel";
 import { Lightbulb } from "lucide-react";
 
 interface Props {
@@ -119,6 +120,7 @@ export default function OperationsTab({
             onRepeatersChanged={refreshRepeaters}
             selectedOperatorId={selectedOperatorId}
           />
+          <PlacesPanel selectedOperatorId={selectedOperatorId} />
         </div>
       </div>
     </>

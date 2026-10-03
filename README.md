@@ -6,7 +6,7 @@ It's an operations logger first, not a contest logbook: one app that handles a r
 
 ## What it does
 
-- **Run several nets at once.** Pick the active activity from the top bar (or `Ctrl+[` / `Ctrl+]`) and every tab follows it. Keep a directory of your repeaters (frequency, offset, tones) and pick one when setting up a net.
+- **Run several nets at once.** Pick the active activity from the top bar (or `Ctrl+[` / `Ctrl+]`) and every tab follows it. Keep a directory of your repeaters (frequency, offset, tones) and pick one when setting up a net, and save the places you often operate from (home, the club) to pick on any map.
 - **Know what nets are on.** The Nets tab lists the nets in your area day by day for the coming week, with how to tune in, how far the repeater is, and how to check in. Start an activity from any of them.
 - **Take check-ins fast.** Type a call sign, press Enter. Name, address, and location fill in from QRZ — or, with no QRZ or no internet, from an offline copy of the FCC amateur-license database. GMRS call signs (like WRAB123) fill in from an offline copy of the FCC GMRS database. Export the roster as CSV (see it as a table first), or as an ICS-309 communications log for Winlink Express's own Form-309 (or to print).
 - **Put people on a map.** Check-ins are plotted at their real location when known (QRZ coordinates, a pin you drop, typed coordinates), falling back to ZIP centre, then grid square. Say "mile marker 182 on the turnpike" and it lands on the map, offline.
@@ -100,7 +100,7 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 
 | Tab | For |
 | --- | --- |
-| Operations | Operators, the repeater directory, creating/editing/archiving activities |
+| Operations | Operators, the repeater directory, saved places, creating/editing/archiving activities |
 | Check-ins | Taking check-ins (with any traffic they have), the roster, the check-in map |
 | Spotter Reports | Hazard reports and the report map |
 | Weather | NWS alerts, forecast, radar |

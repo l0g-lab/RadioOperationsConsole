@@ -6,6 +6,12 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **Saved places:** keep the spots you often operate from — home, a friend's
+  QTH, the club headquarters — in a Places list on the Operations tab, and
+  pick them in any map location picker instead of finding them again. Any
+  pinned spot can be saved as a place from the picker.
+
 ## [2.0.1] - 2026-10-02
 
 ### Added
