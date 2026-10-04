@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import * as api from "../../api";
-import type { Activity, Checkin } from "../../types";
+import type { Activity, Checkin, RelayMessage } from "../../types";
+import { isRelay } from "../../activityTypes";
+import { relay309Entries } from "../../relay";
 import { exportFilename, saveFilesToFolder, saveTextFile } from "../../export";
 import {
   comms309Entries,
@@ -165,21 +167,28 @@ function Form309({
   onSavePrint: (html: string) => void;
 }) {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
+  const [relayed, setRelayed] = useState<RelayMessage[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
+  // A relay station logs messages in and out instead of check-ins (RELAY-041).
+  const relay = isRelay(activity.activity_type);
 
   useEffect(() => {
-    api
-      .listCheckins(activity.id)
-      .catch(() => [] as Checkin[])
-      .then((c) => {
-        setCheckins(c);
-        setLoaded(true);
-      });
-  }, [activity.id]);
+    Promise.all([
+      api.listCheckins(activity.id).catch(() => [] as Checkin[]),
+      relay ? api.listRelayMessages(activity.id).catch(() => [] as RelayMessage[]) : [],
+    ]).then(([c, m]) => {
+      setCheckins(c);
+      setRelayed(m);
+      setLoaded(true);
+    });
+  }, [activity.id, relay]);
 
-  const netControl = operatorCall || operatorName || "Net control";
-  const entries = useMemo(() => comms309Entries(checkins, netControl), [checkins, netControl]);
+  const netControl = operatorCall || operatorName || (relay ? "Relay" : "Net control");
+  const entries = useMemo(
+    () => (relay ? relay309Entries(relayed, netControl) : comms309Entries(checkins, netControl)),
+    [relay, relayed, checkins, netControl]
+  );
   const { rows, shortened } = useMemo(() => form309Rows(entries), [entries]);
   const pages = useMemo(() => form309Pages(rows), [rows]);
   const page = Math.min(pageIndex, pages.length - 1);
@@ -265,7 +274,9 @@ function Form309({
   return (
     <>
       <p className="settings-hint">
-        One line per check-in, oldest first, addressed to net control.{" "}
+        {relay
+          ? "Each relayed message as it came in and as it was passed on, with failed attempts, oldest first."
+          : "One line per check-in, oldest first, addressed to net control."}{" "}
         {loaded ? `${entries.length} entries.` : "Loading…"}
       </p>
 

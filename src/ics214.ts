@@ -6,9 +6,11 @@ import type {
   Ics214Details,
   Ics214Line,
   Ics214Resource,
+  RelayMessage,
   SpotterReport,
 } from "./types";
-import { activityTypeLabel } from "./activityTypes";
+import { activityTypeLabel, isRelay } from "./activityTypes";
+import { relay214Lines } from "./relay";
 import { clip, esc, field, localDateTime, multiline, page, winlinkFormXml, winlinkText } from "./icsForms";
 
 /**
@@ -28,6 +30,8 @@ export interface ActivityRecords {
   checkins: Checkin[];
   history: HistoryEvent[];
   reports: SpotterReport[];
+  /** A relay station's messages (relay.ts). */
+  relay?: RelayMessage[];
 }
 
 const ms = (iso: string) => {
@@ -75,18 +79,22 @@ export function generateLines(records: ActivityRecords[], from: string, to: stri
     if (inPeriod(at)) lines.push({ at: new Date(at).toISOString(), text, source });
   };
 
-  for (const { activity: act, summary, checkins, history, reports } of records) {
+  for (const { activity: act, summary, checkins, history, reports, relay = [] } of records) {
     const on = act.frequency ? ` on ${act.frequency}` : "";
     add(act.opened_at, `Opened ${act.title} (${activityTypeLabel(act.activity_type)})${on}`, `start:${act.id}`);
 
     if (act.closed_at) {
-      const counts = summary
-        ? `: ${plural(summary.checkins, "check-in", "check-ins")} (${plural(
+      const counts = !summary
+        ? ""
+        : isRelay(act.activity_type)
+          ? `: ${plural(summary.relay_messages, "message", "messages")} relayed${
+              summary.unpassed_relay_messages > 0 ? `, ${summary.unpassed_relay_messages} not passed` : ""
+            }${summary.held_relay_messages > 0 ? `, ${summary.held_relay_messages} still held` : ""}`
+          : `: ${plural(summary.checkins, "check-in", "check-ins")} (${plural(
             summary.unique_stations,
             "station",
             "stations"
-          )})${summary.traffic_items > 0 ? `, ${plural(summary.traffic_items, "with traffic", "with traffic")}` : ""}`
-        : "";
+          )})${summary.traffic_items > 0 ? `, ${plural(summary.traffic_items, "with traffic", "with traffic")}` : ""}`;
       add(act.closed_at, `Closed ${act.title}${counts}`, `end:${act.id}`);
       const notes = (summary?.conclusion ?? act.conclusion).trim();
       if (notes) add(act.closed_at, `${act.title} closing notes: ${notes}`, `notes:${act.id}`);
@@ -112,6 +120,8 @@ export function generateLines(records: ActivityRecords[], from: string, to: stri
       const what = c.traffic ? `: ${c.traffic}` : "";
       add(at, `Handled traffic from ${c.call_sign}${what}`, `traffic:${id}`);
     }
+
+    lines.push(...relay214Lines(relay, from, to));
 
     for (const r of reports) {
       const hazard = [r.hazard_type, r.magnitude].filter(Boolean).join(" ");

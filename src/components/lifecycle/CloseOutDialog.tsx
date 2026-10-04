@@ -4,6 +4,7 @@ import { summaryFacts } from "../../summaryFacts";
 import ExportOptions from "../exports/ExportOptions";
 import type { Activity, ActivitySummary, Operator } from "../../types";
 import { formatDuration } from "../../export";
+import { isRelay } from "../../activityTypes";
 import { CircleStop } from "lucide-react";
 
 /**
@@ -23,6 +24,7 @@ export default function CloseOutDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
+  const noun = isRelay(activity.activity_type) ? "relay" : "net";
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
   const [conclusion, setConclusion] = useState(activity.conclusion);
   const [archive, setArchive] = useState(false);
@@ -57,7 +59,7 @@ export default function CloseOutDialog({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-panel lifecycle-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3><CircleStop className="heading-icon" />End net — {activity.title}</h3>
+          <h3><CircleStop className="heading-icon" />End {noun} — {activity.title}</h3>
           <button onClick={onClose}>Cancel</button>
         </div>
 
@@ -84,6 +86,15 @@ export default function CloseOutDialog({
               ? " has traffic that hasn't"
               : "s have traffic that haven't"}{" "}
             been marked handled. You can still end the net; the traffic stays on those check-ins.
+          </p>
+        )}
+
+        {summary && summary.held_relay_messages > 0 && (
+          <p className="closeout-warning" role="alert">
+            {summary.held_relay_messages === 1
+              ? "1 relay message is still waiting to be passed on."
+              : `${summary.held_relay_messages} relay messages are still waiting to be passed on.`}{" "}
+            Mark each as passed or not passed on the Messages tab, or end anyway: they stay held.
           </p>
         )}
 
@@ -114,7 +125,7 @@ export default function CloseOutDialog({
 
         <div className="inline-form">
           <button onClick={endNet} disabled={busy}>
-            End net
+            End {noun}
           </button>
           <button onClick={onClose} disabled={busy}>
             Not yet

@@ -81,6 +81,15 @@ export function SummaryView({
         </p>
       )}
 
+      {summary.held_relay_messages > 0 && (
+        <p className="closeout-warning" role="alert">
+          {summary.held_relay_messages === 1
+            ? "1 relay message was never passed on"
+            : `${summary.held_relay_messages} relay messages were never passed on`}{" "}
+          or marked as not passed.
+        </p>
+      )}
+
       <div className="summary-conclusion">
         <span className="report-notes-label">Conclusion / notes</span>
         <p>{notes || <em className="settings-hint">None recorded.</em>}</p>

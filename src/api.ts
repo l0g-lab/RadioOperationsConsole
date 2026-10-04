@@ -1,6 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   Activity,
+  RelayMessage,
+  RelayMessageInput,
+  RelayStepInput,
   Ics214Details,
   Ics214Log,
   NetListing,
@@ -528,3 +531,35 @@ export const activitySummary = (activity_id: string) =>
 
 export const activityHistory = (activity_id: string) =>
   invoke<HistoryEvent[]>("activity_history", { activityId: activity_id });
+
+// Relay station (docs/features/relay-station.md).
+
+export const listRelayMessages = (activity_id: string) =>
+  invoke<RelayMessage[]>("list_relay_messages", { activityId: activity_id });
+
+export const listRemovedRelayMessages = (activity_id: string) =>
+  invoke<RelayMessage[]>("list_removed_relay_messages", { activityId: activity_id });
+
+export const createRelayMessage = (
+  activity_id: string,
+  message: RelayMessageInput,
+  operator_id: string | null
+) => invoke<string>("create_relay_message", { activityId: activity_id, message, operatorId: operator_id });
+
+export const updateRelayMessage = (
+  message_id: string,
+  message: RelayMessageInput,
+  operator_id: string | null
+) => invoke<void>("update_relay_message", { messageId: message_id, message, operatorId: operator_id });
+
+export const addRelayStep = (message_id: string, step: RelayStepInput, operator_id: string | null) =>
+  invoke<string>("add_relay_step", { messageId: message_id, step, operatorId: operator_id });
+
+export const undoRelayStep = (step_id: string, operator_id: string | null) =>
+  invoke<void>("undo_relay_step", { stepId: step_id, operatorId: operator_id });
+
+export const voidRelayMessage = (message_id: string, reason: string | null, operator_id: string | null) =>
+  invoke<void>("void_relay_message", { messageId: message_id, reason, operatorId: operator_id });
+
+export const restoreRelayMessage = (message_id: string, operator_id: string | null) =>
+  invoke<void>("restore_relay_message", { messageId: message_id, operatorId: operator_id });

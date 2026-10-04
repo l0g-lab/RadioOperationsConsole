@@ -41,6 +41,11 @@ pub struct Activity {
     pub repeater_lon: Option<f64>,
 }
 
+/// Whether a relay message `m` has an outcome (passed or given up on).
+const RELAY_HAS_OUTCOME: &str = "EXISTS(SELECT 1 FROM relay_steps s WHERE s.message_id = m.id AND s.voided_at IS NULL AND s.kind != 'attempt')";
+/// A relay message `m`'s latest outcome, matching relay::status_of.
+const RELAY_LAST_OUTCOME: &str = "(SELECT s.kind FROM relay_steps s WHERE s.message_id = m.id AND s.voided_at IS NULL AND s.kind != 'attempt' ORDER BY s.at DESC, s.rowid DESC LIMIT 1)";
+
 /// Counts and times for one activity, shown when wrapping up a net and on the
 /// activity's summary.
 #[derive(Serialize, Debug, Clone)]
@@ -60,6 +65,12 @@ pub struct ActivitySummary {
     pub traffic_items: i64,
     /// Traffic items not yet marked as handled ("none").
     pub open_traffic_items: i64,
+    /// Messages received to relay (relay.rs).
+    pub relay_messages: i64,
+    /// Relay messages not yet passed on or given up on.
+    pub held_relay_messages: i64,
+    /// Relay messages that couldn't be passed on.
+    pub unpassed_relay_messages: i64,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -195,6 +206,7 @@ pub struct HistoryEvent {
 pub struct DeletedCounts {
     pub checkins: u32,
     pub spotter_reports: u32,
+    pub relay_messages: u32,
 }
 
 impl Repository {
@@ -292,6 +304,8 @@ impl Repository {
         self.conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM checkins WHERE operator_id = ?1) \
                  OR EXISTS(SELECT 1 FROM spotter_reports WHERE operator_id = ?1) \
+                 OR EXISTS(SELECT 1 FROM relay_messages WHERE operator_id = ?1) \
+                 OR EXISTS(SELECT 1 FROM relay_steps WHERE operator_id = ?1) \
                  OR EXISTS(SELECT 1 FROM audit_events WHERE operator_id = ?1 \
                            AND NOT (entity_type = 'operator' AND entity_id = ?1))",
             params![id],
@@ -432,13 +446,14 @@ impl Repository {
     }
 
     /// What deleting this activity would erase: all its check-ins (removed
-    /// ones too) and spotter reports (AUDIT-008).
+    /// ones too), spotter reports, and relayed messages (AUDIT-008).
     pub fn activity_contents(&self, id: &str) -> rusqlite::Result<DeletedCounts> {
         self.conn.query_row(
             "SELECT (SELECT count(*) FROM checkins WHERE activity_id = ?1), \
-                    (SELECT count(*) FROM spotter_reports WHERE activity_id = ?1)",
+                    (SELECT count(*) FROM spotter_reports WHERE activity_id = ?1), \
+                    (SELECT count(*) FROM relay_messages WHERE activity_id = ?1)",
             params![id],
-            |r| Ok(DeletedCounts { checkins: r.get(0)?, spotter_reports: r.get(1)? }),
+            |r| Ok(DeletedCounts { checkins: r.get(0)?, spotter_reports: r.get(1)?, relay_messages: r.get(2)? }),
         )
     }
 
@@ -458,7 +473,12 @@ impl Repository {
         for sql in [
             "DELETE FROM audit_events WHERE entity_id = ?1 \
                 OR entity_id IN (SELECT id FROM checkins WHERE activity_id = ?1) \
-                OR entity_id IN (SELECT id FROM spotter_reports WHERE activity_id = ?1)",
+                OR entity_id IN (SELECT id FROM spotter_reports WHERE activity_id = ?1) \
+                OR entity_id IN (SELECT id FROM relay_messages WHERE activity_id = ?1)",
+            "DELETE FROM relay_steps WHERE message_id IN (SELECT id FROM relay_messages WHERE activity_id = ?1)",
+            // Replies point at other messages of the same activity.
+            "UPDATE relay_messages SET reply_to = NULL WHERE activity_id = ?1",
+            "DELETE FROM relay_messages WHERE activity_id = ?1",
             "DELETE FROM spotter_reports WHERE activity_id = ?1",
             "DELETE FROM checkins WHERE activity_id = ?1",
             "DELETE FROM activities WHERE id = ?1",
@@ -470,6 +490,7 @@ impl Repository {
             "title": activity.title,
             "checkins": counts.checkins,
             "spotter_reports": counts.spotter_reports,
+            "relay_messages": counts.relay_messages,
         })
         .to_string();
         self.create_audit_event("activity", id, "delete_permanently", Some(&data), operator_id)
@@ -949,6 +970,9 @@ impl Repository {
             spotter_reports: one("SELECT COUNT(*) FROM spotter_reports WHERE activity_id = ?1 AND voided_at IS NULL"),
             traffic_items: one("SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND has_traffic = 1"),
             open_traffic_items: one("SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND has_traffic = 1 AND traffic_handled = 0"),
+            relay_messages: one("SELECT COUNT(*) FROM relay_messages WHERE activity_id = ?1 AND voided_at IS NULL"),
+            held_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND NOT {RELAY_HAS_OUTCOME}")),
+            unpassed_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND {RELAY_LAST_OUTCOME} = 'not_passed'")),
         })
     }
 
@@ -1001,6 +1025,7 @@ impl Repository {
              WHERE e.entity_id = ?1 \
                 OR e.entity_id IN (SELECT id FROM checkins WHERE activity_id = ?1) \
                 OR e.entity_id IN (SELECT id FROM spotter_reports WHERE activity_id = ?1) \
+                OR e.entity_id IN (SELECT id FROM relay_messages WHERE activity_id = ?1) \
              ORDER BY e.created_at, e.rowid",
         )?;
         let rows = stmt.query_map(params![activity_id], |r| {
@@ -1204,7 +1229,7 @@ mod deletion_tests {
         let r = repo();
         let op = r.create_operator("Pat", Some("K8ABC")).unwrap();
         let (a, _, _) = populated(&r, &op);
-        assert_eq!(r.activity_contents(&a).unwrap(), DeletedCounts { checkins: 2, spotter_reports: 1 });
+        assert_eq!(r.activity_contents(&a).unwrap(), DeletedCounts { checkins: 2, spotter_reports: 1, relay_messages: 0 });
     }
 
     #[test]
@@ -1216,7 +1241,7 @@ mod deletion_tests {
         let kept = r.create_checkin(&other, "N0KEEP", None, None, None, None, Some(&op), None, None, None, false, None, &ContactDetails::default()).unwrap();
 
         let counts = r.delete_activity_permanently(&a, Some(&op)).unwrap();
-        assert_eq!(counts, DeletedCounts { checkins: 2, spotter_reports: 1 });
+        assert_eq!(counts, DeletedCounts { checkins: 2, spotter_reports: 1, relay_messages: 0 });
 
         assert!(r.get_activity(&a).is_err());
         assert_eq!(count(&r, "SELECT count(*) FROM checkins WHERE activity_id = ?1", &a), 0);

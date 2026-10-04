@@ -9,7 +9,7 @@ import type { ActivitySummary } from "./types";
  */
 
 /** A part of the activity summary. */
-export type SummarySection = "checkins" | "traffic" | "spotter";
+export type SummarySection = "checkins" | "traffic" | "spotter" | "relay";
 
 export interface ActivityTypeDef {
   /** Stored on the activity. Never change an existing id. */
@@ -30,6 +30,11 @@ export interface ActivityTypeDef {
    * ways, and which must have the repeater's location (rangeCheck.ts).
    */
   rangeCheck?: boolean;
+  /**
+   * A relay station: its records are messages received from one station to
+   * pass on to another, instead of check-ins (relay.ts).
+   */
+  relay?: boolean;
 }
 
 export const ACTIVITY_TYPES: ActivityTypeDef[] = [
@@ -68,6 +73,14 @@ export const ACTIVITY_TYPES: ActivityTypeDef[] = [
     rangeCheck: true,
   },
   {
+    id: "relay",
+    label: "Relay station",
+    description:
+      "Passing traffic on: each message received, who it's for, and whether and how it was passed — or couldn't be.",
+    sections: ["relay"],
+    relay: true,
+  },
+  {
     id: "other",
     label: "Other",
     description: "Anything else. Shows everything.",
@@ -96,6 +109,11 @@ export function isRangeCheck(id: string): boolean {
   return activityTypeDef(id).rangeCheck === true;
 }
 
+/** Whether this type is a relay station. */
+export function isRelay(id: string): boolean {
+  return activityTypeDef(id).relay === true;
+}
+
 export function activityTypeLabel(id: string): string {
   return activityTypeDef(id).label;
 }
@@ -106,9 +124,12 @@ export function activityTypeLabel(id: string): string {
  * data that exists.
  */
 export function visibleSections(type: string, s: ActivitySummary): Set<SummarySection> {
-  const shown = new Set<SummarySection>(activityTypeDef(type).sections);
-  shown.add("checkins");
+  const def = activityTypeDef(type);
+  const shown = new Set<SummarySection>(def.sections);
+  // A relay station takes no check-ins, so they're only shown if some exist.
+  if (!def.relay || s.checkins > 0) shown.add("checkins");
   if (s.traffic_items > 0) shown.add("traffic");
   if (s.spotter_reports > 0) shown.add("spotter");
+  if (s.relay_messages > 0) shown.add("relay");
   return shown;
 }

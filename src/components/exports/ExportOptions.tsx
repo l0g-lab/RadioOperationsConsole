@@ -6,6 +6,7 @@ import type {
   Checkin,
   HistoryEvent,
   Operator,
+  RelayMessage,
   SpotterReport,
 } from "../../types";
 import {
@@ -13,10 +14,12 @@ import {
   checkinsToCsv,
   exportFilename,
   historyToCsv,
+  relayMessagesToCsv,
   saveTextFile,
   spotterReportsToCsv,
   spotterReportsToText,
 } from "../../export";
+import { isRelay } from "../../activityTypes";
 import { ics213FromReport, ics213FromReports, type GeneralMessage213Input } from "../../icsForms";
 import IcsFormDialog from "./IcsFormDialog";
 import { SummaryTextDialog } from "./SummaryDialog";
@@ -97,6 +100,7 @@ export default function ExportOptions({
 }) {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [reports, setReports] = useState<SpotterReport[]>([]);
+  const [relayed, setRelayed] = useState<RelayMessage[]>([]);
   const [history, setHistory] = useState<HistoryEvent[]>([]);
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
   const [message, setMessage] = useState<{
@@ -131,9 +135,11 @@ export default function ExportOptions({
       api.listSpotterReports(activity.id).catch(() => [] as SpotterReport[]),
       api.activityHistory(activity.id).catch(() => [] as HistoryEvent[]),
       api.activitySummary(activity.id).catch(() => null),
-    ]).then(([c, r, h, s]) => {
+      api.listRelayMessages(activity.id).catch(() => [] as RelayMessage[]),
+    ]).then(([c, r, h, s, m]) => {
       if (cancelled) return;
       setCheckins(c);
+      setRelayed(m);
       setReports(r);
       setHistory(h);
       setSummary(s);
@@ -159,6 +165,8 @@ export default function ExportOptions({
   const notify = (text: string) => setMessage({ text, error: false, info: true });
 
   const noCheckins = checkins.length === 0;
+  const relay = isRelay(activity.activity_type);
+  const noRelayed = relayed.length === 0;
   const noReports = reports.length === 0;
   const chosenReport = reports.find((r) => r.id === reportId);
 
@@ -169,6 +177,39 @@ export default function ExportOptions({
         <p className="settings-hint">
           The activity's own data, as spreadsheets and readable text. Use Show to see one before saving it.
         </p>
+        {(relay || !noRelayed) && (
+          <Row
+            notify={notify}
+            title="Relayed messages"
+            count={plural(relayed.length, "message", "messages")}
+            note="Each message, how it came in, and whether, when and how it was passed on."
+            actions={[
+              {
+                label: "Show CSV",
+                unavailable: noRelayed ? "There are no relayed messages yet, so there's nothing to show." : undefined,
+                title: "See it as a table, exactly as the CSV file will hold it",
+                onClick: () =>
+                  setCsvPreview({
+                    heading: `Relayed messages — ${activity.title}`,
+                    filename: exportFilename(activity, "Relayed messages", "csv"),
+                    csv: relayMessagesToCsv(relayed),
+                    what: "the relayed messages",
+                  }),
+              },
+              {
+                label: "CSV",
+                unavailable: noRelayed ? "There are no relayed messages yet, so there's nothing to export." : undefined,
+                onClick: () =>
+                  save(
+                    exportFilename(activity, "Relayed messages", "csv"),
+                    relayMessagesToCsv(relayed),
+                    "the relayed messages"
+                  ),
+              },
+            ]}
+          />
+        )}
+        {!(relay && noCheckins) && (
         <Row
           notify={notify}
           title="Check-ins"
@@ -203,6 +244,7 @@ export default function ExportOptions({
             },
           ]}
         />
+        )}
         <Row
           notify={notify}
           title="Spotter reports"
@@ -386,13 +428,15 @@ export default function ExportOptions({
         <Row
           notify={notify}
           title="ICS 309 — Communications Log"
-          count="from the check-in list"
+          count={relay ? "from the relayed messages" : "from the check-in list"}
           note="For Winlink Express's Form-309, or printable."
           actions={[
             {
               label: "Open…",
-              unavailable: noCheckins
-                ? "There are no check-ins yet, so there's nothing to export."
+              unavailable: (relay ? noRelayed : noCheckins)
+                ? relay
+                  ? "There are no relayed messages yet, so there's nothing to export."
+                  : "There are no check-ins yet, so there's nothing to export."
                 : undefined,
               onClick: () => setIcs({ form: "309" }),
             },

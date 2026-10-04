@@ -44,5 +44,20 @@ export function summaryFacts(type: string, s: ActivitySummary): SummaryFact[] {
           : undefined,
     });
   }
+  if (shown.has("relay")) {
+    const held = s.held_relay_messages;
+    const unpassed = s.unpassed_relay_messages;
+    const total = s.relay_messages;
+    const parts = [
+      `${total - held - unpassed} passed`,
+      held > 0 ? `${held} still held` : "",
+      unpassed > 0 ? `${unpassed} not passed` : "",
+    ].filter(Boolean);
+    facts.push({
+      key: "relay",
+      text: plural(total, "relayed message", "relayed messages"),
+      detail: total > 0 ? `(${parts.join(", ")})` : undefined,
+    });
+  }
   return facts;
 }

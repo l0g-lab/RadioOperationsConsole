@@ -8,6 +8,7 @@ vi.mock("../../api", () => ({
   listSpotterReports: vi.fn(),
   activityHistory: vi.fn(() => Promise.resolve([])),
   activitySummary: vi.fn(() => Promise.resolve(null)),
+  listRelayMessages: vi.fn(() => Promise.resolve([])),
 }));
 vi.mock("../../export", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../export")>()),

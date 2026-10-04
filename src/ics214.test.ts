@@ -53,6 +53,9 @@ const summary = (o: Partial<ActivitySummary> = {}): ActivitySummary => ({
   hazards: [],
   traffic_items: 2,
   open_traffic_items: 0,
+  relay_messages: 0,
+  held_relay_messages: 0,
+  unpassed_relay_messages: 0,
   ...o,
 });
 

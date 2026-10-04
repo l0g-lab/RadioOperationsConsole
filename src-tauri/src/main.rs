@@ -8,6 +8,7 @@ mod connectors;
 mod datapacks;
 mod db;
 mod ics214;
+mod relay;
 mod net;
 mod net_listings;
 mod places;
@@ -69,6 +70,14 @@ fn main() {
             commands::list_ics214_logs,
             commands::save_ics214_log,
             commands::delete_ics214_log,
+            commands::list_relay_messages,
+            commands::list_removed_relay_messages,
+            commands::create_relay_message,
+            commands::update_relay_message,
+            commands::add_relay_step,
+            commands::undo_relay_step,
+            commands::void_relay_message,
+            commands::restore_relay_message,
             commands::list_places,
             commands::save_place,
             commands::delete_place,

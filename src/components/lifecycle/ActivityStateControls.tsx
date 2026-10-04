@@ -1,7 +1,7 @@
 import { useState } from "react";
 import * as api from "../../api";
 import type { Activity, Operator } from "../../types";
-import { isLog } from "../../activityTypes";
+import { isRelay, isLog } from "../../activityTypes";
 import ActivityStatus from "./ActivityStatus";
 import CloseOutDialog from "./CloseOutDialog";
 import ReopenDialog from "./ReopenDialog";
@@ -38,11 +38,13 @@ export default function ActivityStateControls({
   // show — unless it was closed (e.g. as another type), which can be undone.
   if (isLog(activity.activity_type) && activity.state !== "closed") return null;
 
+  const noun = isRelay(activity.activity_type) ? "relay" : "net";
+
   return (
     <>
       <ActivityStatus state={activity.state} />
-      {activity.state === "scheduled" && <button onClick={start}>Start net</button>}
-      {activity.state === "active" && <button onClick={() => setDialog("close")}>End net</button>}
+      {activity.state === "scheduled" && <button onClick={start}>Start {noun}</button>}
+      {activity.state === "active" && <button onClick={() => setDialog("close")}>End {noun}</button>}
       {activity.state === "closed" && <button onClick={() => setDialog("reopen")}>Reopen…</button>}
       {error && <span className="weather-area-error">{error}</span>}
       {dialog === "close" && (

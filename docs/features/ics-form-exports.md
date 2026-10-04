@@ -109,7 +109,8 @@ forms' own loading code and viewer pages. They are not guesses (`SCOPE-005`).
 - **ICSF-030:** The log MUST list every check-in, oldest first. Each line shows
   the time, the station's call sign as *from*, net control (the acting operator)
   as *to*, and as the message just the station's traffic, left blank for a
-  station without traffic, so lines stay short.
+  station without traffic, so lines stay short. A relay station's log lists
+  its messages instead ([relay-station.md](relay-station.md), `RELAY-041`).
 - **ICSF-031:** Printed times MUST be local, 24-hour, with the date added when
   the entries span more than one day. The Winlink rows MUST always include the
   date (`ICSF-011`).
@@ -161,7 +162,8 @@ record, edited, and exported again as the period fills in.
 - **ICSF-052:** The log MUST be fillable from the records of the included
   activities, with one line each for: an activity opened; an activity closed,
   with check-in, station, and traffic counts; its closing notes; traffic marked
-  handled (not for check-ins since removed); and each spotter report. Only
+  handled (not for check-ins since removed); each spotter report; and each
+  relay message passed, attempted, or given up on (`RELAY-042`). Only
   events within the period count. A new log MUST be filled once automatically.
 - **ICSF-053:** Filling again MUST add only what the records give that the log
   doesn't have yet. Lines the operator changed or added MUST stay as they are,

@@ -58,12 +58,20 @@ export default function DeleteActivityDialog({
         <p>
           This erases the activity
           {counts
-            ? ` and its ${plural(counts.checkins, "check-in", "check-ins")} and ${plural(
-                counts.spotter_reports,
-                "spotter report",
-                "spotter reports"
-              )}`
-            : ", its check-ins and spotter reports"}
+            ? ` and its ${
+                counts.relay_messages
+                  ? `${plural(counts.checkins, "check-in", "check-ins")}, ${plural(
+                      counts.spotter_reports,
+                      "spotter report",
+                      "spotter reports"
+                    )}, and ${plural(counts.relay_messages, "relayed message", "relayed messages")}`
+                  : `${plural(counts.checkins, "check-in", "check-ins")} and ${plural(
+                      counts.spotter_reports,
+                      "spotter report",
+                      "spotter reports"
+                    )}`
+              }`
+            : ", its check-ins, spotter reports, and relayed messages"}
           , including removed ones and their history. <strong>It cannot be undone.</strong>
         </p>
         <p className="settings-hint">

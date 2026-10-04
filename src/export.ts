@@ -2,13 +2,14 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { mkdir, writeTextFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import * as api from "./api";
-import type { Activity, ActivitySummary, Checkin, HistoryEvent, SpotterReport } from "./types";
+import type { Activity, ActivitySummary, Checkin, HistoryEvent, RelayMessage, SpotterReport } from "./types";
 import { stationKindLabel } from "./rangeCheck";
 import { formatTimeLines, pad2, splitScheduledAt } from "./utils";
 import { activityTypeLabel } from "./activityTypes";
 import { latLonToGridSquare } from "./grid";
 import { formatCoords } from "./geo";
 import { summaryFacts } from "./summaryFacts";
+import { relayStatusLabel } from "./relay";
 
 /**
  * Prompts the operator with a native "Save As" dialog and writes the
@@ -381,4 +382,55 @@ export function historyToCsv(events: HistoryEvent[]): string {
     ["Time (Local)", "Time (UTC)", "Record Type", "Action", "Operator", "Detail", "Record Id"],
     ...eventRows(events),
   ]);
+}
+
+const RELAY_CSV_COLUMNS = [
+  "Received (local)",
+  "Received (UTC)",
+  "From",
+  "For",
+  "Received via",
+  "Message",
+  "Reply to",
+  "Status",
+  "Passed (local)",
+  "Passed (UTC)",
+  "Passed to",
+  "Passed via",
+  "Failed attempts",
+  "Not passed because",
+];
+
+/**
+ * Relayed messages, one row each, oldest first: how each came in and what
+ * became of it (RELAY-040). Failed attempts are listed in one column.
+ */
+export function relayMessagesToCsv(messages: RelayMessage[]): string {
+  const byId = new Map(messages.map((m) => [m.id, m]));
+  const rows = [RELAY_CSV_COLUMNS];
+  for (const m of [...messages].sort((a, b) => a.received_at.localeCompare(b.received_at))) {
+    const passed = m.steps.find((s) => s.kind === "passed");
+    const gaveUp = m.steps.find((s) => s.kind === "not_passed");
+    const original = m.reply_to ? byId.get(m.reply_to) : undefined;
+    rows.push([
+      localStamp(m.received_at),
+      utcStamp(m.received_at),
+      m.from_station,
+      m.for_station,
+      m.received_via,
+      m.message,
+      original ? `${original.from_station} to ${original.for_station}, ${localStamp(original.received_at)}` : "",
+      relayStatusLabel(m.status),
+      passed ? localStamp(passed.at) : "",
+      passed ? utcStamp(passed.at) : "",
+      passed?.station ?? "",
+      passed?.via ?? "",
+      m.steps
+        .filter((s) => s.kind === "attempt")
+        .map((s) => `${localStamp(s.at)} via ${s.via}${s.station ? ` to ${s.station}` : ""}${s.note ? `: ${s.note}` : ""}`)
+        .join("; "),
+      gaveUp?.note ?? "",
+    ]);
+  }
+  return csv(rows);
 }

@@ -144,6 +144,8 @@ export interface Repeater extends RepeaterDetails {
 export interface DeletedCounts {
   checkins: number;
   spotter_reports: number;
+  /** Missing from deletions recorded before relay messages existed. */
+  relay_messages?: number;
 }
 
 export interface Checkin {
@@ -537,12 +539,18 @@ export interface ActivitySummary {
   traffic_items: number;
   /** Check-ins with traffic that isn't marked handled. */
   open_traffic_items: number;
+  /** Messages received to relay. */
+  relay_messages: number;
+  /** Relay messages not yet passed on or given up on. */
+  held_relay_messages: number;
+  /** Relay messages that couldn't be passed on. */
+  unpassed_relay_messages: number;
 }
 
 /** One line of an activity's history, with the operator who made it. */
 export interface HistoryEvent {
   id: string;
-  /** "activity", "checkin" or "spotter_report". */
+  /** "activity", "checkin", "spotter_report" or "relay_message". */
   entity_type: string;
   entity_id: string;
   action: string;
@@ -565,4 +573,47 @@ export interface StorageItem {
   bytes: number;
   /** The folder its files are kept in. */
   location: string;
+}
+
+/** A message received to pass on, as entered (docs/features/relay-station.md). */
+export interface RelayMessageInput {
+  /** RFC 3339. */
+  received_at: string;
+  from_station: string;
+  for_station: string;
+  message: string;
+  /** The frequency, repeater, or other means it came in on. */
+  received_via: string;
+  /** The message this answers. */
+  reply_to: string | null;
+}
+
+export type RelayStepKind = "attempt" | "passed" | "not_passed";
+
+/** A step in passing a message on, as entered. */
+export interface RelayStepInput {
+  kind: RelayStepKind;
+  /** RFC 3339. */
+  at: string;
+  /** Who it was passed (or tried) to. */
+  station: string;
+  /** The frequency, repeater, or other means used. */
+  via: string;
+  note: string;
+}
+
+export interface RelayStep extends RelayStepInput {
+  id: string;
+}
+
+export type RelayStatus = "held" | "passed" | "not_passed";
+
+export interface RelayMessage extends RelayMessageInput {
+  id: string;
+  activity_id: string;
+  status: RelayStatus;
+  /** Oldest first. */
+  steps: RelayStep[];
+  voided_at: string;
+  void_reason: string;
 }

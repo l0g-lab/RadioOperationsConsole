@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-04
+
 ### Added
 - **ICS 214 Activity Log:** on the Exports tab, make an activity log for a
   period of operation — a whole SET, say. It gathers every activity that ran in
@@ -16,11 +18,20 @@ top. Each release's section here is also its description on the
   it for Winlink Express's ICS 214 form (a file for *Load ICS 214 Data*, the
   lines for *Paste Data*, or form data to attach), 24 lines per page, or as a
   printable form.
+- **Relay station:** a new activity type for when your job is to move traffic
+  from one station to another. Log each message as it comes in — from, for,
+  how it arrived, and the sitrep — and it waits in a *To pass* list until you
+  record it passed (to whom, and how: a frequency, repeater, phone, Winlink, a
+  runner…), record a failed attempt (it stays waiting), or mark it couldn't be
+  passed and why. Log replies coming back, linked to the original. Ending the
+  relay warns about anything still held. Messages export as CSV, fill the
+  ICS 309 (in, failed attempts, and out), and add lines to the ICS 214.
 
 ### Changed
 - **ICS 309:** each line's message is now just the station's traffic, so lines
   stay short; a station without traffic gets a blank message. Name and location
   are no longer included.
+- **ICS forms** are listed in number order on the Exports tab (213, 214, 309).
 
 ## [2.1.0] - 2026-10-02
 
@@ -162,7 +173,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v1.3.0...v2.0.0

@@ -31,13 +31,14 @@ const fileSafe = (s: string) => s.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g,
 async function loadRecords(activities: Activity[]): Promise<ActivityRecords[]> {
   return Promise.all(
     activities.map(async (activity) => {
-      const [summary, checkins, history, reports] = await Promise.all([
+      const [summary, checkins, history, reports, relay] = await Promise.all([
         api.activitySummary(activity.id).catch(() => null),
         api.listCheckins(activity.id).catch(() => []),
         api.activityHistory(activity.id).catch(() => []),
         api.listSpotterReports(activity.id).catch(() => []),
+        api.listRelayMessages(activity.id).catch(() => []),
       ]);
-      return { activity, summary, checkins, history, reports };
+      return { activity, summary, checkins, history, reports, relay };
     })
   );
 }

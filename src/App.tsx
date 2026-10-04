@@ -18,7 +18,7 @@ import UpgradeBackupBanner from "./components/UpgradeBackupBanner";
 import UpdateBanner from "./components/UpdateBanner";
 import type { Activity, Operator, Tab } from "./types";
 import { TABS } from "./types";
-import { isLog } from "./activityTypes";
+import { isLog, isRelay } from "./activityTypes";
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
@@ -176,7 +176,9 @@ export default function App() {
             labels={
               selectedActivity && isLog(selectedActivity.activity_type)
                 ? { "Check-ins": "Contacts" }
-                : undefined
+                : selectedActivity && isRelay(selectedActivity.activity_type)
+                  ? { "Check-ins": "Messages" }
+                  : undefined
             }
           />
           {currentTab === "Operations" && (

@@ -6,7 +6,8 @@ import CheckinLocationMap from "../CheckinLocationMap";
 import CheckinEntryForm from "../checkins/CheckinEntryForm";
 import CheckinRoster from "../checkins/CheckinRoster";
 import ClosedBanner from "../lifecycle/ClosedBanner";
-import { isLog, isRangeCheck } from "../../activityTypes";
+import { isLog, isRangeCheck, isRelay } from "../../activityTypes";
+import RelayWorkspace from "../relay/RelayWorkspace";
 
 interface Props {
   activities: Activity[];
@@ -39,6 +40,7 @@ export default function CheckinsTab({
   const closed = focusedActivity?.state === "closed";
   const log = focusedActivity ? isLog(focusedActivity.activity_type) : false;
   const rangeCheck = focusedActivity ? isRangeCheck(focusedActivity.activity_type) : false;
+  const relay = focusedActivity ? isRelay(focusedActivity.activity_type) : false;
   const focusedOperator = operators.find((o) => o.id === selectedOperatorId) ?? null;
 
   // Net control: a per-activity location (e.g. a field site) takes
@@ -129,14 +131,16 @@ export default function CheckinsTab({
             {formatCoordsWithGrid(focusedActivity.location_lat, focusedActivity.location_lon)}
           </span>
         )}
-        <label className="checkbox-row">
-          <input
-            type="checkbox"
-            checked={rapidEntryMode}
-            onChange={(e) => setRapidEntryMode(e.target.checked)}
-          />
-          Rapid-entry mode (keep focus)
-        </label>
+        {!relay && (
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={rapidEntryMode}
+              onChange={(e) => setRapidEntryMode(e.target.checked)}
+            />
+            Rapid-entry mode (keep focus)
+          </label>
+        )}
       </div>
 
       {!focusedActivity && (
@@ -152,7 +156,14 @@ export default function CheckinsTab({
         </p>
       )}
 
-      {focusedActivity && (
+      {focusedActivity && relay && (
+        <>
+          {closed && <ClosedBanner title={focusedActivity.title} />}
+          <RelayWorkspace activity={focusedActivity} operatorId={selectedOperatorId} readOnly={closed} />
+        </>
+      )}
+
+      {focusedActivity && !relay && (
         <>
           {closed ? (
             <ClosedBanner title={focusedActivity.title} />
