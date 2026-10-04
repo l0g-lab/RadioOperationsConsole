@@ -6,6 +6,21 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Changed
+- **Removing an operator says where they're named:** each activity they run
+  or logged in (click to open it), with what they did there, and any changes
+  they made to repeaters, places, net listings, and so on. So you know where
+  to go — for example, to move an activity to another operator — before
+  retiring them.
+
+### Removed
+- **Archiving.** Finished nets stay in the Activities list (under *Closed*,
+  folded away), so none can go missing; anything you'd archived is back in the
+  list. To get rid of an activity for good — test runs and mistakes — use
+  *Delete…*. The top bar's Activity list shows what's open or upcoming plus the
+  10 most recent closed nets; older ones are in the Activities list on the
+  Operations tab.
+
 ## [2.2.2] - 2026-10-04
 
 ### Added

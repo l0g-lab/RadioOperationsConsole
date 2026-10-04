@@ -5,7 +5,6 @@ import type { Activity, ActivitySummary } from "../../types";
 
 vi.mock("../../api", () => ({
   activitySummary: vi.fn(),
-  listArchivedActivities: vi.fn(),
 }));
 vi.mock("../../export", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../export")>()),
@@ -14,9 +13,8 @@ vi.mock("../../export", async (importOriginal) => ({
 
 import * as api from "../../api";
 import { activitySummaryToText, saveTextFile } from "../../export";
-import SummaryDialog, { SummaryTextDialog } from "./SummaryDialog";
+import { SummaryTextDialog } from "./SummaryDialog";
 import ActivitySummaryPanel from "../operations/ActivitySummaryPanel";
-import ArchivedActivitiesPanel from "../operations/ArchivedActivitiesPanel";
 
 const NET: Activity = {
   id: "a1",
@@ -63,15 +61,17 @@ describe("SummaryDialog", () => {
   });
 
   it("warns about traffic left unhandled", async () => {
+    const user = userEvent.setup();
     vi.mocked(api.activitySummary).mockResolvedValue({ ...SUMMARY, open_traffic_items: 2 });
-    render(<SummaryDialog activity={NET} onClose={() => {}} />);
-    expect(await screen.findByRole("alert")).toHaveTextContent("2 check-ins have traffic that weren't marked handled.");
+    render(<ActivitySummaryPanel activity={NET} />);
+    await user.click(await screen.findByRole("button", { name: /Summary/ }));
+    expect(screen.getByRole("alert")).toHaveTextContent("2 check-ins have traffic that weren't marked handled.");
   });
 
   it("saves the same text as the summary export", async () => {
     const user = userEvent.setup();
-    render(<SummaryDialog activity={NET} onClose={() => {}} />);
-    await screen.findByText("12 check-ins");
+    render(<SummaryTextDialog activity={NET} onClose={() => {}} />);
+    await screen.findByText(/Duration: 30 min/);
     await user.click(screen.getByRole("button", { name: "Save…" }));
     expect(saveTextFile).toHaveBeenCalledWith(
       expect.stringContaining("Summary"),
@@ -81,21 +81,9 @@ describe("SummaryDialog", () => {
   });
 
   it("uses closing notes still being written", async () => {
-    render(<SummaryDialog activity={NET} conclusion="  Two new stations.  " onClose={() => {}} />);
-    expect(await screen.findByText("Two new stations.")).toBeInTheDocument();
-    expect(screen.queryByText("Quiet night.")).not.toBeInTheDocument();
-  });
-
-  it("is offered for archived activities, without restoring them", async () => {
-    vi.mocked(api.listArchivedActivities).mockResolvedValue([NET]);
-    const user = userEvent.setup();
-    render(
-      <ArchivedActivitiesPanel activities={[]} selectedOperatorId={null} onActivitiesChanged={() => {}} />
-    );
-    await user.click(screen.getByRole("button", { name: "Show archived" }));
-    await user.click(await screen.findByRole("button", { name: "Show summary of Tuesday Net" }));
-    expect(await screen.findByRole("dialog", { name: "Summary — Tuesday Net" })).toBeInTheDocument();
-    expect(await screen.findByText(/Quiet night\./)).toBeInTheDocument();
+    render(<SummaryTextDialog activity={NET} conclusion="  Two new stations.  " onClose={() => {}} />);
+    const pre = await screen.findByText(/Two new stations\./);
+    expect(pre.textContent).not.toContain("Quiet night.");
   });
 
   it("shows exactly the text that's saved, before saving it (EXPORT-017)", async () => {

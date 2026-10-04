@@ -205,6 +205,36 @@ pub struct HistoryEvent {
     pub created_at: String,
 }
 
+/// Where an operator is named, for removing them (`operator_usage`).
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct OperatorUsage {
+    /// Activities they run or recorded something in, newest first.
+    pub activities: Vec<OperatorActivityUse>,
+    /// Their history entries on anything outside an activity, by kind.
+    pub other_history: Vec<HistoryKindCount>,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct OperatorActivityUse {
+    pub id: String,
+    pub title: String,
+    /// They're its operator (net control).
+    pub runs: bool,
+    pub checkins: i64,
+    pub spotter_reports: i64,
+    /// Relay messages and steps.
+    pub relay: i64,
+    /// History entries they made on it or its records.
+    pub history: i64,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct HistoryKindCount {
+    /// "repeater", "place", "net_listing", "operator", "ics214_log", ...
+    pub kind: String,
+    pub count: i64,
+}
+
 /// How many records an activity holds, or held before it was deleted.
 #[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct DeletedCounts {
@@ -302,6 +332,54 @@ impl Repository {
         rows.collect()
     }
 
+    /// Where an operator is named (AUDIT-013): each activity they run or
+    /// recorded something in, and their history entries on anything else, so
+    /// the operator knows where to go to change it.
+    pub fn operator_usage(&self, id: &str) -> rusqlite::Result<OperatorUsage> {
+        let mut stmt = self.conn.prepare(
+            "SELECT a.id, a.title, coalesce(a.operator_id = ?1, 0), \
+                (SELECT count(*) FROM checkins WHERE activity_id = a.id AND operator_id = ?1), \
+                (SELECT count(*) FROM spotter_reports WHERE activity_id = a.id AND operator_id = ?1), \
+                (SELECT count(*) FROM relay_messages WHERE activity_id = a.id AND operator_id = ?1) \
+                  + (SELECT count(*) FROM relay_steps s JOIN relay_messages m ON m.id = s.message_id \
+                     WHERE m.activity_id = a.id AND s.operator_id = ?1), \
+                (SELECT count(*) FROM audit_events e WHERE e.operator_id = ?1 AND (e.entity_id = a.id \
+                    OR e.entity_id IN (SELECT id FROM checkins WHERE activity_id = a.id) \
+                    OR e.entity_id IN (SELECT id FROM spotter_reports WHERE activity_id = a.id) \
+                    OR e.entity_id IN (SELECT id FROM relay_messages WHERE activity_id = a.id))) \
+             FROM activities a ORDER BY coalesce(a.opened_at, a.scheduled_at, a.created_at) DESC",
+        )?;
+        let activities = stmt
+            .query_map(params![id], |r| {
+                Ok(OperatorActivityUse {
+                    id: r.get(0)?,
+                    title: r.get(1)?,
+                    runs: r.get(2)?,
+                    checkins: r.get(3)?,
+                    spotter_reports: r.get(4)?,
+                    relay: r.get(5)?,
+                    history: r.get(6)?,
+                })
+            })?
+            .filter(|u| u.as_ref().map(|u| u.runs || u.checkins + u.spotter_reports + u.relay + u.history > 0).unwrap_or(true))
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        // History on anything not in an activity (repeaters, places, net
+        // listings, other operators, ICS 214 logs), by kind.
+        let mut stmt = self.conn.prepare(
+            "SELECT entity_type, count(*) FROM audit_events e WHERE e.operator_id = ?1 \
+               AND NOT (e.entity_type = 'operator' AND e.entity_id = ?1) \
+               AND e.entity_id NOT IN (SELECT id FROM activities) \
+               AND e.entity_id NOT IN (SELECT id FROM checkins) \
+               AND e.entity_id NOT IN (SELECT id FROM spotter_reports) \
+               AND e.entity_id NOT IN (SELECT id FROM relay_messages) \
+             GROUP BY entity_type ORDER BY entity_type",
+        )?;
+        let other_history = stmt
+            .query_map(params![id], |r| Ok(HistoryKindCount { kind: r.get(0)?, count: r.get(1)? }))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(OperatorUsage { activities, other_history })
+    }
+
     /// Whether anything names this operator: a check-in, a spotter report, or
     /// a history event (other than the operator's own retire/restore events).
     pub fn operator_has_records(&self, id: &str) -> rusqlite::Result<bool> {
@@ -387,17 +465,7 @@ impl Repository {
     }
 
     pub fn list_activities(&self) -> rusqlite::Result<Vec<Activity>> {
-        let mut stmt = self.conn.prepare(&format!("SELECT {} FROM activities WHERE archived_at IS NULL ORDER BY scheduled_at DESC, created_at DESC", Self::ACTIVITY_COLS))?;
-        let rows = stmt.query_map([], Self::map_activity)?;
-        let mut v = Vec::new();
-        for r in rows {
-            v.push(r?);
-        }
-        Ok(v)
-    }
-
-    pub fn list_archived_activities(&self) -> rusqlite::Result<Vec<Activity>> {
-        let mut stmt = self.conn.prepare(&format!("SELECT {} FROM activities WHERE archived_at IS NOT NULL ORDER BY archived_at DESC", Self::ACTIVITY_COLS))?;
+        let mut stmt = self.conn.prepare(&format!("SELECT {} FROM activities ORDER BY scheduled_at DESC, created_at DESC", Self::ACTIVITY_COLS))?;
         let rows = stmt.query_map([], Self::map_activity)?;
         let mut v = Vec::new();
         for r in rows {
@@ -505,23 +573,6 @@ impl Repository {
             .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()))
             .map_err(|e| e.to_string())?;
         Ok(counts)
-    }
-
-    pub fn archive_activity(&self, id: &str) -> rusqlite::Result<()> {
-        let now = Utc::now().to_rfc3339();
-        self.conn.execute(
-            "UPDATE activities SET archived_at = ?1 WHERE id = ?2",
-            params![now, id],
-        )?;
-        Ok(())
-    }
-
-    pub fn restore_activity(&self, id: &str) -> rusqlite::Result<()> {
-        self.conn.execute(
-            "UPDATE activities SET archived_at = NULL WHERE id = ?1",
-            params![id],
-        )?;
-        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1220,6 +1271,33 @@ mod lifecycle_tests {
     fn repo() -> Repository {
         let path = std::env::temp_dir().join(format!("roc-life-{}.db", Uuid::new_v4()));
         Repository::new(crate::db::open_db(&path).unwrap())
+    }
+
+    #[test]
+    fn says_where_an_operator_is_named() {
+        let r = repo();
+        let pat = r.create_operator("Pat", Some("K4NCS")).unwrap();
+        let usage = |r: &Repository| r.operator_usage(&pat).unwrap();
+        // Their own retire/restore events don't count.
+        r.create_audit_event("operator", &pat, "retire", None, Some(&pat)).unwrap();
+        assert!(usage(&r).activities.is_empty() && usage(&r).other_history.is_empty());
+        assert!(!r.operator_has_records(&pat).unwrap());
+
+        let net = r.create_activity("Tuesday net", "directed_net", None, None).unwrap();
+        r.set_activity_operator(&net, Some(&pat)).unwrap();
+        let other = r.create_activity("SKYWARN", "skywarn", None, None).unwrap();
+        r.create_checkin(&other, "W1AW", None, None, None, None, Some(&pat), None, None, None, false, None, &ContactDetails::default())
+            .unwrap();
+        r.create_activity("Someone else's", "simple_net", None, None).unwrap();
+        r.create_audit_event("repeater", "rpt1", "create", None, Some(&pat)).unwrap();
+
+        let u = usage(&r);
+        let titles: Vec<_> = u.activities.iter().map(|a| (a.title.as_str(), a.runs, a.checkins)).collect();
+        assert!(titles.contains(&("Tuesday net", true, 0)));
+        assert!(titles.contains(&("SKYWARN", false, 1)));
+        assert_eq!(u.activities.len(), 2);
+        assert_eq!(u.other_history, vec![HistoryKindCount { kind: "repeater".into(), count: 1 }]);
+        assert!(r.operator_has_records(&pat).unwrap());
     }
 
     #[test]

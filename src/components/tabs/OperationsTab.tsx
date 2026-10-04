@@ -6,7 +6,6 @@ import type { Activity, NetListing, Operator, Repeater } from "../../types";
 import type { ActivityPrefill } from "../operations/activityPrefill";
 import SelectedActivityPanel from "../operations/SelectedActivityPanel";
 import CreateActivityPanel from "../operations/CreateActivityPanel";
-import ArchivedActivitiesPanel from "../operations/ArchivedActivitiesPanel";
 import OperatorsPanel from "../operations/OperatorsPanel";
 import RepeatersPanel from "../operations/RepeatersPanel";
 import PlacesPanel from "../operations/PlacesPanel";
@@ -117,11 +116,6 @@ export default function OperationsTab({
             repeaters={repeaters}
             onNewActivity={onNewActivity}
           />
-          <ArchivedActivitiesPanel
-            activities={activities}
-            selectedOperatorId={defaultOperatorId}
-            onActivitiesChanged={onActivitiesChanged}
-          />
         </div>
 
         <div className="operations-column operations-column-narrow">
@@ -130,6 +124,7 @@ export default function OperationsTab({
             selectedOperatorId={defaultOperatorId}
             onOperatorsChanged={onOperatorsChanged}
             onSetDefault={onSetDefaultOperator}
+            onSelectActivity={onSelectActivity}
           />
           <RepeatersPanel
             repeaters={repeaters}

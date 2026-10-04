@@ -232,9 +232,10 @@ function Editor({
   useEscape(leave);
 
   useEffect(() => {
-    Promise.all([api.listActivities().catch(() => []), api.listArchivedActivities().catch(() => [])]).then(
-      ([open, archived]) => setAllActivities([...open, ...archived])
-    );
+    api
+      .listActivities()
+      .catch(() => [])
+      .then(setAllActivities);
   }, []);
 
   const from = parseContactTime(fromText);

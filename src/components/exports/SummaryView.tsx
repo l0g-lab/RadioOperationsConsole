@@ -15,8 +15,7 @@ function when(iso: string): string {
 /**
  * An activity's summary, laid out like the end-of-net step: what it was, the
  * counts its type emphasises, when it ran, anything left open, and the
- * closing notes. Shown on the Operations tab and in the archived-activity
- * window.
+ * closing notes. Shown on the Operations tab and in the end-of-net step.
  */
 export function SummaryView({
   activity,

@@ -39,16 +39,6 @@ pub fn change_activity_operator(state: State<AppState>, activity_id: String, ope
 }
 
 #[tauri::command]
-pub fn list_archived_activities(state: State<AppState>) -> Result<Vec<Activity>, String> {
-    state
-        .repo
-        .lock()
-        .unwrap()
-        .list_archived_activities()
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 pub fn update_activity(
     state: State<AppState>,
     activity_id: String,
@@ -159,48 +149,6 @@ pub async fn set_activity_location_coords(
     repo.set_activity_location(&activity_id, label.as_deref(), Some(lat), Some(lon))
         .map_err(|e| e.to_string())?;
     repo.get_activity(&activity_id).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn archive_activity(
-    state: State<AppState>,
-    activity_id: String,
-    reason: Option<String>,
-    operator_id: Option<String>,
-) -> Result<(), String> {
-    let repo = state.repo.lock().unwrap();
-    repo.archive_activity(&activity_id)
-        .map_err(|e| e.to_string())?;
-    let data = serde_json::json!({ "reason": reason }).to_string();
-    repo.create_audit_event(
-        "activity",
-        &activity_id,
-        "archive",
-        Some(&data),
-        operator_id.as_deref(),
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-#[tauri::command]
-pub fn restore_activity(
-    state: State<AppState>,
-    activity_id: String,
-    operator_id: Option<String>,
-) -> Result<(), String> {
-    let repo = state.repo.lock().unwrap();
-    repo.restore_activity(&activity_id)
-        .map_err(|e| e.to_string())?;
-    repo.create_audit_event(
-        "activity",
-        &activity_id,
-        "restore",
-        None,
-        operator_id.as_deref(),
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(())
 }
 
 /// What permanently deleting an activity would erase, for the confirmation (AUDIT-008).

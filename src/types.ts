@@ -621,3 +621,24 @@ export interface RelayMessage extends RelayMessageInput {
   voided_at: string;
   void_reason: string;
 }
+
+/** An activity an operator is named in (`OperatorUsage`). */
+export interface OperatorActivityUse {
+  id: string;
+  title: string;
+  /** They're its operator (net control). */
+  runs: boolean;
+  checkins: number;
+  spotter_reports: number;
+  /** Relay messages and steps. */
+  relay: number;
+  /** History entries they made on it or its records. */
+  history: number;
+}
+
+/** Where an operator is named, shown when removing them (AUDIT-013). */
+export interface OperatorUsage {
+  activities: OperatorActivityUse[];
+  /** Their history entries on anything outside an activity, by kind. */
+  other_history: { kind: string; count: number }[];
+}

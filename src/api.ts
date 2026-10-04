@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   Activity,
+  OperatorUsage,
   RelayMessage,
   RelayMessageInput,
   RelayStepInput,
@@ -44,8 +45,9 @@ export const listOperators = () => invoke<Operator[]>("list_operators");
 // otherwise retired (hidden, kept for history) and restorable.
 export const listRetiredOperators = () => invoke<Operator[]>("list_retired_operators");
 
-export const operatorHasRecords = (operator_id: string) =>
-  invoke<boolean>("operator_has_records", { operatorId: operator_id });
+/** Where an operator is named: what stops them being deleted (AUDIT-013). */
+export const operatorUsage = (operator_id: string) =>
+  invoke<OperatorUsage>("operator_usage", { operatorId: operator_id });
 
 export const deleteOperator = (operator_id: string) =>
   invoke<void>("delete_operator", { operatorId: operator_id });
@@ -82,9 +84,6 @@ export const setOperatorLocationCoords = (
   });
 
 export const listActivities = () => invoke<Activity[]>("list_activities");
-
-export const listArchivedActivities = () =>
-  invoke<Activity[]>("list_archived_activities");
 
 export const createActivity = (
   title: string,
@@ -137,20 +136,6 @@ export const setActivityLocationCoords = (
     lon,
     label,
   });
-
-export const archiveActivity = (
-  activity_id: string,
-  reason: string | null,
-  operator_id: string | null
-) =>
-  invoke<void>("archive_activity", {
-    activityId: activity_id,
-    reason,
-    operatorId: operator_id,
-  });
-
-export const restoreActivity = (activity_id: string, operator_id: string | null) =>
-  invoke<void>("restore_activity", { activityId: activity_id, operatorId: operator_id });
 
 // Permanent deletion (AUDIT-007): what it would erase, then erase it.
 export const activityDeletePreview = (activity_id: string) =>

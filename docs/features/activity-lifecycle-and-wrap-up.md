@@ -45,8 +45,7 @@ and stops later edits from quietly changing a net that is over.
 - **LIFE-006:** A `scheduled` activity MUST accept records. Starting the net
   records the time; it does not gate logging, so a forgotten Start never
   blocks a check-in.
-- **LIFE-007:** Archiving remains separate from closing (`EVENT-005`); an
-  activity MAY be archived when it is closed, from the close-out step.
+- **LIFE-007:** *(Retired.)* There is no archiving (`EVENT-005`).
 - **LIFE-008:** Ending MUST offer **End now**, **Cancel**, and, when there is
   an earlier sensible end, **End at HH:MM** saying what that time is. For an
   activity that was reopened, that time is the later of its earlier end and
@@ -96,7 +95,7 @@ and stops later edits from quietly changing a net that is over.
   the ICS 309 log, the spotter reports (CSV) and their ICS 213 when there are
   any, and a plain-text net summary before ending, all offline
   ([ics-form-exports.md](ics-form-exports.md)).
-- **LIFE-034:** The step MUST offer to archive the activity when it ends.
+- **LIFE-034:** *(Retired.)* The step no longer offers archiving.
 - **LIFE-035:** Ending MUST be one explicit action; cancelling MUST change
   nothing.
 

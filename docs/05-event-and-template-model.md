@@ -21,7 +21,7 @@ Implemented so far: simple net, directed net, SKYWARN, other (see [features/acti
 
 ## Lifecycle
 
-`draft -> scheduled -> active -> suspended -> active -> closed -> archived`
+`draft -> scheduled -> active -> suspended -> active -> closed`
 
 Implemented so far: `scheduled -> active -> closed`, and reopening
 (see [features/activity-lifecycle-and-wrap-up.md](features/activity-lifecycle-and-wrap-up.md)).
@@ -31,7 +31,7 @@ Implemented so far: `scheduled -> active -> closed`, and reopening
 - **EVENT-002:** Every transition MUST record local display time, canonical UTC time, operator, prior state, new state, and optional reason.
 - **EVENT-003:** Closing an activity MUST warn about unresolved traffic, reports requiring disposition, and incomplete assignments.
 - **EVENT-004:** Reopening a closed activity MUST require a reason and create an audit event.
-- **EVENT-005:** Archiving MUST hide an activity from normal active views without deleting it.
+- **EVENT-005:** *(Retired.)* Activities are not archived; finished ones stay listed under Closed (`UX-OPS-015`), and Delete removes one for good (`AUDIT-007`).
 
 ## Multiple open activities
 

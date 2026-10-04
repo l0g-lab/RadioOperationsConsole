@@ -43,13 +43,13 @@ Canonical time is stored in UTC. The application also retains the activity timez
 
 ## Permanent deletion
 
-Archiving and removal keep everything. Permanent deletion exists for two
-needs archiving can't meet: clearing out test runs and mistakes, and erasing
+Removing a check-in or report keeps everything. Permanent deletion exists for
+two needs removal can't meet: clearing out test runs and mistakes, and erasing
 people's names, call signs, and addresses from this computer once they are no
 longer needed.
 
 - **AUDIT-007:** The operator MUST be able to permanently delete any activity,
-  in any state (scheduled, active, or closed; archived or not). Deletion MUST
+  in any state (scheduled, active, or closed). Deletion MUST
   erase the activity, all its check-ins (including removed ones), all its
   spotter reports, and every history event recorded on any of them.
 - **AUDIT-008:** Before deleting an activity, the interface MUST say exactly
@@ -72,6 +72,12 @@ longer needed.
   **retired**: hidden from operator lists and pickers, while history keeps
   showing their name. Retired operators MUST be listed where they can be
   restored. Retiring and restoring MUST each create an audit event.
+  When removing such an operator, the application MUST say where they are
+  named: each activity they run or recorded something in (check-ins, spotter
+  reports, relay messages, history), with a way to open it, and their history
+  entries on anything else by kind (repeaters, places, net listings, other
+  operators, ICS 214 logs). Their own retire and restore entries don't count;
+  adding an operator records nothing about them.
 - **AUDIT-014:** Deleting or retiring the default operator MUST make another
   one the default, or none.
 

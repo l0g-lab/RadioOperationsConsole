@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import { lookupCallsign } from "../../callsignLookup";
-import type { Operator } from "../../types";
+import type { Operator, OperatorUsage } from "../../types";
 import LocationPicker from "../LocationPicker";
 import { resolveOfflineLocationAsync } from "../../locationResolution";
 import { Users } from "lucide-react";
@@ -13,6 +13,32 @@ interface Props {
   onOperatorsChanged: () => void;
   /** Makes an operator the default (`selectedOperatorId`). */
   onSetDefault: (id: string) => void;
+  /** Opens an activity the operator is named in, to change it. */
+  onSelectActivity?: (id: string) => void;
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** Where history entries outside an activity were made. */
+const HISTORY_PLACES: Record<string, string> = {
+  repeater: "the repeater directory",
+  place: "saved places",
+  net_listing: "net listings",
+  operator: "other operators",
+  ics214_log: "ICS 214 activity logs",
+};
+
+/** What they did in one activity, e.g. "net control · 14 check-ins · 3 history entries". */
+function activityUse(a: OperatorUsage["activities"][number]): string {
+  return [
+    a.runs ? "its operator (net control)" : "",
+    a.checkins ? plural(a.checkins, "check-in", "check-ins") : "",
+    a.spotter_reports ? plural(a.spotter_reports, "spotter report", "spotter reports") : "",
+    a.relay ? plural(a.relay, "relay entry", "relay entries") : "",
+    a.history ? plural(a.history, "history entry", "history entries") : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export default function OperatorsPanel({
@@ -20,6 +46,7 @@ export default function OperatorsPanel({
   selectedOperatorId,
   onOperatorsChanged,
   onSetDefault,
+  onSelectActivity,
 }: Props) {
   const hasOperators = operators.length > 0;
   // Collapsed by default once operators exist, so the roster isn't crowded
@@ -33,9 +60,11 @@ export default function OperatorsPanel({
   const [locationEditOperator, setLocationEditOperator] = useState<Operator | null>(null);
   // Removing: an operator nothing names is deleted; one with records can only
   // be retired, so history keeps who did what (AUDIT-012, AUDIT-013).
-  const [removing, setRemoving] = useState<{ operator: Operator; hasRecords: boolean } | null>(
-    null
-  );
+  const [removing, setRemoving] = useState<{
+    operator: Operator;
+    usage: OperatorUsage;
+    hasRecords: boolean;
+  } | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [retired, setRetired] = useState<Operator[]>([]);
   const [showRetired, setShowRetired] = useState(false);
@@ -50,7 +79,12 @@ export default function OperatorsPanel({
   async function startRemove(o: Operator) {
     setRemoveError(null);
     try {
-      setRemoving({ operator: o, hasRecords: await api.operatorHasRecords(o.id) });
+      const usage = await api.operatorUsage(o.id);
+      setRemoving({
+        operator: o,
+        usage,
+        hasRecords: usage.activities.length > 0 || usage.other_history.length > 0,
+      });
     } catch (e) {
       setRemoveError(String(e));
     }
@@ -212,11 +246,38 @@ export default function OperatorsPanel({
       {removing && (
         <div className="confirm-row">
           {removing.hasRecords ? (
-            <p>
-              {removing.operator.display_name} is named on check-ins, reports, or history, so they
-              can't be deleted without losing who did what. Retire them instead? They'll be hidden
-              from operator lists, and history keeps their name. You can restore them later.
-            </p>
+            <>
+              <p>
+                {removing.operator.display_name}
+                {removing.operator.call_sign && ` (${removing.operator.call_sign})`} is named here, so
+                they can't be deleted without losing who did what:
+              </p>
+              <ul className="operator-usage">
+                {removing.usage.activities.map((a) => (
+                  <li key={a.id}>
+                    {onSelectActivity ? (
+                      <button className="link-button" onClick={() => onSelectActivity(a.id)}>
+                        {a.title}
+                      </button>
+                    ) : (
+                      <strong>{a.title}</strong>
+                    )}{" "}
+                    <span className="settings-hint">— {activityUse(a)}</span>
+                  </li>
+                ))}
+                {removing.usage.other_history.map((h) => (
+                  <li key={h.kind}>
+                    {plural(h.count, "change", "changes")} in {HISTORY_PLACES[h.kind] ?? h.kind.replace(/_/g, " ")}
+                  </li>
+                ))}
+              </ul>
+              <p className="settings-hint">
+                {removing.usage.activities.length > 0 &&
+                  "To move an activity to another operator, open it and change Operator in its Edit form. "}
+                Or retire them: they'll be hidden from operator lists, and history keeps their name.
+                You can restore them later.
+              </p>
+            </>
           ) : (
             <p>
               Delete {removing.operator.display_name} permanently? They haven't been recorded on

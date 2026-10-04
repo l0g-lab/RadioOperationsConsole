@@ -28,7 +28,7 @@ interface Props {
 }
 
 /**
- * Edit, archive, delete, and per-activity location controls for the selected
+ * Edit, delete, and per-activity location controls for the selected
  * activity. Which activity is selected is chosen in the top bar (or the list
  * beside this panel); this is where it's managed.
  */
@@ -46,8 +46,6 @@ export default function SelectedActivityPanel({
   const [editingFocused, setEditingFocused] = useState(false);
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
   const change = (patch: Partial<ActivityDraft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
-  const [archivingFocused, setArchivingFocused] = useState(false);
-  const [archiveReason, setArchiveReason] = useState("");
   const [deletingFocused, setDeletingFocused] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
@@ -69,7 +67,6 @@ export default function SelectedActivityPanel({
     });
     setEditError(null);
     setEditingFocused(true);
-    setArchivingFocused(false);
   }
 
   useEffect(() => {
@@ -170,23 +167,6 @@ export default function SelectedActivityPanel({
     onActivitiesChanged();
   }
 
-  function startArchiveFocused() {
-    setArchivingFocused(true);
-    setArchiveReason("");
-    setEditingFocused(false);
-  }
-
-  function cancelArchiveFocused() {
-    setArchivingFocused(false);
-  }
-
-  async function confirmArchiveFocused() {
-    if (!focusedActivity) return;
-    await api.archiveActivity(focusedActivity.id, archiveReason.trim() || null, selectedOperatorId);
-    setArchivingFocused(false);
-    onActivitiesChanged();
-  }
-
   return (
     <div className="panel">
       <div className="panel-header-row">
@@ -201,7 +181,7 @@ export default function SelectedActivityPanel({
           one.
         </p>
       )}
-      {focusedActivity && !editingFocused && !archivingFocused && (
+      {focusedActivity && !editingFocused && (
         <>
           <div className="activity-detail">
             <div className="activity-detail-title">{focusedActivity.title}</div>
@@ -219,7 +199,6 @@ export default function SelectedActivityPanel({
           </div>
           <div className="inline-form">
             <button onClick={startEditFocused}>Edit</button>
-            <button onClick={startArchiveFocused}>Archive</button>
             <button className="danger" onClick={() => setDeletingFocused(true)}>
               Delete…
             </button>
@@ -249,18 +228,6 @@ export default function SelectedActivityPanel({
           error={editError}
           mapTitle={focusedActivity.title}
         />
-      )}
-      {focusedActivity && archivingFocused && (
-        <div className="inline-form confirm-row">
-          <span>Archive “{focusedActivity.title}”?</span>
-          <input
-            placeholder="Reason (optional)"
-            value={archiveReason}
-            onChange={(e) => setArchiveReason(e.target.value)}
-          />
-          <button onClick={confirmArchiveFocused}>Confirm archive</button>
-          <button onClick={cancelArchiveFocused}>Cancel</button>
-        </div>
       )}
 
       {deletingFocused && focusedActivity && (

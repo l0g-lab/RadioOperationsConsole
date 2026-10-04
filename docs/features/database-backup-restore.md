@@ -22,8 +22,8 @@ change, without touching files by hand.
 
 - **BACKUP-001:** A backup MUST contain the whole application database:
   operators, activities, the repeater directory, net listings, saved places, ICS 214 activity logs, check-ins, spotter reports, relayed messages,
-  the traffic noted on check-ins, and the audit history, including removed and
-  archived records.
+  the traffic noted on check-ins, and the audit history, including removed
+  records.
 - **BACKUP-002:** A backup MUST NOT contain downloaded offline data (road
   packs, the call-sign directory), application settings, or the QRZ
   credentials. Excluding credentials keeps backup files safe to copy and

@@ -116,6 +116,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0028_activity_operator.sql",
         include_str!("../migrations/0028_activity_operator.sql"),
     ),
+    (
+        "0029_unarchive.sql",
+        include_str!("../migrations/0029_unarchive.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't

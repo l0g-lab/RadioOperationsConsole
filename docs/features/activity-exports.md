@@ -69,9 +69,8 @@ be in one predictable place, complete, and unambiguous about time.
   emphasises (`LIFE-054`).
 - **EXPORT-017:** The summary MUST be readable without saving a file, laid
   out like the end-of-net step: on the Operations tab for the selected
-  activity, folded to a line of counts that opens with a click, and for each
-  archived activity without restoring it. The summary is saved from the
-  export list, where the exact text it saves as (`EXPORT-014`) MUST be
+  activity, folded to a line of counts that opens with a click. The summary
+  is saved from the export list, where the exact text it saves as (`EXPORT-014`) MUST be
   viewable first ("Show summary text"), with Copy and Save.
 - **EXPORT-018:** Each CSV export (check-ins, spotter reports, full history)
   MUST be viewable before saving ("Show CSV"): as a table read back from the

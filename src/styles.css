@@ -2669,3 +2669,9 @@ button.online-pill-working-offline:hover {
 .getting-started-optional {
   margin: 6px 0 0;
 }
+
+/* Where an operator is named, when removing them (OperatorsPanel.tsx). */
+.operator-usage {
+  margin: 4px 0;
+  padding-left: 18px;
+}

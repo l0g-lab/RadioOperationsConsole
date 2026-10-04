@@ -78,9 +78,9 @@ export default function App() {
   const refreshActivities = useCallback(() => {
     api.listActivities().then((acts) => {
       setActivities(acts);
-      // If the previously focused activity was archived (and so dropped from
+      // If the previously focused activity was deleted (and so dropped from
       // this list), reassign focus rather than leaving it pointed at a
-      // hidden activity (UX-OPS-014).
+      // missing activity (UX-OPS-014).
       setSelectedActivityId((prev) =>
         prev && acts.some((a) => a.id === prev) ? prev : (acts[0]?.id ?? null)
       );

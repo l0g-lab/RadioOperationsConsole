@@ -23,16 +23,10 @@ pub fn list_retired_operators(state: State<AppState>) -> Result<Vec<Operator>, S
         .map_err(|e| e.to_string())
 }
 
-/// Whether the operator is named on anything, which decides between delete
-/// and retire (AUDIT-012, AUDIT-013).
+/// Where the operator is named, to show when removing them (AUDIT-013).
 #[tauri::command]
-pub fn operator_has_records(state: State<AppState>, operator_id: String) -> Result<bool, String> {
-    state
-        .repo
-        .lock()
-        .unwrap()
-        .operator_has_records(&operator_id)
-        .map_err(|e| e.to_string())
+pub fn operator_usage(state: State<AppState>, operator_id: String) -> Result<crate::repo::OperatorUsage, String> {
+    state.repo.lock().unwrap().operator_usage(&operator_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

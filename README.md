@@ -103,7 +103,7 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 
 | Tab | For |
 | --- | --- |
-| Operations | Creating, editing, and archiving activities; operators (and which is the default), the repeater directory, saved places |
+| Operations | Creating, editing, and deleting activities; operators (and which is the default), the repeater directory, saved places |
 | Check-ins | Taking check-ins (with any traffic they have), the roster, the check-in map. Called **Contacts** for a station log and **Messages** for a relay station |
 | Spotter Reports | Hazard reports and the report map |
 | Weather | NWS alerts, forecast, radar |

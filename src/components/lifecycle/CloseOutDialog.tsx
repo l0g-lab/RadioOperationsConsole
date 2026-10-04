@@ -29,7 +29,6 @@ export default function CloseOutDialog({
   const noun = isRelay(activity.activity_type) ? "relay" : "net";
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
   const [conclusion, setConclusion] = useState(activity.conclusion);
-  const [archive, setArchive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Besides ending now, an earlier end is offered: for a reopened net, when it
@@ -84,9 +83,6 @@ export default function CloseOutDialog({
         operator?.id ?? null,
         endedAt
       );
-      if (archive) {
-        await api.archiveActivity(activity.id, "Archived when the net ended", operator?.id ?? null);
-      }
       onDone();
     } catch (e) {
       setError(String(e));
@@ -156,10 +152,6 @@ export default function CloseOutDialog({
           <ExportOptions activity={activity} operator={operator} conclusion={conclusion} />
         </details>
 
-        <label className="checkbox-row">
-          <input type="checkbox" checked={archive} onChange={(e) => setArchive(e.target.checked)} />
-          Archive this activity after ending it
-        </label>
 
         {error && <p className="weather-area-error">{error}</p>}
 

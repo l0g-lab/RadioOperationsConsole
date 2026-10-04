@@ -5,7 +5,7 @@ import type { Operator } from "../../types";
 
 vi.mock("../../api", () => ({
   listRetiredOperators: vi.fn(),
-  operatorHasRecords: vi.fn(),
+  operatorUsage: vi.fn(),
   deleteOperator: vi.fn(),
   retireOperator: vi.fn(),
   restoreOperator: vi.fn(),
@@ -45,7 +45,7 @@ describe("OperatorsPanel removal (AUDIT-012, AUDIT-013)", () => {
   });
 
   it("deletes an operator nothing names, after confirmation", async () => {
-    vi.mocked(api.operatorHasRecords).mockResolvedValue(false);
+    vi.mocked(api.operatorUsage).mockResolvedValue({ activities: [], other_history: [] });
     const user = userEvent.setup();
     const onChanged = renderPanel();
     await user.click(screen.getByRole("button", { name: "Remove Typo Person" }));
@@ -59,11 +59,20 @@ describe("OperatorsPanel removal (AUDIT-012, AUDIT-013)", () => {
   });
 
   it("offers only retiring for an operator with records", async () => {
-    vi.mocked(api.operatorHasRecords).mockResolvedValue(true);
+    vi.mocked(api.operatorUsage).mockResolvedValue({
+      activities: [
+        { id: "a1", title: "Tuesday net", runs: true, checkins: 14, spotter_reports: 0, relay: 0, history: 3 },
+      ],
+      other_history: [{ kind: "repeater", count: 2 }],
+    });
     const user = userEvent.setup();
     renderPanel();
     await user.click(screen.getByRole("button", { name: "Remove Typo Person" }));
     expect(await screen.findByText(/can't be deleted/)).toBeInTheDocument();
+    // Says exactly where they're named.
+    expect(screen.getByText("Tuesday net")).toBeInTheDocument();
+    expect(screen.getByText(/its operator \(net control\) · 14 check-ins · 3 history entries/)).toBeInTheDocument();
+    expect(screen.getByText("2 changes in the repeater directory")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete permanently" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Retire" }));

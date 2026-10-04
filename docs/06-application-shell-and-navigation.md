@@ -111,13 +111,13 @@ yet built, so these are documented here as the interim source of truth.
 
 The Operations tab follows the same division of labor as the Check-ins tab
 (`UX-CI-006`): the sidebar is for browsing and selecting, and the substantive
-work — creating, correcting, and archiving activities, and managing operator
+work — creating, correcting, and deleting activities, and managing operator
 profiles — happens in the tab's main content, not the sidebar.
 
 - **UX-OPS-001:** The Operations sidebar MUST be limited to a browsable,
-  clickable list of open (non-archived) activities used to change the
-  focused activity. It MUST NOT contain activity or operator creation,
-  editing, or archival controls.
+  clickable list of every activity, used to change the focused activity. It
+  MUST NOT contain activity or operator creation, editing, or deletion
+  controls.
 - **UX-OPS-015:** The sidebar MUST group activities by what is happening,
   not by date, in this order: **Open now** (started, not ended; each with
   when it opened), **Station logs** (`LOG-005`), **Upcoming** (not started;
@@ -130,9 +130,11 @@ profiles — happens in the tab's main content, not the sidebar.
   every group with a match MUST be shown open, and a filter with no matches
   MUST say so.
 - **UX-OPS-003:** The focused activity MUST be chosen from a selector in the
-  application header, visible on every tab, listing each open activity with
-  its date and time so same-titled activities can be told apart. Other tabs
-  MUST NOT carry their own activity selector.
+  application header, visible on every tab, listing each activity not yet
+  closed, the 10 most recently closed, and the focused one, with its date and
+  time so same-titled activities can be told apart; older ones are chosen from
+  the sidebar, which the selector points to. Other tabs MUST NOT carry their
+  own activity selector.
 - **UX-OPS-004:** The header MUST show the focused activity's frequency and
   offer an "Edit" action that goes to the Operations tab with that
   activity's edit form already open.
@@ -140,7 +142,7 @@ profiles — happens in the tab's main content, not the sidebar.
   the previous and next activity (Ctrl+[ and Ctrl+]), wrapping around, so
   operators running several nets can switch without the mouse.
 - **UX-OPS-002:** The Operations tab's main content MUST show the focused
-  activity's details with correction and archival actions, a create-new-
+  activity's details with correction and deletion actions, a create-new-
   activity form, and operator profile management (a list of existing
   operators and a create-operator form), so an operator never needs to leave
   the tab to set up who and what a session involves.
@@ -154,12 +156,12 @@ profiles — happens in the tab's main content, not the sidebar.
   ([features/repeater-directory.md](features/repeater-directory.md)). The
   Operations tab MUST also list the repeater directory for editing.
 
-## Activity correction and archival
+## Activity correction and deletion
 
-Per `AUDIT-003`, retiring an activity is archival, not deletion — the
-underlying record and its check-ins remain intact. Permanent deletion is a
-separate, explicitly confirmed action (`AUDIT-007`–`AUDIT-011`), offered both
-for the selected activity and in the archived list.
+Finished activities stay listed (under Closed in the sidebar, folded by
+default), so a past net is never out of sight. There is no archiving; an
+activity is removed only by permanent deletion, a separate, explicitly
+confirmed action (`AUDIT-007`–`AUDIT-011`).
 
 - **UX-OPS-010:** The operator MUST be able to correct an activity's title,
   scheduled date and time, channel/frequency (`NETOPS-040`), and location
@@ -167,13 +169,11 @@ for the selected activity and in the archived list.
 - **UX-OPS-011:** Correcting an activity MUST record an audit event capturing
   the before and after values, the acting operator, and the correction time
   (`AUDIT-001`, `AUDIT-002`).
-- **UX-OPS-012:** The operator MUST be able to archive an activity. Archiving
-  MUST hide it from the normal activity list without deleting it (`EVENT-005`)
-  and MUST require explicit confirmation (`PERSONA-009`).
-- **UX-OPS-013:** The Operations tab MUST offer a way to view and restore
-  archived activities.
-- **UX-OPS-014:** Archiving the focused activity MUST reassign or clear the
-  focused-activity selection so the interface never presents an archived
+- **UX-OPS-012:** *(Retired.)* Activities are no longer archived; activities
+  archived by earlier versions were brought back into the list on upgrade.
+- **UX-OPS-013:** *(Retired.)*
+- **UX-OPS-014:** Deleting the focused activity MUST reassign or clear the
+  focused-activity selection so the interface never presents a deleted
   activity as focused.
 
 ## Map as a supporting tool
