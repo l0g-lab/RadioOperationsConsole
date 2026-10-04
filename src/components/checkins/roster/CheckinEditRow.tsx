@@ -35,7 +35,6 @@ export function CheckinEditRow({
   const [qthLocation, setQthLocation] = useState(checkin.qth_location);
   const [gridSquare, setGridSquare] = useState(checkin.grid_square);
   const [address, setAddress] = useState(checkin.address);
-  const [hasTraffic, setHasTraffic] = useState(checkin.has_traffic);
   const [traffic, setTraffic] = useState(checkin.traffic);
   const [contact, setContact] = useState<ContactDraft>(() => draftFromCheckin(checkin));
   const [saveRefused, setSaveRefused] = useState(false);
@@ -86,8 +85,9 @@ export function CheckinEditRow({
       locationLat,
       locationLon,
       locationLabel,
-      hasTraffic,
-      hasTraffic ? traffic.trim() || null : null,
+      // Anything entered as traffic means the station has traffic.
+      traffic.trim() !== "",
+      traffic.trim() || null,
       log ? toContactDetails(contact) : null
     );
     onSaved();
@@ -130,12 +130,8 @@ export function CheckinEditRow({
           saveAttempted={saveRefused}
         />
       ) : (
-        <label className="checkbox-row">
-          <input type="checkbox" checked={hasTraffic} onChange={(e) => setHasTraffic(e.target.checked)} />
-          Has traffic
-        </label>
+        text(traffic, setTraffic, "checkin-edit-traffic", "Traffic (blank if none)")
       )}
-      {!log && hasTraffic && text(traffic, setTraffic, "checkin-edit-traffic", "Traffic")}
       <div className="checkin-edit-actions">
         <button onClick={save}>Save</button>
         <button onClick={onCancel}>Cancel</button>

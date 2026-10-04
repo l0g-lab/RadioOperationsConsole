@@ -50,7 +50,7 @@ describe("CheckinEntryForm in a range check", () => {
     renderRangeCheck();
     expect(screen.queryByPlaceholderText(/Coordinates/)).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/Full address/)).not.toBeInTheDocument();
-    expect(screen.queryByText("Has traffic")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Traffic")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Cross street")).toBeInTheDocument();
   });
 

@@ -13,6 +13,12 @@ top. Each release's section here is also its description on the
   exact point. A location you placed by hand (on the map, or as typed
   coordinates or a mile marker) is never moved.
 
+### Changed
+- **Traffic is just a field.** The check-in form always shows the traffic
+  field; type something there and the check-in has traffic, leave it blank and
+  it doesn't. The "Has traffic" checkbox is gone, here and when editing a
+  check-in.
+
 ## [2.2.0] - 2026-10-04
 
 ### Added

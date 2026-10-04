@@ -186,12 +186,12 @@ in a separate list.
 - **NETOPS-050:** A check-in MUST carry a "has traffic" flag, optional traffic
   details, and a "handled" mark. This is the traffic-none or traffic-listed
   state of the net (`SCOPE`, weekly-net capability).
-- **NETOPS-051:** The check-in entry form MUST offer a "Has traffic" checkbox.
-  Checking it MUST reveal a field for the traffic details. The details MAY be
-  left empty and added later; saving MUST NOT require them.
-- **NETOPS-052:** The check-in correction form (`NETOPS-030`) MUST allow
-  changing the flag and details. Clearing the flag MUST clear the details and
-  the handled mark.
+- **NETOPS-051:** The check-in entry form MUST always show a traffic field,
+  with no separate checkbox. A check-in has traffic exactly when something is
+  entered there; left blank, it has none.
+- **NETOPS-052:** The check-in correction form (`NETOPS-030`) MUST show the
+  same field. Clearing it MUST mark the check-in as having no traffic, which
+  clears the handled mark.
 - **NETOPS-053:** The roster MUST show a "Show traffic" action on check-ins
   that have traffic, and MUST NOT show one on those that do not. It MUST
   reveal the details beneath that check-in, as spotter-report notes are

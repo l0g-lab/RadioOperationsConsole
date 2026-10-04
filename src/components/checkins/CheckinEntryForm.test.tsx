@@ -141,7 +141,7 @@ describe("CheckinEntryForm in a station log", { timeout: 10_000 }, () => {
   it("saves a contact with its radio details, keeping the station setup for the next one", async () => {
     const user = userEvent.setup();
     renderLog();
-    expect(screen.queryByText("Has traffic")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Traffic")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Frequency")).toHaveAttribute("placeholder", "Frequency (146.520)");
 
     await user.type(screen.getByLabelText("Call sign"), "KD4ABC");
@@ -270,5 +270,25 @@ describe("CheckinEntryForm in a station log", { timeout: 10_000 }, () => {
     expect(api.stationHistory).toHaveBeenCalledWith("KD4ABC");
     expect(line).toHaveTextContent(/Worked before: 3 times/);
     expect(line).toHaveTextContent(/“Simplex log” on 146\.520 · Pat, Orlando/);
+  });
+});
+
+describe("CheckinEntryForm traffic", { timeout: 10_000 }, () => {
+  beforeEach(() => {
+    vi.mocked(api.createCheckin).mockReset();
+    vi.mocked(api.createCheckin).mockResolvedValue("c1");
+    vi.mocked(lookupCallsign).mockResolvedValue({ kind: "not_found", source: "qrz" } as never);
+  });
+
+  it("a check-in has traffic exactly when some is entered", async () => {
+    const user = userEvent.setup();
+    renderForm();
+    const call = screen.getByPlaceholderText(/Call sign/);
+    await user.type(call, "W1AW");
+    await user.type(screen.getByLabelText("Traffic"), "Shelter count{Enter}");
+    expect(vi.mocked(api.createCheckin).mock.calls[0].slice(10, 12)).toEqual([true, "Shelter count"]);
+
+    await user.type(call, "K4ABC{Enter}");
+    expect(vi.mocked(api.createCheckin).mock.calls[1].slice(10, 12)).toEqual([false, null]);
   });
 });

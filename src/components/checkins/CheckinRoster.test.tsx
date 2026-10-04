@@ -328,7 +328,7 @@ describe("CheckinRoster as a net", () => {
     const user = userEvent.setup();
     renderNet("t1");
     await user.click(screen.getByRole("button", { name: "Edit" }));
-    const traffic = screen.getByPlaceholderText("Traffic");
+    const traffic = screen.getByPlaceholderText("Traffic (blank if none)");
     expect(traffic).toHaveValue("Need a generator");
     await user.clear(traffic);
     await user.type(traffic, "Need water{Enter}");
@@ -336,5 +336,15 @@ describe("CheckinRoster as a net", () => {
     const args = vi.mocked(api.updateCheckin).mock.calls[0];
     expect(args.slice(0, 2)).toEqual(["t1", "W2TRF"]);
     expect(args.slice(10, 13)).toEqual([true, "Need water", null]);
+  });
+
+  it("clearing the traffic means the station has none", async () => {
+    const user = userEvent.setup();
+    renderNet("t1");
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const traffic = screen.getByPlaceholderText("Traffic (blank if none)");
+    await user.clear(traffic);
+    await user.type(traffic, "{Enter}");
+    expect(vi.mocked(api.updateCheckin).mock.calls[0].slice(10, 12)).toEqual([false, null]);
   });
 });

@@ -63,7 +63,7 @@ const HINTS = {
   grid: "Grid square",
   address: "Full address (optional, auto-filled from QRZ)",
   coords: "Coordinates, or e.g. MM 182 turnpike",
-  traffic: "Traffic — what they have to pass (optional, can be added later)",
+  traffic: "Traffic — what they have to pass (blank if none)",
 };
 
 // Long enough that a pause mid-call ("KR4H…GY") doesn't look up the partial
@@ -90,7 +90,6 @@ export default function CheckinEntryForm({
   const [qthLocation, setQthLocation] = useState("");
   const [gridSquare, setGridSquare] = useState("");
   const [address, setAddress] = useState("");
-  const [hasTraffic, setHasTraffic] = useState(false);
   const [traffic, setTraffic] = useState("");
   const [contact, setContact] = useState<ContactDraft>(EMPTY_CONTACT);
   const [contactSaveRefused, setContactSaveRefused] = useState(false);
@@ -360,15 +359,15 @@ export default function CheckinEntryForm({
       resolved?.lat ?? null,
       resolved?.lon ?? null,
       reportedLabel || trimmedQth || trimmedAddress || resolved?.sourceText || null,
-      hasTraffic,
-      hasTraffic ? traffic.trim() || null : null,
+      // Anything entered as traffic means the station has traffic.
+      traffic.trim() !== "",
+      traffic.trim() || null,
       log ? toContactDetails(contact) : null,
       // Typed over the auto-filled point: coordinates or a mile marker.
       coordsEditedRef.current && typed != null
     );
     // The station setup carries over to the next contact.
     setContact(nextContact(contact));
-    setHasTraffic(false);
     setTraffic("");
     setCallSign("");
     setName("");
@@ -576,26 +575,17 @@ export default function CheckinEntryForm({
       <WorkedBefore history={history} label={log ? "Worked before" : "Checked in before"} />
       {!log && !rangeCheck && (
         <div className="checkin-entry-row checkin-entry-row-traffic">
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={hasTraffic}
-              onChange={(e) => setHasTraffic(e.target.checked)}
-            />
-            Has traffic
-          </label>
-          {hasTraffic && (
-            <input
-              className="checkin-entry-traffic"
-              placeholder={HINTS.traffic}
-              style={hintWidth(HINTS.traffic)}
-              value={traffic}
-              onChange={(e) => setTraffic(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSaveCheckin();
-              }}
-            />
-          )}
+          <input
+            className="checkin-entry-traffic"
+            aria-label="Traffic"
+            placeholder={HINTS.traffic}
+            style={hintWidth(HINTS.traffic)}
+            value={traffic}
+            onChange={(e) => setTraffic(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveCheckin();
+            }}
+          />
         </div>
       )}
       {qrzStatus === "found" && lookupSource !== "qrz" && fileLacksStreet && (
