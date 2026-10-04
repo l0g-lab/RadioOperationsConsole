@@ -4,7 +4,7 @@ import { lookupCallsign } from "../../callsignLookup";
 import type { Operator, OperatorUsage } from "../../types";
 import LocationPicker from "../LocationPicker";
 import { resolveOfflineLocationAsync } from "../../locationResolution";
-import { Users } from "lucide-react";
+import { MapPin, Star, UserMinus, Users } from "lucide-react";
 
 interface Props {
   operators: Operator[];
@@ -206,9 +206,8 @@ export default function OperatorsPanel({
         {operators.length === 0 && <p className="checkin-empty-state">No operators yet.</p>}
         {operators.map((o) => (
           <div key={o.id} className="operator-row">
-            <span>
+            <span className="operator-row-name" title={o.location_label ? `Location: ${o.location_label}` : undefined}>
               {o.display_name}
-              {o.location_label && ` — ${o.location_label}`}
               {o.call_sign && ` — ${o.call_sign}`}
               {operators.length > 1 && o.id === selectedOperatorId && (
                 <span
@@ -219,25 +218,32 @@ export default function OperatorsPanel({
                 </span>
               )}
             </span>
-            <span className="operator-row-actions">
+            <span className="operator-row-actions operator-row-icons">
               {operators.length > 1 && o.id !== selectedOperatorId && (
                 <button
-                  className="link-button"
+                  className="icon-button"
+                  aria-label={`Make ${o.display_name} the default`}
                   onClick={() => onSetDefault(o.id)}
-                  title="New activities are run by this operator unless you choose another"
+                  title="Make default: new activities are run by this operator unless you choose another"
                 >
-                  Make default
+                  <Star />
                 </button>
               )}
-              <button className="link-button" onClick={() => setLocationEditOperator(o)}>
-                Edit location
+              <button
+                className="icon-button"
+                aria-label={`Edit location of ${o.display_name}`}
+                title={o.location_label ? `Edit location (${o.location_label})` : "Set location"}
+                onClick={() => setLocationEditOperator(o)}
+              >
+                <MapPin />
               </button>
               <button
-                className="link-button danger-link"
+                className="icon-button danger-link"
                 aria-label={`Remove ${o.display_name}`}
+                title="Remove"
                 onClick={() => startRemove(o)}
               >
-                Remove
+                <UserMinus />
               </button>
             </span>
           </div>

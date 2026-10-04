@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
+import { EXPAND_EVENT } from "../map/expandControl";
 import * as api from "../api";
 import { ERR_OFFLINE, type Place } from "../types";
 import { formatAxis, getCoordFormat, parseAxis, type CoordFormat } from "../geo";
@@ -155,6 +156,13 @@ export default function LocationPicker({
     const map = createBaseMap(mapContainerRef.current, startCenter, startZoom);
     map.on("click", (e: L.LeafletMouseEvent) => {
       placePin(e.latlng.lat, e.latlng.lng, false);
+    });
+    // Leaving full view: bring the chosen point back into sight.
+    map.on(EXPAND_EVENT, (e) => {
+      const pin = pinRef.current;
+      if (!(e as unknown as { expanded: boolean }).expanded && pin) {
+        map.setView(pin.getLatLng(), Math.max(map.getZoom(), PIN_ZOOM));
+      }
     });
     mapRef.current = map;
     if (initialLat != null && initialLon != null) {

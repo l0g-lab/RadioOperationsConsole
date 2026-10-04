@@ -2678,40 +2678,53 @@ button.online-pill-working-offline:hover {
   padding-left: 18px;
 }
 
-/* Repeater and place lists: one line per entry (RepeatersPanel, PlacesPanel). */
-.repeater-row {
-  align-items: center;
+/* Repeater and place lists (RepeatersPanel, PlacesPanel): one shared grid,
+   so every row's frequency (or coordinates) starts in the same place. The
+   name column is as wide as the longest name, up to half the list; a longer
+   name wraps inside it. Rows dissolve into the grid's cells. */
+.repeater-list {
+  display: grid;
+  /* Name (as wide as the longest, up to about two-thirds; longer ones wrap),
+     the output frequency, then the buttons. */
+  grid-template-columns: fit-content(65%) minmax(5.5em, 1fr) auto;
+  column-gap: 0;
+  align-items: stretch;
+  overflow-x: hidden;
 }
 
-.repeater-row .repeater-row-text {
-  flex-direction: row;
-  align-items: baseline;
-  gap: 8px;
-  flex: 1;
+/* Anything that isn't an entry (forms, messages, retired rows) spans the list. */
+.repeater-list > * {
+  grid-column: 1 / -1;
+}
+
+.repeater-list > .repeater-row,
+.repeater-row > .repeater-row-text {
+  display: contents;
+}
+
+.repeater-row-name,
+.repeater-row-detail,
+.repeater-row-actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 4px 2px;
+  border-bottom: 1px solid var(--border);
 }
 
 .repeater-row-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding-right: 10px;
 }
 
 .repeater-row-detail {
-  flex-shrink: 0;
-  white-space: nowrap;
   font-size: calc(12px * var(--font-scale));
+  white-space: nowrap;
+  padding-right: 10px;
 }
-
-/* Fixed-width columns in the repeater list, so frequencies line up. */
-.repeater-list .repeater-row-detail {
-  width: 23ch;
-}
-
 
 .repeater-row-actions {
   gap: 2px;
+  justify-content: flex-end;
 }
 
 /* A small button showing just an icon; its name is in aria-label and title. */
@@ -2743,4 +2756,45 @@ button.online-pill-working-offline:hover {
 /* Short fields (date, time, started, ended) stay short, so two fit side by side. */
 .activity-field:not(.activity-field-wide) > input {
   width: 17ch;
+}
+
+/* In a narrow column an operator's links drop below the name rather than
+   running off the side. */
+.operator-list {
+  overflow-x: hidden;
+}
+
+.operator-row {
+  flex-wrap: wrap;
+}
+
+.operator-row > span:first-child {
+  min-width: 0;
+}
+
+/* A repeater's full details, opened with its Show button. */
+.repeater-row-more {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 4px 8px 6px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-dim);
+  font-size: calc(12px * var(--font-scale));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.operator-row {
+  align-items: center;
+}
+
+.operator-row-name {
+  min-width: 0;
+}
+
+.operator-row-icons {
+  gap: 2px;
+  align-items: center;
 }

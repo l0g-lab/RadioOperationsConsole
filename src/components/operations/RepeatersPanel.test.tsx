@@ -100,7 +100,11 @@ describe("RepeatersPanel", () => {
   it("lists, edits and retires repeaters (RPT-010)", async () => {
     const user = userEvent.setup();
     renderPanel([W4ABC]);
-    expect(screen.getByText("146.940 -0.600 PL 100.0")).toBeInTheDocument();
+    // The list shows the output frequency; Show opens the full details.
+    expect(screen.getByText("146.940")).toBeInTheDocument();
+    expect(screen.queryByText(/Input 146.340/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show W4ABC Orlando" }));
+    expect(screen.getByText(/Input 146.340 \(-0.600\) · Tone PL 100.0/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Edit W4ABC Orlando" }));
     expect(screen.getByLabelText("Offset direction")).toHaveValue("-");

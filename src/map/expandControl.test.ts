@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import L from "leaflet";
-import { EXPANDED_CLASS, addExpandControl } from "./expandControl";
+import { EXPANDED_CLASS, EXPAND_EVENT, addExpandControl } from "./expandControl";
 
 function setup() {
   const el = document.createElement("div");
@@ -36,6 +36,19 @@ describe("map Full view button", () => {
     expect(el.classList.contains(EXPANDED_CLASS)).toBe(false);
     expect(button.textContent).toBe("Full view");
     expect(invalidate).toHaveBeenCalledTimes(2);
+  });
+
+  it("doesn't count as a click on the map, though its label changes as it's clicked", () => {
+    const { map, button } = setup();
+    const onMap = vi.fn();
+    const changed = vi.fn();
+    map.on("click", onMap);
+    map.on(EXPAND_EVENT, (e) => changed((e as unknown as { expanded: boolean }).expanded));
+    // Click the label inside the button, which is replaced while handling it.
+    button.querySelector("span")!.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 5, clientY: 5 }));
+    button.querySelector("span")!.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 5, clientY: 5 }));
+    expect(onMap).not.toHaveBeenCalled();
+    expect(changed.mock.calls).toEqual([[true], [false]]);
   });
 
   it("Escape leaves full view without reaching handlers behind the map", () => {

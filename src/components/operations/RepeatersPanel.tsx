@@ -1,18 +1,10 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Repeater, RepeaterDetails, ToneKind } from "../../types";
 import { formatCoords } from "../../geo";
-import {
-  CTCSS_TONES,
-  DCS_CODES,
-  formatMhz,
-  formatRepeater,
-  inputMhz,
-  repeaterMatches,
-  suggestedOffset,
-} from "../../repeaters";
+import { CTCSS_TONES, DCS_CODES, formatMhz, formatRepeater, inputMhz, repeaterMatches, suggestedOffset, tuningDetails } from "../../repeaters";
 import LocationPicker from "../LocationPicker";
-import { Archive, Pencil, RadioTower } from "lucide-react";
+import { Archive, Info, Pencil, RadioTower } from "lucide-react";
 
 interface Props {
   repeaters: Repeater[];
@@ -354,6 +346,15 @@ export default function RepeatersPanel({
   const [retired, setRetired] = useState<Repeater[]>([]);
   const [showRetired, setShowRetired] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Repeaters whose full details are shown under their row.
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = (id: string) =>
+    setOpen((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   useEffect(() => {
     api
@@ -424,44 +425,60 @@ export default function RepeatersPanel({
               onCancel={() => setEditing(null)}
             />
           ) : (
-            <div key={r.id} className="operator-row repeater-row">
-              {/* One line each, so a long directory still fits: notes and how many
-                  nets use it are in the tooltip. */}
-              <span
-                className="repeater-row-text"
-                title={
-                  [
-                    r.notes,
-                    (netCounts?.get(r.id) ?? 0) > 0
-                      ? `${netCounts!.get(r.id)} ${netCounts!.get(r.id) === 1 ? "net" : "nets"} on this repeater — see the Nets tab`
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join("\n") || undefined
-                }
-              >
-                <strong className="repeater-row-name">{r.name}</strong>
-                <span className="checkin-row-mono repeater-row-detail">{formatRepeater(r)}</span>
-              </span>
-              <span className="operator-row-actions repeater-row-actions">
-                <button
-                  className="icon-button"
-                  aria-label={`Edit ${r.name}`}
-                  title="Edit"
-                  onClick={() => setEditing(r.id)}
-                >
-                  <Pencil />
-                </button>
-                <button
-                  className="icon-button danger-link"
-                  aria-label={`Retire ${r.name}`}
-                  title="Retire: hide it from lists. Activities that used it don't change."
-                  onClick={() => setRetiredState(r, true)}
-                >
-                  <Archive />
-                </button>
-              </span>
-            </div>
+            <Fragment key={r.id}>
+              {/* One line each: the name and output frequency; the rest is behind Show. */}
+              <div className="operator-row repeater-row">
+                <span className="repeater-row-text" title={formatRepeater(r)}>
+                  <strong className="repeater-row-name">{r.name}</strong>
+                  <span className="checkin-row-mono repeater-row-detail">{formatMhz(r.output_mhz)}</span>
+                </span>
+                <span className="operator-row-actions repeater-row-actions">
+                  <button
+                    className="icon-button"
+                    aria-label={`Show ${r.name}`}
+                    aria-expanded={open.has(r.id)}
+                    title={open.has(r.id) ? "Hide details" : "Show details"}
+                    onClick={() => toggle(r.id)}
+                  >
+                    <Info />
+                  </button>
+                  <button
+                    className="icon-button"
+                    aria-label={`Edit ${r.name}`}
+                    title="Edit"
+                    onClick={() => setEditing(r.id)}
+                  >
+                    <Pencil />
+                  </button>
+                  <button
+                    className="icon-button danger-link"
+                    aria-label={`Retire ${r.name}`}
+                    title="Retire: hide it from lists. Activities that used it don't change."
+                    onClick={() => setRetiredState(r, true)}
+                  >
+                    <Archive />
+                  </button>
+                </span>
+              </div>
+              {open.has(r.id) && (
+                <div className="repeater-row-more">
+                  <div>{tuningDetails(r)}</div>
+                  {r.location_lat != null && r.location_lon != null && (
+                    <div>
+                      Location: {r.location_label ? `${r.location_label} — ` : ""}
+                      {formatCoords(r.location_lat, r.location_lon)}
+                    </div>
+                  )}
+                  {(netCounts?.get(r.id) ?? 0) > 0 && (
+                    <div>
+                      {netCounts!.get(r.id)} {netCounts!.get(r.id) === 1 ? "net" : "nets"} on this repeater —
+                      see the Nets tab
+                    </div>
+                  )}
+                  {r.notes && <div>Notes: {r.notes}</div>}
+                </div>
+              )}
+            </Fragment>
           )
         )}
       </div>

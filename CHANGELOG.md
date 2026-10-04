@@ -6,6 +6,20 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-10-04
+
+### Fixed
+- **Full view on maps no longer drops a marker where the button is.**
+  Clicking *Full view* or *Exit full view* used to count as a click on the
+  map, so when choosing a location it replaced the point you'd picked. Now it
+  doesn't, and leaving full view zooms to the point you picked.
+- **Repeater and place lists no longer scroll sideways or run under their
+  buttons, and names aren't cut off.** Each repeater shows its name and output
+  frequency, lined up in columns; the ⓘ button opens its full details (input
+  and offset, tone, mode, location, notes, and how many nets use it).
+  Operators use the same small icon buttons (make default, edit location,
+  remove), so their rows fit on one line.
+
 ## [2.3.0] - 2026-10-04
 
 ### Changed
@@ -264,7 +278,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.1...HEAD
+[2.3.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.2...v2.3.0
 [2.2.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.0...v2.2.1

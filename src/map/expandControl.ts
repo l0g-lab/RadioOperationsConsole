@@ -3,6 +3,12 @@ import L from "leaflet";
 /** Class put on the map's container while it fills the window. */
 export const EXPANDED_CLASS = "map-expanded";
 
+/**
+ * Fired on the map after it enters or leaves full view, with `expanded`, so
+ * whatever uses the map can bring its point back into sight.
+ */
+export const EXPAND_EVENT = "expandchange";
+
 // Lucide "maximize-2" / "minimize-2", inlined because Leaflet controls are
 // plain DOM, not React.
 const SVG_ATTRS =
@@ -33,6 +39,7 @@ export function addExpandControl(map: L.Map): L.Control {
     container.classList.toggle(EXPANDED_CLASS, expanded);
     render();
     map.invalidateSize();
+    map.fire(EXPAND_EVENT, { expanded });
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -50,9 +57,13 @@ export function addExpandControl(map: L.Map): L.Control {
       button.type = "button";
       render();
       L.DomEvent.disableClickPropagation(wrap);
-      L.DomEvent.on(button, "click", () =>
-        setExpanded(!container.classList.contains(EXPANDED_CLASS))
-      );
+      L.DomEvent.on(button, "click", (e) => {
+        // Stopped here: Leaflet otherwise decides whether a click was on the
+        // map by walking up from what was clicked, and render() has just
+        // replaced it, so the click would land on the map as a new point.
+        L.DomEvent.stop(e);
+        setExpanded(!container.classList.contains(EXPANDED_CLASS));
+      });
       document.addEventListener("keydown", onKeyDown, true);
       return wrap;
     },
