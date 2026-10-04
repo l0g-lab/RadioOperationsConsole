@@ -14,6 +14,8 @@ import { RemoveConfirmBar, RemovedPanel } from "../RemoveControls";
 import { useVoidableList } from "../../hooks/useVoidableList";
 import LocationPicker from "../LocationPicker";
 import { ClipboardCheck, NotebookPen } from "lucide-react";
+import SortToggle from "../SortToggle";
+import { sortByTime, useSortOrder } from "../../hooks/useSortOrder";
 import { NetColumns, NetRow } from "./roster/NetRows";
 import { LogColumns, LogRow } from "./roster/LogRows";
 import { RangeColumns, RangeEditRow, RangeRow } from "./roster/RangeRows";
@@ -69,6 +71,7 @@ export default function CheckinRoster({
   /** Contacts whose details (power, antenna, notes, address…) are expanded. */
   const [openDetails, setOpenDetails] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
+  const [order, toggleOrder] = useSortOrder(log ? "contacts" : "checkins", "oldest");
   const [openTraffic, setOpenTraffic] = useState<Set<string>>(new Set());
   const [checkinLookupStatus, setCheckinLookupStatus] = useState<QrzStatus>("idle");
   const [lookupSource, setLookupSource] = useState<CallsignSource>("qrz");
@@ -249,7 +252,7 @@ export default function CheckinRoster({
         )
       )
     : checkins;
-  const rosterNewestFirst = [...shown].reverse();
+  const rows = sortByTime(shown, (c) => c.checked_in_at, order);
   const noun = log ? "contacts" : "check-ins";
 
   return (
@@ -273,6 +276,7 @@ export default function CheckinRoster({
                 ? `${checkins.length} ${checkins.length === 1 ? "contact" : "contacts"}`
                 : `${checkins.length} checked in`}
             </span>
+            <SortToggle order={order} onToggle={toggleOrder} />
             <button onClick={onShowMap}>Show map</button>
             <button
               className="link-button"
@@ -309,7 +313,7 @@ export default function CheckinRoster({
           }
         >
           <div className="checkin-roster">
-            {rosterNewestFirst.length > 0 &&
+            {rows.length > 0 &&
               (rangeCheck ? (
                 <RangeColumns distanceFrom={distanceFrom} />
               ) : log ? (
@@ -317,7 +321,7 @@ export default function CheckinRoster({
               ) : (
                 <NetColumns />
               ))}
-            {rosterNewestFirst.length === 0 && (
+            {rows.length === 0 && (
               <p className="checkin-empty-state">
                 {query
                   ? `No ${noun} match “${search.trim()}”.`
@@ -326,7 +330,7 @@ export default function CheckinRoster({
                     : "No check-ins recorded yet."}
               </p>
             )}
-            {rosterNewestFirst.map((c) => {
+            {rows.map((c) => {
               const row = {
                 checkin: c,
                 selected: selectedCheckinId === c.id,

@@ -84,7 +84,9 @@ be reduced to a narrow sidebar widget.
   call-sign field and return keyboard focus to it (`UX-CI-001`).
 - **NETOPS-013:** The roster MUST show newest check-ins in a position where
   they are immediately visible without scrolling, to support quick
-  correction (`UX-CI-005`).
+  correction (`UX-CI-005`). The roster, like the spotter-report and relay
+  message lists, MUST offer a button switching between newest first and
+  oldest first, remembered on this computer for that kind of list.
 - **NETOPS-014:** Selecting a roster entry MUST expose a direct action to
   create a linked report or traffic item (`UX-CI-004`) without navigating away
   from the Check-ins tab.

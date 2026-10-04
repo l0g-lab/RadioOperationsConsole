@@ -5,6 +5,8 @@ import { relayStatusLabel } from "../../relay";
 import { formatContactTime, parseContactTime } from "../../utils";
 import { RemoveConfirmBar, RemovedPanel } from "../RemoveControls";
 import { Send } from "lucide-react";
+import SortToggle from "../SortToggle";
+import { sortByTime, useSortOrder } from "../../hooks/useSortOrder";
 
 /** Other ways traffic gets passed, offered alongside the frequencies already used. */
 const OTHER_MEANS = ["Phone", "Winlink", "In person", "Runner"];
@@ -100,8 +102,11 @@ export default function RelayWorkspace({
   }, [activity.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const byId = new Map(messages.map((m) => [m.id, m]));
-  const held = messages.filter((m) => m.status === "held");
-  const done = messages.filter((m) => m.status !== "held").reverse();
+  // One order for both lists, by when each message came in.
+  const [order, toggleOrder] = useSortOrder("relay-messages", "oldest");
+  const sorted = sortByTime(messages, (m) => m.received_at, order);
+  const held = sorted.filter((m) => m.status === "held");
+  const done = sorted.filter((m) => m.status !== "held");
   const viaChoices = Array.from(
     new Set(
       [
@@ -460,7 +465,10 @@ export default function RelayWorkspace({
       )}
 
       <div className="panel relay-list">
-        <h3>To pass ({held.length})</h3>
+        <div className="panel-header-row">
+          <h3>To pass ({held.length})</h3>
+          <SortToggle order={order} onToggle={toggleOrder} />
+        </div>
         {held.length === 0 ? (
           <p className="checkin-empty-state">Nothing waiting to be passed on.</p>
         ) : (

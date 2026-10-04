@@ -10,6 +10,8 @@ import { ics213FromReport, type GeneralMessage213Input } from "../../icsForms";
 import { useVoidableList } from "../../hooks/useVoidableList";
 import SpotterReportMap from "./SpotterReportMap";
 import { Tornado } from "lucide-react";
+import SortToggle from "../SortToggle";
+import { sortByTime, useSortOrder } from "../../hooks/useSortOrder";
 
 interface Props {
   activity: Activity;
@@ -67,6 +69,8 @@ export default function SpotterReportRoster({
   >(null);
   const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
 
+  const [order, toggleOrder] = useSortOrder("spotter-reports", "newest");
+  const sortedReports = sortByTime(reports, (r) => r.reported_at, order);
   const selectedReport = reports.find((r) => r.id === selectedReportId) ?? null;
 
   const removal = useVoidableList<SpotterReport>({
@@ -101,6 +105,7 @@ export default function SpotterReportRoster({
           <h3><Tornado className="heading-icon" />Spotter Reports — {activity.title}</h3>
           <div className="checkin-roster-header-actions">
             <span className="checkin-roster-count">{reports.length} logged</span>
+            <SortToggle order={order} onToggle={toggleOrder} />
             <button onClick={() => setShowMap(true)} disabled={reports.length === 0}>
               Show Map
             </button>
@@ -135,7 +140,7 @@ export default function SpotterReportRoster({
           {reports.length === 0 && (
             <p className="checkin-empty-state">No spotter reports logged yet.</p>
           )}
-          {reports.map((r) => {
+          {sortedReports.map((r) => {
             const { date, time } = reportDateTimeParts(r.reported_at);
             const hasCoords = r.lat != null && r.lon != null;
             const coordsDisplay = hasCoords ? formatCoords(r.lat as number, r.lon as number) : "—";

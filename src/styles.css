@@ -2483,3 +2483,15 @@ button.online-pill-working-offline:hover {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Newest/oldest first switch on lists (SortToggle.tsx). */
+.sort-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.sort-toggle-icon {
+  width: 1.1em;
+  height: 1.1em;
+}

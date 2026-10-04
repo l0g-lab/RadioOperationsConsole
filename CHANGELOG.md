@@ -19,6 +19,11 @@ top. Each release's section here is also its description on the
   it doesn't. The "Has traffic" checkbox is gone, here and when editing a
   check-in.
 
+### Added
+- **Sort button** on the check-in and contact lists, spotter reports, and
+  relayed messages: switch between newest first and oldest first. Each list
+  remembers your choice on this computer.
+
 ## [2.2.0] - 2026-10-04
 
 ### Added
