@@ -24,6 +24,10 @@ interface Props {
   /** From a net listing's "Start activity": fills the create form. */
   activityPrefill: ActivityPrefill | null;
   onActivityPrefillHandled: () => void;
+  /** Open the new-activity form (from the top bar or the button here). */
+  newActivityRequested: boolean;
+  onNewActivity: () => void;
+  onNewActivityHandled: () => void;
 }
 
 export default function OperationsTab({
@@ -39,6 +43,9 @@ export default function OperationsTab({
   onEditActivityHandled,
   activityPrefill,
   onActivityPrefillHandled,
+  newActivityRequested,
+  onNewActivity,
+  onNewActivityHandled,
 }: Props) {
 
   // The repeater directory, shared by its panel and the activity forms.
@@ -81,15 +88,6 @@ export default function OperationsTab({
       )}
       <div className="operations-workspace">
         <div className="operations-column">
-          <SelectedActivityPanel
-            activities={activities}
-            selectedActivityId={selectedActivityId}
-            selectedOperatorId={selectedOperatorId}
-            onActivitiesChanged={onActivitiesChanged}
-            editRequested={editActivityRequested}
-            onEditRequestHandled={onEditActivityHandled}
-            repeaters={repeaters}
-          />
           <CreateActivityPanel
             activities={activities}
             onActivitiesChanged={onActivitiesChanged}
@@ -99,6 +97,18 @@ export default function OperationsTab({
             repeaters={repeaters}
             prefill={activityPrefill}
             onPrefillHandled={onActivityPrefillHandled}
+            openRequested={newActivityRequested}
+            onOpenHandled={onNewActivityHandled}
+          />
+          <SelectedActivityPanel
+            activities={activities}
+            selectedActivityId={selectedActivityId}
+            selectedOperatorId={selectedOperatorId}
+            onActivitiesChanged={onActivitiesChanged}
+            editRequested={editActivityRequested}
+            onEditRequestHandled={onEditActivityHandled}
+            repeaters={repeaters}
+            onNewActivity={onNewActivity}
           />
           <ArchivedActivitiesPanel
             activities={activities}

@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity, ActivitySummary } from "../../types";
-import { activitySummaryToText, exportFilename } from "../../export";
-import { ActionMessage, SummaryView } from "../exports/SummaryView";
-import { useTextFileActions } from "../exports/PreviewWindow";
-import { SummaryTextDialog } from "../exports/SummaryDialog";
+import { SummaryView } from "../exports/SummaryView";
+import { summaryFacts } from "../../summaryFacts";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 /**
- * The selected activity's summary, laid out like the end-of-net step, with
- * the text it saves as one click away (EXPORT-017).
+ * The selected activity's summary, laid out like the end-of-net step
+ * (EXPORT-017). Viewing or saving it as text is on the Exports tab.
  */
 export default function ActivitySummaryPanel({ activity }: { activity: Activity }) {
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
-  const [showingText, setShowingText] = useState(false);
+  // Folded to one line by default, so the page isn't mostly summary; the same
+  // summary is in the End net window and on the Exports tab.
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     api
@@ -22,32 +23,21 @@ export default function ActivitySummaryPanel({ activity }: { activity: Activity 
     // The activity object changes whenever its state does, which is when the numbers matter most.
   }, [activity]);
 
-  const text = summary ? activitySummaryToText(activity, summary) : null;
-  const { save, message } = useTextFileActions(
-    exportFilename(activity, "Summary", "txt"),
-    text,
-    "the summary"
-  );
-
   if (!summary) return null;
   return (
     <div className="location-subpanel">
-      <div className="panel-header-row">
+      <button className="summary-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {open ? <ChevronDown className="summary-toggle-icon" /> : <ChevronRight className="summary-toggle-icon" />}
         <h4>Summary</h4>
-        <span className="operator-row-actions">
-          <button className="link-button" onClick={() => setShowingText(true)}>
-            Show summary text
-          </button>
-          <button className="link-button" onClick={save}>
-            Save summary (text)
-          </button>
-        </span>
-      </div>
-      <SummaryView activity={activity} summary={summary} notes={summary.conclusion.trim()} />
-      <ActionMessage message={message} />
-      {showingText && (
-        <SummaryTextDialog activity={activity} onClose={() => setShowingText(false)} />
-      )}
+        {!open && (
+          <span className="settings-hint">
+            {summaryFacts(activity.activity_type, summary)
+              .map((f) => f.text)
+              .join(" · ")}
+          </span>
+        )}
+      </button>
+      {open && <SummaryView activity={activity} summary={summary} notes={summary.conclusion.trim()} />}
     </div>
   );
 }

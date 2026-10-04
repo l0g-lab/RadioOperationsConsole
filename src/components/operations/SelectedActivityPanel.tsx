@@ -21,6 +21,8 @@ interface Props {
   onEditRequestHandled: () => void;
   /** The repeater directory, to pick from. */
   repeaters: Repeater[];
+  /** Opens the new-activity form. */
+  onNewActivity: () => void;
 }
 
 /**
@@ -36,6 +38,7 @@ export default function SelectedActivityPanel({
   editRequested,
   onEditRequestHandled,
   repeaters,
+  onNewActivity,
 }: Props) {
   const [editingFocused, setEditingFocused] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -49,16 +52,16 @@ export default function SelectedActivityPanel({
   const [archivingFocused, setArchivingFocused] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
   const [deletingFocused, setDeletingFocused] = useState(false);
-  const [activityLocationError, setActivityLocationError] = useState<string | null>(null);
   const [showActivityPicker, setShowActivityPicker] = useState(false);
-  const [locationSectionOverride, setLocationSectionOverride] = useState<boolean | null>(null);
+  // Where net control runs it from, changed with Edit like the rest; null
+  // means the operator's own location is used.
+  const [editLocation, setEditLocation] = useState<{ label: string; lat: number; lon: number } | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [editRepeater, setEditRepeater] = useState<ActivityRepeater | null>(null);
 
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
   // Collapsed by default (it's a rarely-needed override) unless a location is
   // already set for this activity, in which case show it so it isn't hidden.
-  const showLocationSection = locationSectionOverride ?? focusedActivity?.location_lat != null;
   // A range check must have a repeater (RANGE-002).
   const editNeedsRepeater = isRangeCheck(editType) && !editRepeater;
 
@@ -74,6 +77,7 @@ export default function SelectedActivityPanel({
     setEditEnded(focusedActivity.closed_at ? formatContactTime(focusedActivity.closed_at) : "");
     setEditError(null);
     setEditRepeater(repeaterOf(focusedActivity));
+    setEditLocation(locationOf(focusedActivity));
     setEditingFocused(true);
     setArchivingFocused(false);
   }
@@ -139,6 +143,18 @@ export default function SelectedActivityPanel({
       if (changed && !editRepeater) {
         await api.setActivityRepeater(focusedActivity.id, null, null, null);
       }
+      if (JSON.stringify(locationOf(focusedActivity)) !== JSON.stringify(editLocation)) {
+        if (editLocation) {
+          await api.setActivityLocationCoords(
+            focusedActivity.id,
+            editLocation.lat,
+            editLocation.lon,
+            editLocation.label || null
+          );
+        } else {
+          await api.setActivityLocation(focusedActivity.id, "");
+        }
+      }
     } catch (e) {
       setEditError(String(e));
       onActivitiesChanged();
@@ -165,36 +181,18 @@ export default function SelectedActivityPanel({
     onActivitiesChanged();
   }
 
-  async function handleClearActivityLocation() {
-    if (!focusedActivity) return;
-    setActivityLocationError(null);
-    try {
-      await api.setActivityLocation(focusedActivity.id, "");
-      onActivitiesChanged();
-    } catch (e) {
-      setActivityLocationError(String(e));
-    }
-  }
-
-  async function handleSaveActivityPin(lat: number, lon: number, label: string) {
-    if (!focusedActivity) return;
-    setActivityLocationError(null);
-    try {
-      await api.setActivityLocationCoords(focusedActivity.id, lat, lon, label || null);
-      onActivitiesChanged();
-      setShowActivityPicker(false);
-    } catch (e) {
-      setActivityLocationError(String(e));
-    }
-  }
-
   return (
     <div className="panel">
-      <h3><SquarePen className="heading-icon" />Selected Activity</h3>
+      <div className="panel-header-row">
+        <h3><SquarePen className="heading-icon" />Selected Activity</h3>
+        <button className="primary" onClick={onNewActivity}>
+          + New activity
+        </button>
+      </div>
       {!focusedActivity && (
         <p className="checkin-empty-state">
-          No activity selected. Pick one in the top bar or the list on the left, or create one
-          below.
+          No activity selected. Pick one in the top bar or the list on the left, or start a new
+          one.
         </p>
       )}
       {focusedActivity && !editingFocused && !archivingFocused && (
@@ -223,46 +221,6 @@ export default function SelectedActivityPanel({
 
           <ActivitySummaryPanel activity={focusedActivity} />
 
-          <div className="location-subpanel">
-            <div className="panel-header-row">
-              <h4>Net control location</h4>
-              <button
-                className="link-button"
-                onClick={() => setLocationSectionOverride(!showLocationSection)}
-              >
-                {showLocationSection ? "Hide" : "Set a different location"}
-              </button>
-            </div>
-            {showLocationSection && (
-              <>
-                <p className="settings-hint">
-                  Where the operator is running this activity from — e.g. a field site or county
-                  EOC, if different from their usual location. Used on the check-in location map;
-                  falls back to the operator's own location (below) when unset. The repeater is set
-                  separately, with Edit.
-                </p>
-                {activityLocationError && (
-                  <p className="weather-area-error">{activityLocationError}</p>
-                )}
-                {focusedActivity.location_lat != null && focusedActivity.location_lon != null ? (
-                  <p className="weather-area-status">
-                    Set to: <strong>{focusedActivity.location_label}</strong> —{" "}
-                    {formatCoordsWithGrid(
-                      focusedActivity.location_lat,
-                      focusedActivity.location_lon
-                    )}
-                  </p>
-                ) : (
-                  <p className="weather-area-status">
-                    Not set — the operator's own location is used instead.
-                  </p>
-                )}
-                <div className="inline-form">
-                  <button onClick={() => setShowActivityPicker(true)}>Edit location</button>
-                </div>
-              </>
-            )}
-          </div>
         </>
       )}
       {focusedActivity && editingFocused && (
@@ -359,10 +317,34 @@ export default function SelectedActivityPanel({
           title={`Repeater — ${focusedActivity.title}`}
         />
       )}
+      {focusedActivity && editingFocused && (
+        <div className="inline-form">
+          <span className="settings-hint">
+            Net control location:{" "}
+            {editLocation ? (
+              <strong>
+                {editLocation.label ? `${editLocation.label} — ` : ""}
+                {formatCoordsWithGrid(editLocation.lat, editLocation.lon)}
+              </strong>
+            ) : (
+              "the operator's own location (unless you choose another)"
+            )}
+          </span>
+          <button onClick={() => setShowActivityPicker(true)}>
+            {editLocation ? "Change location" : "Set location"}
+          </button>
+          {editLocation && (
+            <button className="link-button" onClick={() => setEditLocation(null)}>
+              Use the operator's location
+            </button>
+          )}
+        </div>
+      )}
       {/* Last, below the whole form, as when creating an activity. */}
       {focusedActivity && editingFocused && (
         <div className="inline-form create-activity-actions">
           <button
+            className="primary"
             onClick={saveEditFocused}
             disabled={editNeedsRepeater}
             title={editNeedsRepeater ? "Set the repeater first" : undefined}
@@ -402,11 +384,21 @@ export default function SelectedActivityPanel({
       {showActivityPicker && focusedActivity && (
         <LocationPicker
           title={`Net control location — ${focusedActivity.title}`}
-          initialLat={focusedActivity.location_lat}
-          initialLon={focusedActivity.location_lon}
-          initialLabel={focusedActivity.location_label}
-          onSave={handleSaveActivityPin}
-          onClear={focusedActivity.location_lat != null ? handleClearActivityLocation : undefined}
+          initialLat={editLocation?.lat ?? null}
+          initialLon={editLocation?.lon ?? null}
+          initialLabel={editLocation?.label ?? ""}
+          onSave={(lat, lon, label) => {
+            setEditLocation({ lat, lon, label });
+            setShowActivityPicker(false);
+          }}
+          onClear={
+            editLocation
+              ? () => {
+                  setEditLocation(null);
+                  setShowActivityPicker(false);
+                }
+              : undefined
+          }
           onClose={() => setShowActivityPicker(false)}
         />
       )}
@@ -418,5 +410,12 @@ export default function SelectedActivityPanel({
 function repeaterOf(a: Activity): ActivityRepeater | null {
   return a.repeater_lat != null && a.repeater_lon != null
     ? { name: a.repeater_name, lat: a.repeater_lat, lon: a.repeater_lon }
+    : null;
+}
+
+/** An activity's net control location, if it has its own. */
+function locationOf(a: Activity): { label: string; lat: number; lon: number } | null {
+  return a.location_lat != null && a.location_lon != null
+    ? { label: a.location_label, lat: a.location_lat, lon: a.location_lon }
     : null;
 }

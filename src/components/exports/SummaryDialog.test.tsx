@@ -105,16 +105,14 @@ describe("SummaryDialog", () => {
     expect(pre.textContent).toBe(activitySummaryToText(NET, SUMMARY));
   });
 
-  it("is shown on the Operations tab without a click, with the text one click away", async () => {
+  it("is folded to one line on the Operations tab and opens laid out", async () => {
     const user = userEvent.setup();
     render(<ActivitySummaryPanel activity={NET} />);
-    // Laid out, not as text, straight away.
-    expect(await screen.findByText("12 check-ins")).toBeInTheDocument();
-    expect(screen.getByText("Quiet night.")).toBeInTheDocument();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // Folded: just the headline counts.
+    expect(await screen.findByText(/12 check-ins/)).toBeInTheDocument();
+    expect(screen.queryByText("Quiet night.")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Show summary text" }));
-    const pre = await screen.findByText(/Duration: 30 min/);
-    expect(pre.textContent).toBe(activitySummaryToText(NET, SUMMARY));
+    await user.click(screen.getByRole("button", { name: /Summary/ }));
+    expect(screen.getByText("Quiet night.")).toBeInTheDocument();
   });
 });

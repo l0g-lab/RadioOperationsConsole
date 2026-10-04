@@ -21,6 +21,9 @@ interface Props {
   /** Values to fill the form with, e.g. from a net listing (NETL-030). */
   prefill?: ActivityPrefill | null;
   onPrefillHandled?: () => void;
+  /** Open the form, from the "+ New activity" button or the top bar. */
+  openRequested?: boolean;
+  onOpenHandled?: () => void;
 }
 
 export default function CreateActivityPanel({
@@ -32,6 +35,8 @@ export default function CreateActivityPanel({
   repeaters,
   prefill = null,
   onPrefillHandled,
+  openRequested = false,
+  onOpenHandled,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const hasActivities = activities.length > 0;
@@ -60,6 +65,23 @@ export default function CreateActivityPanel({
   const rangeCheck = isRangeCheck(activityType);
   const missingRepeater = rangeCheck && !repeater;
 
+  function focusForm() {
+    requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      panelRef.current
+        ?.querySelector<HTMLInputElement>('input[placeholder="Activity title"]')
+        ?.focus();
+    });
+  }
+
+  useEffect(() => {
+    if (!openRequested) return;
+    setCollapsed(false);
+    onOpenHandled?.();
+    focusForm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequested]);
+
   // Opens the form (even if collapsed), fills it from a net listing, and
   // brings it into view. Nothing is created until Create (NETL-031).
   useEffect(() => {
@@ -72,12 +94,7 @@ export default function CreateActivityPanel({
     setActivityFrequency(prefill.frequency);
     setRepeater(prefill.repeater);
     onPrefillHandled?.();
-    requestAnimationFrame(() => {
-      panelRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-      panelRef.current
-        ?.querySelector<HTMLInputElement>('input[placeholder="Activity title"]')
-        ?.focus();
-    });
+    focusForm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefill]);
 
@@ -137,16 +154,13 @@ export default function CreateActivityPanel({
     setCollapsed(true);
   }
 
+  // Opened from "+ New activity" (Selected Activity, or the top bar's list);
+  // otherwise out of the way. Always shown when there are no activities yet.
+  if (!expanded) return null;
+
   return (
     <div className="panel" ref={panelRef}>
-      <div className="panel-header-row">
-        <h3><CirclePlus className="heading-icon" />Create New Activity</h3>
-        {hasActivities && (
-          <button className="link-button" onClick={() => setCollapsed((c) => !c)}>
-            {expanded ? "Hide" : "+ New activity"}
-          </button>
-        )}
-      </div>
+      <h3><CirclePlus className="heading-icon" />New Activity</h3>
       {expanded && (
         <div className="inline-form">
           <input
@@ -235,6 +249,7 @@ export default function CreateActivityPanel({
       {expanded && (
         <div className="inline-form create-activity-actions">
           <button
+            className="primary"
             onClick={handleAddActivity}
             disabled={missingRepeater}
             title={missingRepeater ? "Set the repeater first" : undefined}

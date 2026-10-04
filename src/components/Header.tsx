@@ -15,9 +15,14 @@ interface HeaderProps {
   onSelectActivity: (id: string) => void;
   /** Jumps to where the selected activity is edited. */
   onEditActivity: () => void;
+  /** Jumps to the new-activity form. */
+  onNewActivity: () => void;
   /** Reload activities after a lifecycle change. */
   onActivitiesChanged: () => void;
 }
+
+/** The Activity list's last entry, which starts a new one rather than choosing one. */
+const NEW_ACTIVITY = "__new_activity__";
 
 export default function Header({
   operators,
@@ -27,6 +32,7 @@ export default function Header({
   selectedActivityId,
   onSelectActivity,
   onEditActivity,
+  onNewActivity,
   onActivitiesChanged,
 }: HeaderProps) {
   const selectedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
@@ -63,8 +69,10 @@ export default function Header({
         Activity:
         <select
           value={selectedActivityId ?? ""}
-          onChange={(e) => onSelectActivity(e.target.value)}
-          disabled={activities.length === 0}
+          onChange={(e) => {
+            if (e.target.value === NEW_ACTIVITY) onNewActivity();
+            else onSelectActivity(e.target.value);
+          }}
           title="The activity every tab works on. Ctrl+[ and Ctrl+] switch between activities."
         >
           {activities.length === 0 && <option value="">No activities yet</option>}
@@ -75,6 +83,7 @@ export default function Header({
               {a.state === "closed" ? " (closed)" : ""}
             </option>
           ))}
+          <option value={NEW_ACTIVITY}>+ New activity…</option>
         </select>
       </label>
       {selectedActivity && (

@@ -18,6 +18,9 @@ top. Each release's section here is also its description on the
   relayed messages: switch between newest first and oldest first. Each list
   remembers your choice on this computer.
 
+- **"+ New activity" is easy to find:** a button at the top of the
+  Operations tab, and the last entry in the top bar's Activity list. The form
+  opens at the top of the page instead of waiting at the bottom.
 - **Correct a net's start and end times** from its Edit form, without
   reopening it. The change is recorded in History.
 
@@ -28,6 +31,10 @@ top. Each release's section here is also its description on the
   adding a late check-in moves the end a little, but fixing something days
   later doesn't make the net days long. The window's duplicate *Not yet*
   button is gone; *Cancel* closes it.
+- **The Operations tab is tidier:** the selected activity's summary is folded
+  to one line of counts; click it to see it all. Showing or saving it as text
+  is on the Exports tab. Net control location is set
+  only when creating or editing an activity, alongside the repeater.
 - **Traffic is just a field.** The check-in form always shows the traffic
   field; type something there and the check-in has traffic, leave it blank and
   it doesn't. The "Has traffic" checkbox is gone, here and when editing a

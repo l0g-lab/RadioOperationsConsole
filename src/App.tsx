@@ -43,6 +43,11 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<Tab>("Operations");
   // Set by the header's Edit link; the activity panel opens its edit form and clears it.
   const [editActivityRequested, setEditActivityRequested] = useState(false);
+  const [newActivityRequested, setNewActivityRequested] = useState(false);
+  const requestNewActivity = () => {
+    setCurrentTab("Operations");
+    setNewActivityRequested(true);
+  };
   const [focusCallSignSignal, setFocusCallSignSignal] = useState(0);
   // Set by a net listing's "Start activity"; the create form fills from it and clears it.
   const [activityPrefill, setActivityPrefill] = useState<ActivityPrefill | null>(null);
@@ -158,6 +163,7 @@ export default function App() {
           setCurrentTab("Operations");
           setEditActivityRequested(true);
         }}
+        onNewActivity={requestNewActivity}
       />
       <UpgradeBackupBanner />
       <UpdateBanner />
@@ -195,6 +201,9 @@ export default function App() {
               onEditActivityHandled={() => setEditActivityRequested(false)}
               activityPrefill={activityPrefill}
               onActivityPrefillHandled={() => setActivityPrefill(null)}
+              newActivityRequested={newActivityRequested}
+              onNewActivity={requestNewActivity}
+              onNewActivityHandled={() => setNewActivityRequested(false)}
             />
           )}
           {currentTab === "Check-ins" && (
