@@ -1,4 +1,4 @@
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -891,6 +891,21 @@ impl Repository {
         conclusion: Option<&str>,
         operator_id: Option<&str>,
     ) -> Result<(), String> {
+        self.transition_activity_at(id, to, reason, conclusion, operator_id, None)
+    }
+
+    /// As `transition_activity`, with the end time given when closing (LIFE-008):
+    /// a reopened net ended again needn't end "now". It must not be before the
+    /// start or in the future.
+    pub fn transition_activity_at(
+        &self,
+        id: &str,
+        to: &str,
+        reason: Option<&str>,
+        conclusion: Option<&str>,
+        operator_id: Option<&str>,
+        ended_at: Option<&str>,
+    ) -> Result<(), String> {
         let from: String = self
             .conn
             .query_row("SELECT state FROM activities WHERE id = ?1", params![id], |r| r.get(0))
@@ -908,6 +923,13 @@ impl Repository {
 
         let now = Utc::now();
         let stamp = now.to_rfc3339();
+        let ended = match ended_at.map(str::trim).filter(|s| !s.is_empty()) {
+            Some(v) if (from.as_str(), to) == ("active", "closed") => {
+                let opened = self.get_activity(id).map_err(|e| e.to_string())?.opened_at;
+                Some(Self::check_activity_times(&opened, Some(v), now)?.1.unwrap_or_else(|| stamp.clone()))
+            }
+            _ => None,
+        };
         match (from.as_str(), to) {
             ("scheduled", "active") => self.conn.execute(
                 "UPDATE activities SET state = 'active', opened_at = coalesce(opened_at, ?1) WHERE id = ?2",
@@ -915,7 +937,7 @@ impl Repository {
             ),
             ("active", "closed") => self.conn.execute(
                 "UPDATE activities SET state = 'closed', closed_at = ?1, conclusion = ?2 WHERE id = ?3",
-                params![stamp, conclusion.map(str::trim).filter(|s| !s.is_empty()), id],
+                params![ended.as_deref().unwrap_or(&stamp), conclusion.map(str::trim).filter(|s| !s.is_empty()), id],
             ),
             // Reopening: the earlier close stays in the audit trail.
             _ => self.conn.execute(
@@ -939,6 +961,75 @@ impl Repository {
         })
         .to_string();
         self.create_audit_event("activity", id, action, Some(&data), operator_id)
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    /// Checks a start and optional end time: readable, end after start, and
+    /// neither in the future. Returns them as UTC RFC 3339.
+    fn check_activity_times(
+        opened_at: &str,
+        closed_at: Option<&str>,
+        now: DateTime<Utc>,
+    ) -> Result<(String, Option<String>), String> {
+        let read = |v: &str, what: &str| {
+            DateTime::parse_from_rfc3339(v.trim())
+                .map(|d| d.with_timezone(&Utc))
+                .map_err(|_| format!("The {what} time isn't a valid date and time."))
+        };
+        // A minute's grace for clocks and typing "now".
+        let latest = now + chrono::Duration::minutes(1);
+        let start = read(opened_at, "start")?;
+        if start > latest {
+            return Err("The start time is in the future.".into());
+        }
+        let end = match closed_at {
+            Some(v) => {
+                let end = read(v, "end")?;
+                if end > latest {
+                    return Err("The end time is in the future.".into());
+                }
+                if end < start {
+                    return Err("The end time is before the start.".into());
+                }
+                Some(end.to_rfc3339())
+            }
+            None => None,
+        };
+        Ok((start.to_rfc3339(), end))
+    }
+
+    /// Corrects when an activity started and, if it's closed, ended (LIFE-009),
+    /// without reopening it. Recorded in the history with the old times.
+    pub fn set_activity_times(
+        &self,
+        id: &str,
+        opened_at: &str,
+        closed_at: Option<&str>,
+        operator_id: Option<&str>,
+    ) -> Result<(), String> {
+        let a = self.get_activity(id).map_err(|_| "That activity no longer exists.".to_string())?;
+        if a.state == "scheduled" {
+            return Err("This activity hasn't started yet, so it has no times to change.".into());
+        }
+        let closed_at = if a.state == "closed" {
+            Some(closed_at.filter(|s| !s.trim().is_empty()).ok_or("Enter when it ended.")?)
+        } else {
+            None
+        };
+        let (start, end) = Self::check_activity_times(opened_at, closed_at, Utc::now())?;
+        self.conn
+            .execute(
+                "UPDATE activities SET opened_at = ?1, closed_at = coalesce(?2, closed_at) WHERE id = ?3",
+                params![start, end, id],
+            )
+            .map_err(|e| e.to_string())?;
+        let data = serde_json::json!({
+            "before": { "opened_at": a.opened_at, "closed_at": a.closed_at },
+            "after": { "opened_at": start, "closed_at": end.as_deref().unwrap_or(&a.closed_at) },
+        })
+        .to_string();
+        self.create_audit_event("activity", id, "correct_times", Some(&data), operator_id)
             .map_err(|e| e.to_string())?;
         Ok(())
     }
@@ -1078,6 +1169,30 @@ mod lifecycle_tests {
     fn repo() -> Repository {
         let path = std::env::temp_dir().join(format!("roc-life-{}.db", Uuid::new_v4()));
         Repository::new(crate::db::open_db(&path).unwrap())
+    }
+
+    #[test]
+    fn a_net_can_end_at_a_given_time_and_its_times_be_corrected() {
+        let r = repo();
+        let a = r.create_activity("Net", "directed_net", None, None).unwrap();
+        assert!(r.set_activity_times(&a, "2026-10-04T00:00:00Z", None, None).unwrap_err().contains("hasn't started"));
+        r.transition_activity(&a, "active", None, None, None).unwrap();
+        let opened = r.get_activity(&a).unwrap().opened_at;
+
+        // A reopened net ended again keeps an earlier end time.
+        let before_start = "2000-01-01T00:00:00Z";
+        assert!(r.transition_activity_at(&a, "closed", None, None, None, Some(before_start)).unwrap_err().contains("before the start"));
+        assert!(r.transition_activity_at(&a, "closed", None, None, None, Some("2999-01-01T00:00:00Z")).unwrap_err().contains("future"));
+        r.transition_activity_at(&a, "closed", None, None, None, Some(&opened)).unwrap();
+        assert_eq!(r.get_activity(&a).unwrap().closed_at, opened);
+
+        // Corrected without reopening, and recorded.
+        r.set_activity_times(&a, "2026-10-03T23:00:00-04:00", Some("2026-10-04T04:15:00Z"), None).unwrap();
+        let fixed = r.get_activity(&a).unwrap();
+        assert_eq!((fixed.state.as_str(), fixed.opened_at.as_str(), fixed.closed_at.as_str()), ("closed", "2026-10-04T03:00:00+00:00", "2026-10-04T04:15:00+00:00"));
+        assert!(r.set_activity_times(&a, "2026-10-04T03:00:00Z", None, None).unwrap_err().contains("ended"));
+        assert!(r.set_activity_times(&a, "2026-10-04T05:00:00Z", Some("2026-10-04T04:15:00Z"), None).is_err());
+        assert!(r.activity_history(&a).unwrap().iter().any(|e| e.action == "correct_times"));
     }
 
     #[test]

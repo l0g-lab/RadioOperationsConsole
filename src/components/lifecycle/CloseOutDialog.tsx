@@ -5,6 +5,8 @@ import ExportOptions from "../exports/ExportOptions";
 import type { Activity, ActivitySummary, Operator } from "../../types";
 import { formatDuration } from "../../export";
 import { isRelay } from "../../activityTypes";
+import { previousEnd, suggestedEnd } from "../../activityTimes";
+import { formatContactTime } from "../../utils";
 import { CircleStop } from "lucide-react";
 
 /**
@@ -30,19 +32,58 @@ export default function CloseOutDialog({
   const [archive, setArchive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Besides ending now, an earlier end is offered: for a reopened net, when it
+  // first ended or the last entry since if later; otherwise the last entry
+  // (LIFE-008).
+  const [earlier, setEarlier] = useState<{ at: string; why: string } | null>(null);
 
   useEffect(() => {
     api
       .activitySummary(activity.id)
       .then(setSummary)
       .catch(() => setSummary(null));
-  }, [activity.id]);
+    Promise.all([
+      api.activityHistory(activity.id).catch(() => []),
+      api.listCheckins(activity.id).catch(() => []),
+      api.listSpotterReports(activity.id).catch(() => []),
+      api.listRelayMessages(activity.id).catch(() => []),
+    ]).then(([history, checkins, reports, relayed]) => {
+      const entries: [string, string[]][] = [
+        ["the last check-in", checkins.map((c) => c.checked_in_at)],
+        ["the last spotter report", reports.map((r) => r.reported_at)],
+        ["the last relay message", relayed.flatMap((m) => [m.received_at, ...m.steps.map((s) => s.at)])],
+      ];
+      const previous = previousEnd(history);
+      let best: { at: string; why: string } | null = previous
+        ? { at: suggestedEnd(previous, []), why: "when it first ended" }
+        : null;
+      for (const [why, times] of entries) {
+        const at = suggestedEnd(previous || "1970-01-01T00:00:00Z", times);
+        if (at && times.length > 0 && (!best || at > best.at)) best = { at, why };
+      }
+      // Only worth offering when it's earlier than now and after the start.
+      const t = best ? new Date(best.at).getTime() : NaN;
+      const start = new Date(activity.opened_at).getTime();
+      if (best && t < Date.now() - 60_000 && !(t < start)) setEarlier(best);
+    });
+  }, [activity.id, activity.opened_at]);
 
-  async function endNet() {
+  /** "20:48", with the date in front when it isn't today. */
+  const shortTime = (iso: string) => {
+    const full = formatContactTime(iso);
+    return full.slice(0, 10) === formatContactTime(new Date()).slice(0, 10) ? full.slice(11, 16) : full.slice(0, 16);
+  };
+
+  async function endNet(endedAt: string | null) {
     setBusy(true);
     setError(null);
     try {
-      await api.closeActivity(activity.id, conclusion.trim() || null, operator?.id ?? null);
+      await api.closeActivity(
+        activity.id,
+        conclusion.trim() || null,
+        operator?.id ?? null,
+        endedAt
+      );
       if (archive) {
         await api.archiveActivity(activity.id, "Archived when the net ended", operator?.id ?? null);
       }
@@ -60,7 +101,6 @@ export default function CloseOutDialog({
       <div className="modal-panel lifecycle-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3><CircleStop className="heading-icon" />End {noun} — {activity.title}</h3>
-          <button onClick={onClose}>Cancel</button>
         </div>
 
         {summary && (
@@ -124,13 +164,27 @@ export default function CloseOutDialog({
         {error && <p className="weather-area-error">{error}</p>}
 
         <div className="inline-form">
-          <button onClick={endNet} disabled={busy}>
-            End {noun}
+          <button className="primary" onClick={() => endNet(null)} disabled={busy}>
+            End now
           </button>
+          {earlier && (
+            <button
+              onClick={() => endNet(earlier.at)}
+              disabled={busy}
+              title={`End it at ${earlier.why}`}
+            >
+              End at {shortTime(earlier.at)}
+            </button>
+          )}
           <button onClick={onClose} disabled={busy}>
-            Not yet
+            Cancel
           </button>
         </div>
+        {earlier && (
+          <p className="settings-hint">
+            {shortTime(earlier.at)} is {earlier.why}.
+          </p>
+        )}
       </div>
     </div>
   );

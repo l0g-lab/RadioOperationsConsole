@@ -243,12 +243,31 @@ pub fn close_activity(
     activity_id: String,
     conclusion: Option<String>,
     operator_id: Option<String>,
+    ended_at: Option<String>,
 ) -> Result<(), String> {
-    state.repo.lock().unwrap().transition_activity(
+    state.repo.lock().unwrap().transition_activity_at(
         &activity_id,
         "closed",
         None,
         conclusion.as_deref(),
+        operator_id.as_deref(),
+        ended_at.as_deref(),
+    )
+}
+
+/// Corrects when an activity started and ended, without reopening it.
+#[tauri::command]
+pub fn set_activity_times(
+    state: State<AppState>,
+    activity_id: String,
+    opened_at: String,
+    closed_at: Option<String>,
+    operator_id: Option<String>,
+) -> Result<(), String> {
+    state.repo.lock().unwrap().set_activity_times(
+        &activity_id,
+        &opened_at,
+        closed_at.as_deref(),
         operator_id.as_deref(),
     )
 }

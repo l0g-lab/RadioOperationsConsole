@@ -47,6 +47,18 @@ and stops later edits from quietly changing a net that is over.
   blocks a check-in.
 - **LIFE-007:** Archiving remains separate from closing (`EVENT-005`); an
   activity MAY be archived when it is closed, from the close-out step.
+- **LIFE-008:** Ending MUST offer **End now**, **Cancel**, and, when there is
+  an earlier sensible end, **End at HH:MM** saying what that time is. For an
+  activity that was reopened, that time is the later of its earlier end and
+  the last entry logged since, so a late check-in moves the end but a
+  correction days later does not make the net days long; otherwise it is the
+  last entry (check-in, spotter report, or relay message). It is offered only
+  when it's after the start and at least a minute before now. Any other time
+  is set afterwards from the Edit form (`LIFE-009`).
+- **LIFE-009:** An activity's start time, and its end time once closed, MUST
+  be correctable from its Edit form without reopening it, recorded in the
+  history with the earlier times. The end MUST NOT be before the start, and
+  neither MAY be in the future.
 
 ## Closed activities are read-only
 

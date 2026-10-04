@@ -18,7 +18,16 @@ top. Each release's section here is also its description on the
   relayed messages: switch between newest first and oldest first. Each list
   remembers your choice on this computer.
 
+- **Correct a net's start and end times** from its Edit form, without
+  reopening it. The change is recorded in History.
+
 ### Changed
+- **Ending a net: End now, or End at the last check-in.** Next to *End now*,
+  the End net window offers *End at 20:48* — the last check-in, or for a net
+  you reopened, when it first ended (or a late check-in since, if later). So
+  adding a late check-in moves the end a little, but fixing something days
+  later doesn't make the net days long. The window's duplicate *Not yet*
+  button is gone; *Cancel* closes it.
 - **Traffic is just a field.** The check-in form always shows the traffic
   field; type something there and the check-in has traffic, leave it blank and
   it doesn't. The "Has traffic" checkbox is gone, here and when editing a

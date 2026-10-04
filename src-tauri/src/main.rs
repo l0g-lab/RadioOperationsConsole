@@ -70,6 +70,7 @@ fn main() {
             commands::list_ics214_logs,
             commands::save_ics214_log,
             commands::delete_ics214_log,
+            commands::set_activity_times,
             commands::list_relay_messages,
             commands::list_removed_relay_messages,
             commands::create_relay_message,

@@ -8,7 +8,7 @@ import { activityTypeLabel, isLog, isRangeCheck } from "../../activityTypes";
 import LocationPicker from "../LocationPicker";
 import DeleteActivityDialog from "../lifecycle/DeleteActivityDialog";
 import { formatCoordsWithGrid } from "../../geo";
-import { combineScheduledAt, splitScheduledAt } from "../../utils";
+import { combineScheduledAt, formatContactTime, parseContactTime, splitScheduledAt } from "../../utils";
 import { SquarePen } from "lucide-react";
 
 interface Props {
@@ -43,6 +43,9 @@ export default function SelectedActivityPanel({
   const [editDate, setEditDate] = useState("");
   const [editTime, setEditTime] = useState("");
   const [editFrequency, setEditFrequency] = useState("");
+  // When it actually started and ended, correctable without reopening (LIFE-009).
+  const [editStarted, setEditStarted] = useState("");
+  const [editEnded, setEditEnded] = useState("");
   const [archivingFocused, setArchivingFocused] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
   const [deletingFocused, setDeletingFocused] = useState(false);
@@ -67,6 +70,8 @@ export default function SelectedActivityPanel({
     setEditDate(date);
     setEditTime(time);
     setEditFrequency(focusedActivity.frequency);
+    setEditStarted(focusedActivity.opened_at ? formatContactTime(focusedActivity.opened_at) : "");
+    setEditEnded(focusedActivity.closed_at ? formatContactTime(focusedActivity.closed_at) : "");
     setEditError(null);
     setEditRepeater(repeaterOf(focusedActivity));
     setEditingFocused(true);
@@ -90,7 +95,28 @@ export default function SelectedActivityPanel({
     if (!title || editNeedsRepeater) return;
     const before = repeaterOf(focusedActivity);
     const changed = JSON.stringify(before) !== JSON.stringify(editRepeater);
+    // Started/ended times, when it has them and they were changed.
+    const hasTimes = focusedActivity.state !== "scheduled" && focusedActivity.opened_at !== "";
+    const closed = focusedActivity.state === "closed";
+    const timesChanged =
+      hasTimes &&
+      (editStarted.trim() !== formatContactTime(focusedActivity.opened_at) ||
+        (closed && editEnded.trim() !== formatContactTime(focusedActivity.closed_at)));
+    const started = parseContactTime(editStarted);
+    const ended = parseContactTime(editEnded);
+    if (timesChanged) {
+      if (started.kind !== "ok") return setEditError("Enter when it started as YYYY-MM-DD HH:MM.");
+      if (closed && ended.kind !== "ok") return setEditError("Enter when it ended as YYYY-MM-DD HH:MM.");
+    }
     try {
+      if (timesChanged && started.kind === "ok") {
+        await api.setActivityTimes(
+          focusedActivity.id,
+          started.iso,
+          closed && ended.kind === "ok" ? ended.iso : null,
+          selectedOperatorId
+        );
+      }
       // Set before the type changes, so a new range check already has one;
       // cleared after, so a range check being changed away may lose it.
       if (changed && editRepeater) {
@@ -277,6 +303,36 @@ export default function SelectedActivityPanel({
                   }}
                 />
               </label>
+            </>
+          )}
+          {focusedActivity.state !== "scheduled" && focusedActivity.opened_at && (
+            <>
+              <label>
+                Started:
+                <input
+                  value={editStarted}
+                  title="When it actually started: YYYY-MM-DD HH:MM"
+                  onChange={(e) => setEditStarted(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveEditFocused();
+                    if (e.key === "Escape") cancelEditFocused();
+                  }}
+                />
+              </label>
+              {focusedActivity.state === "closed" && (
+                <label>
+                  Ended:
+                  <input
+                    value={editEnded}
+                    title="When it actually ended: YYYY-MM-DD HH:MM"
+                    onChange={(e) => setEditEnded(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEditFocused();
+                      if (e.key === "Escape") cancelEditFocused();
+                    }}
+                  />
+                </label>
+              )}
             </>
           )}
           <label>

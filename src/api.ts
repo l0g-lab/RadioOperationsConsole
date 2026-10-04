@@ -518,11 +518,28 @@ export const startActivity = (activity_id: string, operator_id: string | null) =
 export const closeActivity = (
   activity_id: string,
   conclusion: string | null,
-  operator_id: string | null
+  operator_id: string | null,
+  /** RFC 3339; null for now. */
+  ended_at: string | null = null
 ) =>
   invoke<void>("close_activity", {
     activityId: activity_id,
     conclusion,
+    operatorId: operator_id,
+    endedAt: ended_at,
+  });
+
+/** Corrects when an activity started and (if closed) ended, without reopening it. */
+export const setActivityTimes = (
+  activity_id: string,
+  opened_at: string,
+  closed_at: string | null,
+  operator_id: string | null
+) =>
+  invoke<void>("set_activity_times", {
+    activityId: activity_id,
+    openedAt: opened_at,
+    closedAt: closed_at,
     operatorId: operator_id,
   });
 
