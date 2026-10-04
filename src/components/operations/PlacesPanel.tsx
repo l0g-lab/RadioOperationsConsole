@@ -3,7 +3,7 @@ import * as api from "../../api";
 import type { Place, PlaceDetails } from "../../types";
 import { formatCoords } from "../../geo";
 import LocationPicker from "../LocationPicker";
-import { MapPinHouse } from "lucide-react";
+import { MapPinHouse, Pencil, Trash2 } from "lucide-react";
 
 /** Adding or editing a place: name, where it is, and notes. */
 function PlaceForm({
@@ -151,21 +151,27 @@ export default function PlacesPanel({ selectedOperatorId }: { selectedOperatorId
             <PlaceForm key={p.id} initial={p} onSave={(d) => save(p.id, d)} onCancel={() => setEditing(null)} />
           ) : (
             <div key={p.id} className="operator-row repeater-row">
-              <span className="repeater-row-text">
-                <strong>{p.name}</strong>
-                <span className="checkin-row-mono">{formatCoords(p.lat, p.lon)}</span>
-                {p.notes && <span className="settings-hint">{p.notes}</span>}
+              {/* One line each: notes are in the tooltip. */}
+              <span className="repeater-row-text" title={p.notes || undefined}>
+                <strong className="repeater-row-name">{p.name}</strong>
+                <span className="checkin-row-mono repeater-row-detail">{formatCoords(p.lat, p.lon)}</span>
               </span>
-              <span className="operator-row-actions">
-                <button className="link-button" aria-label={`Edit ${p.name}`} onClick={() => setEditing(p.id)}>
-                  Edit
+              <span className="operator-row-actions repeater-row-actions">
+                <button
+                  className="icon-button"
+                  aria-label={`Edit ${p.name}`}
+                  title="Edit"
+                  onClick={() => setEditing(p.id)}
+                >
+                  <Pencil />
                 </button>
                 <button
-                  className="link-button danger-link"
+                  className="icon-button danger-link"
                   aria-label={`Delete ${p.name}`}
+                  title="Delete"
                   onClick={() => setDeleting(p)}
                 >
-                  Delete
+                  <Trash2 />
                 </button>
               </span>
             </div>

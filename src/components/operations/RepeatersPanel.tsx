@@ -12,7 +12,7 @@ import {
   suggestedOffset,
 } from "../../repeaters";
 import LocationPicker from "../LocationPicker";
-import { RadioTower } from "lucide-react";
+import { Archive, Pencil, RadioTower } from "lucide-react";
 
 interface Props {
   repeaters: Repeater[];
@@ -425,32 +425,40 @@ export default function RepeatersPanel({
             />
           ) : (
             <div key={r.id} className="operator-row repeater-row">
-              <span className="repeater-row-text">
-                <strong>{r.name}</strong>
-                <span className="checkin-row-mono">{formatRepeater(r)}</span>
-                {(netCounts?.get(r.id) ?? 0) > 0 && (
-                  <span className="settings-hint">
-                    {netCounts!.get(r.id)} {netCounts!.get(r.id) === 1 ? "net" : "nets"} — see the
-                    Nets tab
-                  </span>
-                )}
-                {r.notes && <span className="settings-hint">{r.notes}</span>}
+              {/* One line each, so a long directory still fits: notes and how many
+                  nets use it are in the tooltip. */}
+              <span
+                className="repeater-row-text"
+                title={
+                  [
+                    r.notes,
+                    (netCounts?.get(r.id) ?? 0) > 0
+                      ? `${netCounts!.get(r.id)} ${netCounts!.get(r.id) === 1 ? "net" : "nets"} on this repeater — see the Nets tab`
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join("\n") || undefined
+                }
+              >
+                <strong className="repeater-row-name">{r.name}</strong>
+                <span className="checkin-row-mono repeater-row-detail">{formatRepeater(r)}</span>
               </span>
-              <span className="operator-row-actions">
+              <span className="operator-row-actions repeater-row-actions">
                 <button
-                  className="link-button"
+                  className="icon-button"
                   aria-label={`Edit ${r.name}`}
+                  title="Edit"
                   onClick={() => setEditing(r.id)}
                 >
-                  Edit
+                  <Pencil />
                 </button>
                 <button
-                  className="link-button danger-link"
+                  className="icon-button danger-link"
                   aria-label={`Retire ${r.name}`}
-                  title="Hide it from lists. Activities that used it don't change."
+                  title="Retire: hide it from lists. Activities that used it don't change."
                   onClick={() => setRetiredState(r, true)}
                 >
-                  Retire
+                  <Archive />
                 </button>
               </span>
             </div>

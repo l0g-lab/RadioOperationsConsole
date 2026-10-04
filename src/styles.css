@@ -449,7 +449,9 @@ details > summary {
 
 .operations-workspace {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  /* The right column holds the operator, repeater, and place lists, one line
+     each, so it needs room for a name and a frequency side by side. */
+  grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
   align-items: start;
   gap: 16px;
 }
@@ -2674,4 +2676,71 @@ button.online-pill-working-offline:hover {
 .operator-usage {
   margin: 4px 0;
   padding-left: 18px;
+}
+
+/* Repeater and place lists: one line per entry (RepeatersPanel, PlacesPanel). */
+.repeater-row {
+  align-items: center;
+}
+
+.repeater-row .repeater-row-text {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+}
+
+.repeater-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repeater-row-detail {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: calc(12px * var(--font-scale));
+}
+
+/* Fixed-width columns in the repeater list, so frequencies line up. */
+.repeater-list .repeater-row-detail {
+  width: 23ch;
+}
+
+
+.repeater-row-actions {
+  gap: 2px;
+}
+
+/* A small button showing just an icon; its name is in aria-label and title. */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  border-radius: 3px;
+}
+
+.icon-button:hover {
+  color: var(--text);
+  background: var(--bg-input);
+}
+
+.icon-button svg {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+.icon-button.danger-link:hover {
+  color: var(--danger, #ff4d6d);
+}
+
+/* Short fields (date, time, started, ended) stay short, so two fit side by side. */
+.activity-field:not(.activity-field-wide) > input {
+  width: 17ch;
 }

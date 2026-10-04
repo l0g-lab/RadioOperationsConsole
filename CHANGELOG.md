@@ -6,7 +6,14 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-04
+
 ### Changed
+- **Repeaters and places take one line each** on the Operations tab, with
+  name and frequency (or coordinates) in columns and small Edit and
+  Retire/Delete buttons, so a long directory fits on screen. Notes, and how
+  many nets use a repeater, show when you hover over it. The tab's right-hand
+  column is a little wider to make room.
 - **Removing an operator says where they're named:** each activity they run
   or logged in (click to open it), with what they did there, and any changes
   they made to repeaters, places, net listings, and so on. So you know where
@@ -257,7 +264,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.2...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.2...v2.3.0
 [2.2.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.1.0...v2.2.0
