@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-10-04
+
 ### Added
 - **Getting started checklist** for new installs, on the Operations tab: add
   yourself as an operator, download the FCC call-sign directory, and create
@@ -15,6 +17,10 @@ top. Each release's section here is also its description on the
   when dismissed.
 - **A reminder on the Check-ins tab** when call signs can't fill in yet (no
   FCC directory and no QRZ login), with a link to the download.
+
+### Changed
+- **README:** first-run steps, the tab guide, and the feature list brought up
+  to date.
 
 ## [2.2.1] - 2026-10-04
 
@@ -236,7 +242,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.1...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.2...HEAD
+[2.2.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.1...v2.2.2
 [2.2.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.0.1...v2.1.0

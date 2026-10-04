@@ -1,7 +1,7 @@
 {
   "name": "radio-ops-console",
   "private": true,
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Offline-first desktop app for amateur-radio nets, emergency communications and SKYWARN",
   "license": "GPL-3.0-or-later",
   "repository": "github:l0g-lab/RadioOperationsConsole",
