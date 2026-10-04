@@ -29,10 +29,10 @@ Configures the organization, operators, repeaters, coverage areas, credentials, 
 ## Trusted workstation model
 
 - **PERSONA-001:** The initial release MUST NOT require operator passwords.
-- **PERSONA-002:** Before creating operational records, the user MUST select a current operator profile containing at least a display name or call sign.
-- **PERSONA-003:** Changing the current operator MUST create an audit event.
-- **PERSONA-004:** The current operator MUST remain visible in the persistent application header.
-- **PERSONA-005:** The application MUST allow operator changes during an open activity without restarting it.
+- **PERSONA-002:** Each activity MUST have an operator (net control), a profile with at least a display name or call sign, chosen when the activity is created and defaulting to the default operator. Everything recorded in the activity, and its forms, go under that operator (the "acting operator"). There is no separate "current operator" to choose. One operator is the default, used for new activities and for anything outside an activity (repeaters, places, net listings, the ICS 214); the first operator unless another is made default.
+- **PERSONA-003:** Changing an activity's operator MUST move everything recorded in the activity under the previous operator to the new one, and MUST create one audit event recording the change.
+- **PERSONA-004:** The selected activity's operator MUST remain visible in the persistent application header.
+- **PERSONA-005:** An activity's operator MUST be changeable from its Edit form, open or closed, without restarting it. (Handing off net control part-way through, with records before and after under different operators, is not covered.)
 
 ## Usability context
 

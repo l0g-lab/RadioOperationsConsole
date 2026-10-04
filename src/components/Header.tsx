@@ -8,8 +8,8 @@ import { Radio } from "lucide-react";
 
 interface HeaderProps {
   operators: Operator[];
-  selectedOperatorId: string | null;
-  onSelectOperator: (id: string) => void;
+  /** Who runs the selected activity (net control). */
+  activityOperatorId: string | null;
   activities: Activity[];
   selectedActivityId: string | null;
   onSelectActivity: (id: string) => void;
@@ -26,8 +26,7 @@ const NEW_ACTIVITY = "__new_activity__";
 
 export default function Header({
   operators,
-  selectedOperatorId,
-  onSelectOperator,
+  activityOperatorId,
   activities,
   selectedActivityId,
   onSelectActivity,
@@ -36,6 +35,7 @@ export default function Header({
   onActivitiesChanged,
 }: HeaderProps) {
   const selectedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
+  const runBy = operators.find((o) => o.id === activityOperatorId) ?? null;
   const [local, setLocal] = useState(nowLocal());
   const [utc, setUtc] = useState(nowUtc());
 
@@ -52,18 +52,6 @@ export default function Header({
       <h1><Radio className="heading-icon" />Radio Operations Console</h1>
       <div className="header-sep" />
       <OnlineStatusToggle />
-      <div className="header-sep" />
-      <label className="header-field">
-        Operator:
-        <select value={selectedOperatorId ?? ""} onChange={(e) => onSelectOperator(e.target.value)}>
-          <option value="">&lt;none&gt;</option>
-          {operators.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.display_name} ({o.call_sign})
-            </option>
-          ))}
-        </select>
-      </label>
       <div className="header-sep" />
       <label className="header-field header-activity">
         Activity:
@@ -96,9 +84,14 @@ export default function Header({
           <span className="type-pill" title="Activity type">
             {activityTypeLabel(selectedActivity.activity_type)}
           </span>
+          {runBy && (
+            <span className="header-operator" title="Net control: everything in this activity is logged under this operator. Change it with Edit.">
+              {runBy.call_sign || runBy.display_name}
+            </span>
+          )}
           <ActivityStateControls
             activity={selectedActivity}
-            operator={operators.find((o) => o.id === selectedOperatorId) ?? null}
+            operator={operators.find((o) => o.id === activityOperatorId) ?? null}
             onChanged={onActivitiesChanged}
           />
           <button className="link-button" onClick={onEditActivity}>

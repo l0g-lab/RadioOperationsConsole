@@ -72,8 +72,8 @@ longer needed.
   **retired**: hidden from operator lists and pickers, while history keeps
   showing their name. Retired operators MUST be listed where they can be
   restored. Retiring and restoring MUST each create an audit event.
-- **AUDIT-014:** Deleting or retiring the current operator MUST change the
-  current operator to another one, or to none.
+- **AUDIT-014:** Deleting or retiring the default operator MUST make another
+  one the default, or none.
 
 ## Example
 

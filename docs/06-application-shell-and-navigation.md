@@ -26,7 +26,7 @@ Activity types may hide, deemphasize, or badge tabs. The order and meaning of co
 The header displays:
 
 - Focused activity and state
-- Current operator and NCS when applicable
+- The focused activity's operator (net control)
 - Primary channel/frequency
 - Local clock
 - UTC clock

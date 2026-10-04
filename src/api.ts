@@ -90,14 +90,20 @@ export const createActivity = (
   title: string,
   activity_type: string,
   scheduled_at: string | null,
-  frequency: string | null
+  frequency: string | null,
+  operator_id: string | null = null
 ) =>
   invoke<string>("create_activity", {
     title,
     activityType: activity_type,
     scheduledAt: scheduled_at,
     frequency,
+    operatorId: operator_id,
   });
+
+/** Moves an activity, and what was recorded in it, to another operator. */
+export const changeActivityOperator = (activity_id: string, operator_id: string) =>
+  invoke<void>("change_activity_operator", { activityId: activity_id, operatorId: operator_id });
 
 export const updateActivity = (
   activity_id: string,

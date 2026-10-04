@@ -11,14 +11,15 @@ interface Props {
   /** The current operator, recorded as who retired or restored someone. */
   selectedOperatorId: string | null;
   onOperatorsChanged: () => void;
-  onSelectOperator: (id: string | null) => void;
+  /** Makes an operator the default (`selectedOperatorId`). */
+  onSetDefault: (id: string) => void;
 }
 
 export default function OperatorsPanel({
   operators,
   selectedOperatorId,
   onOperatorsChanged,
-  onSelectOperator,
+  onSetDefault,
 }: Props) {
   const hasOperators = operators.length > 0;
   // Collapsed by default once operators exist, so the roster isn't crowded
@@ -82,7 +83,8 @@ export default function OperatorsPanel({
     const callSign = operatorCallSign.trim();
     const id = await api.createOperator(operatorName.trim(), callSign || null);
     onOperatorsChanged();
-    onSelectOperator(id);
+    // The first operator added is the default.
+    if (operators.length === 0) onSetDefault(id);
     setOperatorName("");
     setOperatorCallSign("");
     setCollapsed(true);
@@ -174,8 +176,25 @@ export default function OperatorsPanel({
               {o.display_name}
               {o.location_label && ` — ${o.location_label}`}
               {o.call_sign && ` — ${o.call_sign}`}
+              {operators.length > 1 && o.id === selectedOperatorId && (
+                <span
+                  className="type-pill operator-default"
+                  title="New activities are run by this operator unless you choose another"
+                >
+                  Default
+                </span>
+              )}
             </span>
             <span className="operator-row-actions">
+              {operators.length > 1 && o.id !== selectedOperatorId && (
+                <button
+                  className="link-button"
+                  onClick={() => onSetDefault(o.id)}
+                  title="New activities are run by this operator unless you choose another"
+                >
+                  Make default
+                </button>
+              )}
               <button className="link-button" onClick={() => setLocationEditOperator(o)}>
                 Edit location
               </button>

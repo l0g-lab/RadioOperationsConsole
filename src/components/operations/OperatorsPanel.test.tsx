@@ -29,7 +29,7 @@ function renderPanel(onChanged = vi.fn()) {
       operators={[op("o1", "Typo Person"), op("o2", "Pat")]}
       selectedOperatorId="o2"
       onOperatorsChanged={onChanged}
-      onSelectOperator={() => {}}
+      onSetDefault={() => {}}
     />
   );
   return onChanged;

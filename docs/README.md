@@ -26,7 +26,7 @@ stay consistent, and it changes along with the app.
 - The first release is a trusted, single-workstation application.
 - Several activities may remain open, but only one is focused in the interface at a time.
 - The interface uses persistent tabs and activity-specific feature visibility.
-- The current operator is selected from a name/call-sign profile without a password.
+- Each activity is run by an operator, a name/call-sign profile without a password.
 - Every operational record and correction is attributed and timestamped.
 - APRS is receive-only situational awareness in the initial scope.
 - SKYWARN report categories and magnitude profiles are built-in, fixed, and versioned.

@@ -39,6 +39,8 @@ pub struct Activity {
     pub repeater_name: String,
     pub repeater_lat: Option<f64>,
     pub repeater_lon: Option<f64>,
+    /// The operator running it (net control), or empty if none was set.
+    pub operator_id: String,
 }
 
 /// Whether a relay message `m` has an outcome (passed or given up on).
@@ -307,6 +309,7 @@ impl Repository {
             "SELECT EXISTS(SELECT 1 FROM checkins WHERE operator_id = ?1) \
                  OR EXISTS(SELECT 1 FROM spotter_reports WHERE operator_id = ?1) \
                  OR EXISTS(SELECT 1 FROM relay_messages WHERE operator_id = ?1) \
+                 OR EXISTS(SELECT 1 FROM activities WHERE operator_id = ?1) \
                  OR EXISTS(SELECT 1 FROM relay_steps WHERE operator_id = ?1) \
                  OR EXISTS(SELECT 1 FROM audit_events WHERE operator_id = ?1 \
                            AND NOT (entity_type = 'operator' AND entity_id = ?1))",
@@ -360,7 +363,7 @@ impl Repository {
         Ok(id)
     }
 
-    const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,''), coalesce(repeater_name,''), repeater_lat, repeater_lon";
+    const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,''), coalesce(repeater_name,''), repeater_lat, repeater_lon, coalesce(operator_id,'')";
 
     fn map_activity(r: &rusqlite::Row) -> rusqlite::Result<Activity> {
         Ok(Activity {
@@ -379,6 +382,7 @@ impl Repository {
             repeater_name: r.get(12)?,
             repeater_lat: r.get(13)?,
             repeater_lon: r.get(14)?,
+            operator_id: r.get(15)?,
         })
     }
 
@@ -965,6 +969,53 @@ impl Repository {
         Ok(())
     }
 
+    /// Sets who runs a new activity, without touching its records.
+    pub fn set_activity_operator(&self, id: &str, operator_id: Option<&str>) -> rusqlite::Result<()> {
+        self.conn.execute("UPDATE activities SET operator_id = ?1 WHERE id = ?2", params![operator_id, id])?;
+        Ok(())
+    }
+
+    /// Moves an activity to another operator (an activity run under the wrong
+    /// call sign): the activity, and everything in it recorded by the previous
+    /// operator — check-ins, spotter reports, relay messages and steps, and
+    /// their history — now name the new one. One history event records the
+    /// change.
+    pub fn change_activity_operator(&self, id: &str, operator_id: &str) -> Result<(), String> {
+        let a = self.get_activity(id).map_err(|_| "That activity no longer exists.".to_string())?;
+        let known: bool = self
+            .conn
+            .query_row("SELECT EXISTS(SELECT 1 FROM operators WHERE id = ?1)", params![operator_id], |r| r.get(0))
+            .map_err(|e| e.to_string())?;
+        if !known {
+            return Err("That operator no longer exists.".into());
+        }
+        if a.operator_id == operator_id {
+            return Ok(());
+        }
+        let old: Option<&str> = if a.operator_id.is_empty() { None } else { Some(&a.operator_id) };
+        let tx = self.conn.unchecked_transaction().map_err(|e| e.to_string())?;
+        for sql in [
+            "UPDATE checkins SET operator_id = ?1 WHERE activity_id = ?2 AND operator_id IS ?3",
+            "UPDATE spotter_reports SET operator_id = ?1 WHERE activity_id = ?2 AND operator_id IS ?3",
+            "UPDATE relay_messages SET operator_id = ?1 WHERE activity_id = ?2 AND operator_id IS ?3",
+            "UPDATE relay_steps SET operator_id = ?1 WHERE operator_id IS ?3 \
+                AND message_id IN (SELECT id FROM relay_messages WHERE activity_id = ?2)",
+            "UPDATE audit_events SET operator_id = ?1 WHERE operator_id IS ?3 AND (entity_id = ?2 \
+                OR entity_id IN (SELECT id FROM checkins WHERE activity_id = ?2) \
+                OR entity_id IN (SELECT id FROM spotter_reports WHERE activity_id = ?2) \
+                OR entity_id IN (SELECT id FROM relay_messages WHERE activity_id = ?2))",
+        ] {
+            tx.execute(sql, params![operator_id, id, old]).map_err(|e| e.to_string())?;
+        }
+        tx.execute("UPDATE activities SET operator_id = ?1 WHERE id = ?2", params![operator_id, id])
+            .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())?;
+        let data = serde_json::json!({ "from": old, "to": operator_id }).to_string();
+        self.create_audit_event("activity", id, "change_operator", Some(&data), Some(operator_id))
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     /// Checks a start and optional end time: readable, end after start, and
     /// neither in the future. Returns them as UTC RFC 3339.
     fn check_activity_times(
@@ -1169,6 +1220,41 @@ mod lifecycle_tests {
     fn repo() -> Repository {
         let path = std::env::temp_dir().join(format!("roc-life-{}.db", Uuid::new_v4()));
         Repository::new(crate::db::open_db(&path).unwrap())
+    }
+
+    #[test]
+    fn an_activity_and_its_records_move_to_another_operator() {
+        let r = repo();
+        let gmrs = r.create_operator("Pat", Some("WRAB123")).unwrap();
+        let ham = r.create_operator("Pat", Some("K4NCS")).unwrap();
+        let a = r.create_activity("Ham net", "directed_net", None, None).unwrap();
+        r.set_activity_operator(&a, Some(&gmrs)).unwrap();
+        r.transition_activity(&a, "active", None, None, Some(&gmrs)).unwrap();
+        let c = r
+            .create_checkin(&a, "W1AW", None, None, None, None, Some(&gmrs), None, None, None, false, None, &ContactDetails::default())
+            .unwrap();
+        let other = r.create_activity("GMRS net", "simple_net", None, None).unwrap();
+        let kept = r
+            .create_checkin(&other, "WRXX999", None, None, None, None, Some(&gmrs), None, None, None, false, None, &ContactDetails::default())
+            .unwrap();
+
+        r.change_activity_operator(&a, &ham).unwrap();
+        assert_eq!(r.get_activity(&a).unwrap().operator_id, ham);
+        let op_of = |sql: &str, id: &str| -> String { r.conn.query_row(sql, params![id], |row| row.get(0)).unwrap() };
+        assert_eq!(op_of("SELECT operator_id FROM checkins WHERE id = ?1", &c), ham);
+        assert_eq!(op_of("SELECT operator_id FROM checkins WHERE id = ?1", &kept), gmrs, "other activities untouched");
+        let history = r.activity_history(&a).unwrap();
+        assert!(history.iter().all(|e| !e.operator.contains("WRAB123")));
+        assert!(history.iter().any(|e| e.action == "change_operator"));
+        assert!(r.change_activity_operator(&a, "nobody").is_err());
+
+        // Existing activities are given the operator who recorded most of them.
+        r.conn.execute("UPDATE activities SET operator_id = NULL", []).unwrap();
+        let sql = include_str!("../migrations/0028_activity_operator.sql");
+        r.conn.execute_batch(&sql[sql.find("UPDATE").unwrap()..]).unwrap();
+        assert_eq!(r.get_activity(&a).unwrap().operator_id, ham);
+        assert_eq!(r.get_activity(&other).unwrap().operator_id, gmrs);
+        assert!(r.operator_has_records(&ham).unwrap());
     }
 
     #[test]

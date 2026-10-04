@@ -50,6 +50,9 @@ export default function CreateActivityPanel({
   const [activityDate, setActivityDate] = useState(todayIso());
   const [activityTime, setActivityTime] = useState("");
   const [activityFrequency, setActivityFrequency] = useState("");
+  // Who runs it: the default operator unless another is chosen.
+  const [operatorId, setOperatorId] = useState<string | null>(null);
+  const runBy = operatorId ?? selectedOperatorId;
   // Where net control runs the activity from, if not the operator's usual
   // location. When left unset the operator's own location is used (see operatorLocation).
   const [location, setLocation] = useState<{
@@ -100,7 +103,7 @@ export default function CreateActivityPanel({
 
   // The acting operator's own location: what the activity defaults to when
   // no location is chosen.
-  const operator = operators.find((o) => o.id === selectedOperatorId) ?? null;
+  const operator = operators.find((o) => o.id === runBy) ?? null;
   const operatorLocation =
     operator?.location_lat != null && operator.location_lon != null
       ? {
@@ -120,6 +123,7 @@ export default function CreateActivityPanel({
     setActivityFrequency("");
     setLocation(null);
     setRepeater(null);
+    setOperatorId(null);
     setCollapsed(true);
   }
 
@@ -130,7 +134,8 @@ export default function CreateActivityPanel({
       activityType,
       // A station log is ongoing: it has no date.
       isLog(activityType) ? null : combineScheduledAt(activityDate, activityTime) || null,
-      activityFrequency.trim() || null
+      activityFrequency.trim() || null,
+      runBy
     );
     const where = location ?? operatorLocation;
     if (where) {
@@ -151,6 +156,7 @@ export default function CreateActivityPanel({
     setActivityFrequency("");
     setLocation(null);
     setRepeater(null);
+    setOperatorId(null);
     setCollapsed(true);
   }
 
@@ -175,6 +181,19 @@ export default function CreateActivityPanel({
             }}
           />
           <ActivityTypeSelect value={activityType} onChange={setActivityType} />
+          {operators.length > 1 && (
+            <label title="Net control: everything logged in this activity goes under this operator">
+              Operator:
+              <select value={runBy ?? ""} onChange={(e) => setOperatorId(e.target.value)}>
+                {operators.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.display_name}
+                    {o.call_sign ? ` (${o.call_sign})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {/* A station log is ongoing, so it has no date or time. */}
           {!isLog(activityType) && (
             <>

@@ -14,11 +14,14 @@ interface Props {
   activities: Activity[];
   operators: Operator[];
   selectedActivityId: string | null;
-  selectedOperatorId: string | null;
+  /** Who new activities, and things outside an activity, go under. */
+  defaultOperatorId: string | null;
+  onSetDefaultOperator: (id: string) => void;
+  /** Who runs the selected activity. */
+  activityOperatorId: string | null;
   onActivitiesChanged: () => void;
   onOperatorsChanged: () => void;
   onSelectActivity: (id: string) => void;
-  onSelectOperator: (id: string | null) => void;
   editActivityRequested: boolean;
   onEditActivityHandled: () => void;
   /** From a net listing's "Start activity": fills the create form. */
@@ -34,11 +37,12 @@ export default function OperationsTab({
   activities,
   operators,
   selectedActivityId,
-  selectedOperatorId,
+  defaultOperatorId,
+  onSetDefaultOperator,
+  activityOperatorId,
   onActivitiesChanged,
   onOperatorsChanged,
   onSelectActivity,
-  onSelectOperator,
   editActivityRequested,
   onEditActivityHandled,
   activityPrefill,
@@ -93,7 +97,7 @@ export default function OperationsTab({
             onActivitiesChanged={onActivitiesChanged}
             onSelectActivity={onSelectActivity}
             operators={operators}
-            selectedOperatorId={selectedOperatorId}
+            selectedOperatorId={defaultOperatorId}
             repeaters={repeaters}
             prefill={activityPrefill}
             onPrefillHandled={onActivityPrefillHandled}
@@ -103,7 +107,8 @@ export default function OperationsTab({
           <SelectedActivityPanel
             activities={activities}
             selectedActivityId={selectedActivityId}
-            selectedOperatorId={selectedOperatorId}
+            selectedOperatorId={activityOperatorId}
+            operators={operators}
             onActivitiesChanged={onActivitiesChanged}
             editRequested={editActivityRequested}
             onEditRequestHandled={onEditActivityHandled}
@@ -112,7 +117,7 @@ export default function OperationsTab({
           />
           <ArchivedActivitiesPanel
             activities={activities}
-            selectedOperatorId={selectedOperatorId}
+            selectedOperatorId={defaultOperatorId}
             onActivitiesChanged={onActivitiesChanged}
           />
         </div>
@@ -120,17 +125,17 @@ export default function OperationsTab({
         <div className="operations-column operations-column-narrow">
           <OperatorsPanel
             operators={operators}
-            selectedOperatorId={selectedOperatorId}
+            selectedOperatorId={defaultOperatorId}
             onOperatorsChanged={onOperatorsChanged}
-            onSelectOperator={onSelectOperator}
+            onSetDefault={onSetDefaultOperator}
           />
           <RepeatersPanel
             repeaters={repeaters}
             netCounts={netCounts}
             onRepeatersChanged={refreshRepeaters}
-            selectedOperatorId={selectedOperatorId}
+            selectedOperatorId={defaultOperatorId}
           />
-          <PlacesPanel selectedOperatorId={selectedOperatorId} />
+          <PlacesPanel selectedOperatorId={defaultOperatorId} />
         </div>
       </div>
     </>

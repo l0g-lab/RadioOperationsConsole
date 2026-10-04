@@ -25,6 +25,15 @@ top. Each release's section here is also its description on the
   reopening it. The change is recorded in History.
 
 ### Changed
+- **Each activity has its own operator.** Choose who runs it (net control)
+  when you create it — handy if you have both a ham and a GMRS call sign — and
+  everything logged in it, and its ICS forms, go under that operator. The top
+  bar shows it; the Operator dropdown that used to be there is gone. Ran a net
+  under the wrong call sign? Change the operator in the activity's Edit form
+  and everything already logged moves with it, with a note in History. One
+  operator is the *default* (Operations → Operators → Make default), used for
+  new activities and things outside any activity. Existing activities are
+  given the operator who logged most of their records.
 - **Ending a net: End now, or End at the last check-in.** Next to *End now*,
   the End net window offers *End at 20:48* — the last check-in, or for a net
   you reopened, when it first ended (or a late check-in since, if later). So

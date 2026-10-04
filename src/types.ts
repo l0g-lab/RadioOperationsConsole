@@ -30,6 +30,8 @@ export interface Activity {
   repeater_name: string;
   repeater_lat: number | null;
   repeater_lon: number | null;
+  /** The operator running it (net control); "" if none was set. */
+  operator_id: string;
 }
 
 /** "none", "pl" (CTCSS) or "dcs". */

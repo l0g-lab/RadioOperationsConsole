@@ -34,6 +34,7 @@ const NET: Activity = {
   repeater_name: "",
   repeater_lat: null,
   repeater_lon: null,
+  operator_id: "",
 };
 
 const SUMMARY: ActivitySummary = {

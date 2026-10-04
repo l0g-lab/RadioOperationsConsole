@@ -8,7 +8,10 @@ import { FileDown } from "lucide-react";
 
 interface Props {
   activity: Activity | null;
+  /** Who runs the activity: named on its forms. */
   operator: Operator | null;
+  /** Named on the ICS 214, which spans activities. */
+  defaultOperator: Operator | null;
 }
 
 /**
@@ -16,7 +19,7 @@ interface Props {
  * records and forms, and ICS 214 activity logs. A 214 covers a period across
  * activities, so it's offered even with no activity chosen.
  */
-export default function ExportsTab({ activity, operator }: Props) {
+export default function ExportsTab({ activity, operator, defaultOperator }: Props) {
   const [show214, setShow214] = useState(false);
   const row214 = (
     <div className="export-row">
@@ -65,7 +68,7 @@ export default function ExportsTab({ activity, operator }: Props) {
           </div>
         </>
       )}
-      {show214 && <Ics214Dialog operator={operator} onClose={() => setShow214(false)} />}
+      {show214 && <Ics214Dialog operator={defaultOperator} onClose={() => setShow214(false)} />}
     </div>
   );
 }

@@ -70,7 +70,7 @@ describe("CreateActivityPanel", () => {
     expect(screen.queryByText(/Time \(HH:MM/)).not.toBeInTheDocument();
 
     await user.type(screen.getByPlaceholderText("Activity title"), "VHF Simplex{Enter}");
-    expect(api.createActivity).toHaveBeenCalledWith("VHF Simplex", "station_log", null, null);
+    expect(api.createActivity).toHaveBeenCalledWith("VHF Simplex", "station_log", null, null, null);
   });
 
   it("won't create a range check without a repeater, and keeps net control at the operator (RANGE-002, RPT-021)", async () => {
@@ -93,7 +93,7 @@ describe("CreateActivityPanel", () => {
     await user.click(screen.getByRole("button", { name: "Place repeater on map" }));
     await user.click(screen.getByRole("button", { name: "Choose point" }));
     await user.click(screen.getByRole("button", { name: "Create activity" }));
-    expect(api.createActivity).toHaveBeenCalledWith("Range check", "range_check", expect.any(String), null);
+    expect(api.createActivity).toHaveBeenCalledWith("Range check", "range_check", expect.any(String), null, "op1");
     expect(api.setActivityRepeater).toHaveBeenCalledWith("new", "Repeater site", 28.5, -81.4);
     expect(api.setActivityLocationCoords).toHaveBeenCalledWith("new", 28.0, -81.0, "Pat's QTH");
   });
@@ -111,7 +111,8 @@ describe("CreateActivityPanel", () => {
       "Tuesday Net",
       "directed_net",
       expect.any(String),
-      "146.940 -0.600 PL 100.0"
+      "146.940 -0.600 PL 100.0",
+      null
     );
     expect(api.setActivityRepeater).toHaveBeenCalledWith("new", "W4ABC Orlando", 28.54, -81.38);
     expect(api.setActivityLocationCoords).not.toHaveBeenCalled();
@@ -149,8 +150,23 @@ describe("CreateActivityPanel", () => {
       "Tuesday Night Net",
       "directed_net",
       "2026-10-06 19:00",
-      "146.940 -0.600 PL 100.0"
+      "146.940 -0.600 PL 100.0",
+      null
     );
     expect(api.setActivityRepeater).toHaveBeenCalledWith("new", "W4ABC Orlando", 28.54, -81.38);
+  });
+
+  it("runs a new activity under the default operator, or the one chosen", async () => {
+    const user = userEvent.setup();
+    const ops = [
+      { id: "gmrs", display_name: "Pat", call_sign: "WRAB123", location_label: "", location_lat: null, location_lon: null },
+      { id: "ham", display_name: "Pat", call_sign: "K4NCS", location_label: "", location_lon: null, location_lat: null },
+    ] as Operator[];
+    renderPanel(ops, "gmrs");
+    const pick = screen.getByRole("combobox", { name: /Operator/ });
+    expect(pick).toHaveValue("gmrs");
+    await user.selectOptions(pick, "ham");
+    await user.type(screen.getByPlaceholderText("Activity title"), "Ham net{Enter}");
+    expect(api.createActivity).toHaveBeenCalledWith("Ham net", "directed_net", expect.any(String), null, "ham");
   });
 });

@@ -112,6 +112,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0027_checkin_location_manual.sql",
         include_str!("../migrations/0027_checkin_location_manual.sql"),
     ),
+    (
+        "0028_activity_operator.sql",
+        include_str!("../migrations/0028_activity_operator.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't

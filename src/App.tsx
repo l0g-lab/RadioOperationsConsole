@@ -19,6 +19,7 @@ import UpdateBanner from "./components/UpdateBanner";
 import type { Activity, Operator, Tab } from "./types";
 import { TABS } from "./types";
 import { isLog, isRelay } from "./activityTypes";
+import { activityOperatorId, loadDefaultOperatorId, saveDefaultOperatorId } from "./defaultOperator";
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.0;
@@ -37,7 +38,13 @@ function loadSavedZoom(): number {
 export default function App() {
   const [operators, setOperators] = useState<Operator[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [selectedOperatorId, setSelectedOperatorId] = useState<string | null>(null);
+  // Who new activities and anything outside an activity go under; each
+  // activity has its own operator (defaultOperator.ts).
+  const [defaultOperatorId, setDefaultOperatorId] = useState<string | null>(null);
+  const setDefaultOperator = (id: string) => {
+    saveDefaultOperatorId(id);
+    setDefaultOperatorId(id);
+  };
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [selectedCheckinId, setSelectedCheckinId] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<Tab>("Operations");
@@ -56,11 +63,9 @@ export default function App() {
   const refreshOperators = useCallback(() => {
     api.listOperators().then((ops) => {
       setOperators(ops);
-      // A deleted or retired current operator is dropped from the list, so
-      // move to another one rather than keep pointing at them (AUDIT-014).
-      setSelectedOperatorId((prev) =>
-        prev && ops.some((o) => o.id === prev) ? prev : (ops[0]?.id ?? null)
-      );
+      // A deleted or retired default is dropped from the list, so move to
+      // another one rather than keep pointing at them (AUDIT-014).
+      setDefaultOperatorId(loadDefaultOperatorId(ops));
     });
   }, []);
 
@@ -148,13 +153,15 @@ export default function App() {
   }, [stepActivity]);
 
   const selectedActivity = activities.find((a) => a.id === selectedActivityId);
+  // Everything recorded in the selected activity goes under its operator.
+  const runBy = activityOperatorId(selectedActivity, defaultOperatorId);
+  const runByOperator = operators.find((o) => o.id === runBy) ?? null;
 
   return (
     <div className="app-shell">
       <Header
         operators={operators}
-        selectedOperatorId={selectedOperatorId}
-        onSelectOperator={setSelectedOperatorId}
+        activityOperatorId={runBy}
         activities={activities}
         selectedActivityId={selectedActivityId}
         onSelectActivity={setSelectedActivityId}
@@ -192,11 +199,12 @@ export default function App() {
               activities={activities}
               operators={operators}
               selectedActivityId={selectedActivityId}
-              selectedOperatorId={selectedOperatorId}
+              defaultOperatorId={defaultOperatorId}
+              activityOperatorId={runBy}
               onActivitiesChanged={refreshActivities}
               onOperatorsChanged={refreshOperators}
               onSelectActivity={setSelectedActivityId}
-              onSelectOperator={setSelectedOperatorId}
+              onSetDefaultOperator={setDefaultOperator}
               editActivityRequested={editActivityRequested}
               onEditActivityHandled={() => setEditActivityRequested(false)}
               activityPrefill={activityPrefill}
@@ -211,7 +219,7 @@ export default function App() {
               activities={activities}
               operators={operators}
               selectedActivityId={selectedActivityId}
-              selectedOperatorId={selectedOperatorId}
+              selectedOperatorId={runBy}
               selectedCheckinId={selectedCheckinId}
               onSelectCheckin={setSelectedCheckinId}
               focusCallSignSignal={focusCallSignSignal}
@@ -222,26 +230,27 @@ export default function App() {
             <ReportsTab
               activities={activities}
               selectedActivityId={selectedActivityId}
-              selectedOperatorId={selectedOperatorId}
+              selectedOperatorId={runBy}
               operators={operators}
               onOpenExports={() => setCurrentTab("Exports")}
             />
           )}
           {currentTab === "Weather" && <WeatherTab />}
           {currentTab === "APRS" && (
-            <MapAprsTab operators={operators} selectedOperatorId={selectedOperatorId} />
+            <MapAprsTab operators={operators} selectedOperatorId={defaultOperatorId} />
           )}
           {currentTab === "Exports" && (
             <ExportsTab
               activity={selectedActivity ?? null}
-              operator={operators.find((o) => o.id === selectedOperatorId) ?? null}
+              operator={runByOperator}
+              defaultOperator={operators.find((o) => o.id === defaultOperatorId) ?? null}
             />
           )}
           {currentTab === "History" && <HistoryTab />}
           {currentTab === "Nets" && (
             <NetsTab
               operators={operators}
-              selectedOperatorId={selectedOperatorId}
+              selectedOperatorId={defaultOperatorId}
               onStartActivity={(prefill) => {
                 setActivityPrefill(prefill);
                 setCurrentTab("Operations");

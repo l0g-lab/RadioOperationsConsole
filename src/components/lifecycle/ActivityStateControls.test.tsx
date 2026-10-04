@@ -23,6 +23,7 @@ function activity(activity_type: string, state: string): Activity {
     repeater_name: "",
     repeater_lat: null,
     repeater_lon: null,
+    operator_id: "",
   };
 }
 

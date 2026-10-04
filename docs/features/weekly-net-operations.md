@@ -26,8 +26,8 @@ over completeness.
 
 ## Primary workflow (weekly directed-net baseline)
 
-1. Select the current operator/NCS.
-2. Focus or create the scheduled net activity.
+1. Focus or create the scheduled net activity, run by the net control operator.
+2. (The operator is chosen when the activity is created.)
 3. Confirm the channel and start the net.
 4. Display the optional opening script.
 5. Record check-ins rapidly.

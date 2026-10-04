@@ -2517,3 +2517,20 @@ button.online-pill-working-offline:hover {
   height: 1.1em;
   color: var(--text-dim);
 }
+
+/* Who runs the selected activity, in the top bar (Header.tsx). */
+.header-operator {
+  font-weight: 600;
+  font-size: calc(12px * var(--font-scale));
+  white-space: nowrap;
+}
+
+.header-operator::before {
+  content: "Operator: ";
+  font-weight: normal;
+  color: var(--text-dim);
+}
+
+.operator-default {
+  margin-left: 6px;
+}

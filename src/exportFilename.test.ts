@@ -33,6 +33,7 @@ function activity(overrides: Partial<Activity> = {}): Activity {
     repeater_name: "",
     repeater_lat: null,
     repeater_lon: null,
+    operator_id: "",
     ...overrides,
   };
 }

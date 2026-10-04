@@ -21,18 +21,21 @@ pub fn create_activity(
     activity_type: String,
     scheduled_at: Option<String>,
     frequency: Option<String>,
+    operator_id: Option<String>,
 ) -> Result<String, String> {
-    state
-        .repo
-        .lock()
-        .unwrap()
-        .create_activity(
-            &title,
-            &activity_type,
-            scheduled_at.as_deref(),
-            frequency.as_deref(),
-        )
-        .map_err(|e| e.to_string())
+    let repo = state.repo.lock().unwrap();
+    let id = repo
+        .create_activity(&title, &activity_type, scheduled_at.as_deref(), frequency.as_deref())
+        .map_err(|e| e.to_string())?;
+    repo.set_activity_operator(&id, operator_id.as_deref().filter(|s| !s.is_empty()))
+        .map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+/// Moves an activity, and what was recorded in it, to another operator.
+#[tauri::command]
+pub fn change_activity_operator(state: State<AppState>, activity_id: String, operator_id: String) -> Result<(), String> {
+    state.repo.lock().unwrap().change_activity_operator(&activity_id, &operator_id)
 }
 
 #[tauri::command]

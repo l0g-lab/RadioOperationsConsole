@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
-import type { Activity, Repeater } from "../../types";
+import type { Activity, Operator, Repeater } from "../../types";
 import ActivitySummaryPanel from "./ActivitySummaryPanel";
 import ActivityTypeSelect from "./ActivityTypeSelect";
 import ActivityRepeaterField, { type ActivityRepeater } from "./ActivityRepeaterField";
@@ -23,6 +23,8 @@ interface Props {
   repeaters: Repeater[];
   /** Opens the new-activity form. */
   onNewActivity: () => void;
+  /** To choose who runs the activity. */
+  operators: Operator[];
 }
 
 /**
@@ -39,6 +41,7 @@ export default function SelectedActivityPanel({
   onEditRequestHandled,
   repeaters,
   onNewActivity,
+  operators,
 }: Props) {
   const [editingFocused, setEditingFocused] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -55,6 +58,8 @@ export default function SelectedActivityPanel({
   const [showActivityPicker, setShowActivityPicker] = useState(false);
   // Where net control runs it from, changed with Edit like the rest; null
   // means the operator's own location is used.
+  // Who runs it; changing it moves everything recorded in it too.
+  const [editOperator, setEditOperator] = useState("");
   const [editLocation, setEditLocation] = useState<{ label: string; lat: number; lon: number } | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [editRepeater, setEditRepeater] = useState<ActivityRepeater | null>(null);
@@ -78,6 +83,7 @@ export default function SelectedActivityPanel({
     setEditError(null);
     setEditRepeater(repeaterOf(focusedActivity));
     setEditLocation(locationOf(focusedActivity));
+    setEditOperator(selectedOperatorId ?? "");
     setEditingFocused(true);
     setArchivingFocused(false);
   }
@@ -154,6 +160,10 @@ export default function SelectedActivityPanel({
         } else {
           await api.setActivityLocation(focusedActivity.id, "");
         }
+      }
+      // Last, so the corrections above move with everything else.
+      if (editOperator && editOperator !== selectedOperatorId) {
+        await api.changeActivityOperator(focusedActivity.id, editOperator);
       }
     } catch (e) {
       setEditError(String(e));
@@ -236,6 +246,20 @@ export default function SelectedActivityPanel({
             }}
           />
           <ActivityTypeSelect value={editType} onChange={setEditType} />
+          {operators.length > 1 && (
+            <label title="Net control: everything logged in this activity goes under this operator">
+              Operator:
+              <select value={editOperator} onChange={(e) => setEditOperator(e.target.value)}>
+                {!operators.some((o) => o.id === editOperator) && <option value={editOperator}>(other)</option>}
+                {operators.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.display_name}
+                    {o.call_sign ? ` (${o.call_sign})` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {!isLog(editType) && (
             <>
               <label>
@@ -339,6 +363,12 @@ export default function SelectedActivityPanel({
             </button>
           )}
         </div>
+      )}
+      {focusedActivity && editingFocused && editOperator !== (selectedOperatorId ?? "") && (
+        <p className="settings-hint">
+          Everything already logged in this activity will be moved to the new operator too, and
+          History will note the change.
+        </p>
       )}
       {/* Last, below the whole form, as when creating an activity. */}
       {focusedActivity && editingFocused && (
