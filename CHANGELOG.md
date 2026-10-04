@@ -44,6 +44,12 @@ top. Each release's section here is also its description on the
   to one line of counts; click it to see it all. Showing or saving it as text
   is on the Exports tab. Net control location is set
   only when creating or editing an activity, alongside the repeater.
+- **The New Activity and Edit forms are laid out the same way,** in labelled
+  sections — Net, When, Radio, Net control — with each field's label above it
+  and formats as grey hints inside the boxes. Editing a started net adds an
+  *Actual times* section for its start and end. The form shows what the type
+  needs: a range check asks for its repeater up front, a relay station has no
+  repeater field, and a station log has no net control location.
 - **Traffic is just a field.** The check-in form always shows the traffic
   field; type something there and the check-in has traffic, leave it blank and
   it doesn't. The "Has traffic" checkbox is gone, here and when editing a

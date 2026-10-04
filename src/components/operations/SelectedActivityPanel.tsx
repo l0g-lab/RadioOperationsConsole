@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity, Operator, Repeater } from "../../types";
 import ActivitySummaryPanel from "./ActivitySummaryPanel";
-import ActivityTypeSelect from "./ActivityTypeSelect";
-import ActivityRepeaterField, { type ActivityRepeater } from "./ActivityRepeaterField";
+import type { ActivityRepeater } from "./ActivityRepeaterField";
+import ActivityForm, { type ActivityDraft } from "./ActivityForm";
+import { operatorPlace } from "./CreateActivityPanel";
 import { activityTypeLabel, isLog, isRangeCheck } from "../../activityTypes";
-import LocationPicker from "../LocationPicker";
 import DeleteActivityDialog from "../lifecycle/DeleteActivityDialog";
 import { formatCoordsWithGrid } from "../../geo";
 import { combineScheduledAt, formatContactTime, parseContactTime, splitScheduledAt } from "../../utils";
@@ -44,46 +44,30 @@ export default function SelectedActivityPanel({
   operators,
 }: Props) {
   const [editingFocused, setEditingFocused] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editType, setEditType] = useState("");
-  const [editDate, setEditDate] = useState("");
-  const [editTime, setEditTime] = useState("");
-  const [editFrequency, setEditFrequency] = useState("");
-  // When it actually started and ended, correctable without reopening (LIFE-009).
-  const [editStarted, setEditStarted] = useState("");
-  const [editEnded, setEditEnded] = useState("");
+  const [draft, setDraft] = useState<ActivityDraft | null>(null);
+  const change = (patch: Partial<ActivityDraft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
   const [archivingFocused, setArchivingFocused] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
   const [deletingFocused, setDeletingFocused] = useState(false);
-  const [showActivityPicker, setShowActivityPicker] = useState(false);
-  // Where net control runs it from, changed with Edit like the rest; null
-  // means the operator's own location is used.
-  // Who runs it; changing it moves everything recorded in it too.
-  const [editOperator, setEditOperator] = useState("");
-  const [editLocation, setEditLocation] = useState<{ label: string; lat: number; lon: number } | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
-  const [editRepeater, setEditRepeater] = useState<ActivityRepeater | null>(null);
-
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
-  // Collapsed by default (it's a rarely-needed override) unless a location is
-  // already set for this activity, in which case show it so it isn't hidden.
-  // A range check must have a repeater (RANGE-002).
-  const editNeedsRepeater = isRangeCheck(editType) && !editRepeater;
-
   function startEditFocused() {
     if (!focusedActivity) return;
     const { date, time } = splitScheduledAt(focusedActivity.scheduled_at);
-    setEditTitle(focusedActivity.title);
-    setEditType(focusedActivity.activity_type);
-    setEditDate(date);
-    setEditTime(time);
-    setEditFrequency(focusedActivity.frequency);
-    setEditStarted(focusedActivity.opened_at ? formatContactTime(focusedActivity.opened_at) : "");
-    setEditEnded(focusedActivity.closed_at ? formatContactTime(focusedActivity.closed_at) : "");
+    setDraft({
+      title: focusedActivity.title,
+      type: focusedActivity.activity_type,
+      operatorId: selectedOperatorId ?? "",
+      date,
+      time,
+      frequency: focusedActivity.frequency,
+      repeater: repeaterOf(focusedActivity),
+      location: locationOf(focusedActivity),
+      // When it actually started and ended, correctable without reopening (LIFE-009).
+      started: focusedActivity.opened_at ? formatContactTime(focusedActivity.opened_at) : "",
+      ended: focusedActivity.closed_at ? formatContactTime(focusedActivity.closed_at) : "",
+    });
     setEditError(null);
-    setEditRepeater(repeaterOf(focusedActivity));
-    setEditLocation(locationOf(focusedActivity));
-    setEditOperator(selectedOperatorId ?? "");
     setEditingFocused(true);
     setArchivingFocused(false);
   }
@@ -100,9 +84,21 @@ export default function SelectedActivityPanel({
   }
 
   async function saveEditFocused() {
-    if (!focusedActivity) return;
-    const title = editTitle.trim();
-    if (!title || editNeedsRepeater) return;
+    if (!focusedActivity || !draft) return;
+    const {
+      title: rawTitle,
+      type: editType,
+      operatorId: editOperator,
+      date: editDate,
+      time: editTime,
+      frequency: editFrequency,
+      repeater: editRepeater,
+      location: editLocation,
+      started: editStarted,
+      ended: editEnded,
+    } = draft;
+    const title = rawTitle.trim();
+    if (!title || (isRangeCheck(editType) && !editRepeater)) return;
     const before = repeaterOf(focusedActivity);
     const changed = JSON.stringify(before) !== JSON.stringify(editRepeater);
     // Started/ended times, when it has them and they were changed.
@@ -233,157 +229,26 @@ export default function SelectedActivityPanel({
 
         </>
       )}
-      {focusedActivity && editingFocused && (
-        <div className="inline-form">
-          <input
-            autoFocus
-            className="activity-title-input"
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") saveEditFocused();
-              if (e.key === "Escape") cancelEditFocused();
-            }}
-          />
-          <ActivityTypeSelect value={editType} onChange={setEditType} />
-          {operators.length > 1 && (
-            <label title="Net control: everything logged in this activity goes under this operator">
-              Operator:
-              <select value={editOperator} onChange={(e) => setEditOperator(e.target.value)}>
-                {!operators.some((o) => o.id === editOperator) && <option value={editOperator}>(other)</option>}
-                {operators.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.display_name}
-                    {o.call_sign ? ` (${o.call_sign})` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {!isLog(editType) && (
-            <>
-              <label>
-                Date (YYYY-MM-DD):
-                <input
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEditFocused();
-                    if (e.key === "Escape") cancelEditFocused();
-                  }}
-                />
-              </label>
-              <label>
-                Time (HH:MM, optional):
-                <input
-                  placeholder="e.g. 19:00"
-                  value={editTime}
-                  onChange={(e) => setEditTime(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEditFocused();
-                    if (e.key === "Escape") cancelEditFocused();
-                  }}
-                />
-              </label>
-            </>
-          )}
-          {focusedActivity.state !== "scheduled" && focusedActivity.opened_at && (
-            <>
-              <label>
-                Started:
-                <input
-                  value={editStarted}
-                  title="When it actually started: YYYY-MM-DD HH:MM"
-                  onChange={(e) => setEditStarted(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveEditFocused();
-                    if (e.key === "Escape") cancelEditFocused();
-                  }}
-                />
-              </label>
-              {focusedActivity.state === "closed" && (
-                <label>
-                  Ended:
-                  <input
-                    value={editEnded}
-                    title="When it actually ended: YYYY-MM-DD HH:MM"
-                    onChange={(e) => setEditEnded(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEditFocused();
-                      if (e.key === "Escape") cancelEditFocused();
-                    }}
-                  />
-                </label>
-              )}
-            </>
-          )}
-          <label>
-            Frequency:
-            <input
-              placeholder="e.g. 146.940 -0.6 PL 100.0"
-              value={editFrequency}
-              onChange={(e) => setEditFrequency(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveEditFocused();
-                if (e.key === "Escape") cancelEditFocused();
-              }}
-            />
-          </label>
-        </div>
-      )}
-      {focusedActivity && editingFocused && (
-        <ActivityRepeaterField
+      {focusedActivity && editingFocused && draft && (
+        <ActivityForm
+          draft={draft}
+          onChange={change}
+          operators={operators}
           repeaters={repeaters}
-          value={editRepeater}
-          onChange={setEditRepeater}
-          onFrequency={setEditFrequency}
-          required={isRangeCheck(editType)}
-          title={`Repeater — ${focusedActivity.title}`}
+          operatorLocation={operatorPlace(operators.find((o) => o.id === draft.operatorId))}
+          showStarted={focusedActivity.state !== "scheduled" && focusedActivity.opened_at !== ""}
+          showEnded={focusedActivity.state === "closed"}
+          operatorNote={
+            draft.operatorId !== (selectedOperatorId ?? "")
+              ? "Everything already logged in this activity will be moved to the new operator too, and History will note the change."
+              : undefined
+          }
+          submitLabel="Save"
+          onSubmit={saveEditFocused}
+          onCancel={cancelEditFocused}
+          error={editError}
+          mapTitle={focusedActivity.title}
         />
-      )}
-      {focusedActivity && editingFocused && (
-        <div className="inline-form">
-          <span className="settings-hint">
-            Net control location:{" "}
-            {editLocation ? (
-              <strong>
-                {editLocation.label ? `${editLocation.label} — ` : ""}
-                {formatCoordsWithGrid(editLocation.lat, editLocation.lon)}
-              </strong>
-            ) : (
-              "the operator's own location (unless you choose another)"
-            )}
-          </span>
-          <button onClick={() => setShowActivityPicker(true)}>
-            {editLocation ? "Change location" : "Set location"}
-          </button>
-          {editLocation && (
-            <button className="link-button" onClick={() => setEditLocation(null)}>
-              Use the operator's location
-            </button>
-          )}
-        </div>
-      )}
-      {focusedActivity && editingFocused && editOperator !== (selectedOperatorId ?? "") && (
-        <p className="settings-hint">
-          Everything already logged in this activity will be moved to the new operator too, and
-          History will note the change.
-        </p>
-      )}
-      {/* Last, below the whole form, as when creating an activity. */}
-      {focusedActivity && editingFocused && (
-        <div className="inline-form create-activity-actions">
-          <button
-            className="primary"
-            onClick={saveEditFocused}
-            disabled={editNeedsRepeater}
-            title={editNeedsRepeater ? "Set the repeater first" : undefined}
-          >
-            Save
-          </button>
-          <button onClick={cancelEditFocused}>Cancel</button>
-          {editError && <span className="weather-area-error">{editError}</span>}
-        </div>
       )}
       {focusedActivity && archivingFocused && (
         <div className="inline-form confirm-row">
@@ -411,27 +276,6 @@ export default function SelectedActivityPanel({
         />
       )}
 
-      {showActivityPicker && focusedActivity && (
-        <LocationPicker
-          title={`Net control location — ${focusedActivity.title}`}
-          initialLat={editLocation?.lat ?? null}
-          initialLon={editLocation?.lon ?? null}
-          initialLabel={editLocation?.label ?? ""}
-          onSave={(lat, lon, label) => {
-            setEditLocation({ lat, lon, label });
-            setShowActivityPicker(false);
-          }}
-          onClear={
-            editLocation
-              ? () => {
-                  setEditLocation(null);
-                  setShowActivityPicker(false);
-                }
-              : undefined
-          }
-          onClose={() => setShowActivityPicker(false)}
-        />
-      )}
     </div>
   );
 }

@@ -55,17 +55,16 @@ export default function ActivityRepeaterField({
   const missing = required && !value;
   return (
     <div className="inline-form activity-repeater">
-      <span className={missing ? "weather-area-error" : "settings-hint"}>
-        Repeater:{" "}
+      <span className={missing ? "weather-area-error" : value ? undefined : "settings-hint"}>
         {value ? (
           <strong>
             {value.name ? `${value.name} — ` : ""}
             {formatCoords(value.lat, value.lon)}
           </strong>
         ) : missing ? (
-          "not set — a range check needs its repeater"
+          "Not set — a range check needs its repeater"
         ) : (
-          "none"
+          "None"
         )}
       </span>
       {repeaters.length > 0 && (

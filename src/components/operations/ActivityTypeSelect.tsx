@@ -10,8 +10,8 @@ export default function ActivityTypeSelect({
 }) {
   const known = ACTIVITY_TYPES.some((t) => t.id === value);
   return (
-    <label>
-      Type:
+    <label className="activity-field">
+      <span className="activity-field-label">Type</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}

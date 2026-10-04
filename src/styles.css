@@ -2534,3 +2534,95 @@ button.online-pill-working-offline:hover {
 .operator-default {
   margin-left: 6px;
 }
+
+/* The activity form, shared by New Activity and Edit (ActivityForm.tsx):
+   titled sections, each a grid of fields with their labels above. */
+.activity-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.activity-form-section {
+  display: grid;
+  grid-template-columns: 11ch 1fr;
+  gap: 8px;
+  align-items: start;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.activity-form-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.activity-form-section-title {
+  padding-top: 1.35em;
+  color: var(--accent);
+  font-size: calc(11px * var(--font-scale));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.activity-form-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: flex-start;
+}
+
+/* A field on a row of its own, e.g. the repeater with its buttons. */
+.activity-field-row {
+  flex-basis: 100%;
+}
+
+.activity-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 12ch;
+}
+
+.activity-field-wide {
+  flex: 1 1 24ch;
+}
+
+.activity-field-wide > input {
+  width: 100%;
+}
+
+.activity-field-label {
+  color: var(--text-dim);
+  font-size: calc(12px * var(--font-scale));
+}
+
+.activity-form-note {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.activity-form .activity-repeater {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .activity-form-section {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-form-section-title {
+    padding-top: 0;
+  }
+}
+
+.activity-form .activity-title-input {
+  flex: none;
+  min-width: 0;
+  width: 100%;
+}
+
+.activity-form .activity-repeater select {
+  max-width: 15rem;
+}

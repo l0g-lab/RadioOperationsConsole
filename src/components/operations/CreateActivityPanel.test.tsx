@@ -63,11 +63,11 @@ describe("CreateActivityPanel", () => {
   it("asks a net for its date, but not a station log, which is saved undated", async () => {
     const user = userEvent.setup();
     renderPanel();
-    expect(screen.getByText(/Date \(YYYY-MM-DD\)/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("YYYY-MM-DD")).toBeInTheDocument();
 
     await user.selectOptions(screen.getByRole("combobox", { name: /type/i }), "station_log");
-    expect(screen.queryByText(/Date \(YYYY-MM-DD\)/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Time \(HH:MM/)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("YYYY-MM-DD")).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("19:00 (optional)")).not.toBeInTheDocument();
 
     await user.type(screen.getByPlaceholderText("Activity title"), "VHF Simplex{Enter}");
     expect(api.createActivity).toHaveBeenCalledWith("VHF Simplex", "station_log", null, null, null);
@@ -141,7 +141,7 @@ describe("CreateActivityPanel", () => {
     );
     expect(screen.getByPlaceholderText("Activity title")).toHaveValue("Tuesday Night Net");
     expect(screen.getByDisplayValue("2026-10-06")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("e.g. 19:00")).toHaveValue("19:00");
+    expect(screen.getByPlaceholderText("19:00 (optional)")).toHaveValue("19:00");
     expect(screen.getByText(/W4ABC Orlando —/, { selector: "strong" })).toBeInTheDocument();
     expect(api.createActivity).not.toHaveBeenCalled();
 
