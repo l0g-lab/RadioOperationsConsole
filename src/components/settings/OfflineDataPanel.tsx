@@ -99,7 +99,7 @@ export default function OfflineDataPanel({ onChanged }: { onChanged?: () => void
 
   return (
     <>
-      <div className="panel">
+      <div className="panel" id="settings-roads">
         <div className="panel-header-row">
           <h3>
             <Milestone className="heading-icon" />
@@ -160,7 +160,7 @@ export default function OfflineDataPanel({ onChanged }: { onChanged?: () => void
           );
         })}
       </div>
-      <div className="panel">
+      <div className="panel" id="settings-callsigns">
         {CALLSIGN_DIRECTORIES.map((def) => (
           <CallsignDirectoryRow
             key={def.service}

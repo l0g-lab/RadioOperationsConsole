@@ -11,7 +11,7 @@ import WeatherTab from "./components/tabs/WeatherTab";
 import MapAprsTab from "./components/tabs/MapAprsTab";
 import ExportsTab from "./components/tabs/ExportsTab";
 import HistoryTab from "./components/tabs/HistoryTab";
-import SettingsTab from "./components/tabs/SettingsTab";
+import SettingsTab, { type SettingsSection } from "./components/tabs/SettingsTab";
 import NetsTab from "./components/tabs/NetsTab";
 import type { ActivityPrefill } from "./components/operations/activityPrefill";
 import UpgradeBackupBanner from "./components/UpgradeBackupBanner";
@@ -51,6 +51,12 @@ export default function App() {
   // Set by the header's Edit link; the activity panel opens its edit form and clears it.
   const [editActivityRequested, setEditActivityRequested] = useState(false);
   const [newActivityRequested, setNewActivityRequested] = useState(false);
+  // A Settings section to go straight to (getting started, the Check-ins hint).
+  const [settingsFocus, setSettingsFocus] = useState<SettingsSection | null>(null);
+  const openSettings = (section: SettingsSection) => {
+    setCurrentTab("Settings");
+    setSettingsFocus(section);
+  };
   const requestNewActivity = () => {
     setCurrentTab("Operations");
     setNewActivityRequested(true);
@@ -212,6 +218,8 @@ export default function App() {
               newActivityRequested={newActivityRequested}
               onNewActivity={requestNewActivity}
               onNewActivityHandled={() => setNewActivityRequested(false)}
+              onOpenSettings={openSettings}
+              onOpenWeather={() => setCurrentTab("Weather")}
             />
           )}
           {currentTab === "Check-ins" && (
@@ -224,6 +232,7 @@ export default function App() {
               onSelectCheckin={setSelectedCheckinId}
               focusCallSignSignal={focusCallSignSignal}
               onOpenExports={() => setCurrentTab("Exports")}
+              onOpenCallsignDirectories={() => openSettings("callsigns")}
             />
           )}
           {currentTab === "Spotter Reports" && (
@@ -257,7 +266,9 @@ export default function App() {
               }}
             />
           )}
-          {currentTab === "Settings" && <SettingsTab />}
+          {currentTab === "Settings" && (
+            <SettingsTab focus={settingsFocus} onFocusHandled={() => setSettingsFocus(null)} />
+          )}
         </main>
       </div>
     </div>

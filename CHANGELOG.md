@@ -6,6 +6,16 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **Getting started checklist** for new installs, on the Operations tab: add
+  yourself as an operator, download the FCC call-sign directory, and create
+  your first activity. Each step ticks itself off, *Download now* goes straight
+  to the download in Settings, and optional extras (QRZ login, weather area,
+  road data updates) are one click away. It disappears once you're set up, or
+  when dismissed.
+- **A reminder on the Check-ins tab** when call signs can't fill in yet (no
+  FCC directory and no QRZ login), with a link to the download.
+
 ## [2.2.1] - 2026-10-04
 
 ### Fixed

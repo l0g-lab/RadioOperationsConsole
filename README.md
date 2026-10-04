@@ -6,10 +6,9 @@ It's an operations logger first, not a contest logbook: one app that handles a r
 
 ## What it does
 
-- **Log under the right call sign.** Each activity is run by an operator, chosen when you create it — so a ham net and a GMRS net each go under the right call sign — and can be corrected later, records and all.
 - **Run several nets at once.** Pick the active activity from the top bar (or `Ctrl+[` / `Ctrl+]`) and every tab follows it. Keep a directory of your repeaters (frequency, offset, tones) and pick one when setting up a net, and save the places you often operate from (home, the club) to pick on any map.
 - **Know what nets are on.** The Nets tab lists the nets in your area day by day for the coming week, with how to tune in, how far the repeater is, and how to check in. Start an activity from any of them.
-- **Take check-ins fast.** Type a call sign, press Enter. Name, address, and location fill in from QRZ — or, with no QRZ or no internet, from an offline copy of the FCC amateur-license database. GMRS call signs (like WRAB123) fill in from an offline copy of the FCC GMRS database. Export the roster as CSV (see it as a table first), or as an ICS-309 communications log for Winlink Express's own Form-309 (or to print).
+- **Take check-ins fast.** Type a call sign (and any traffic they have), press Enter. The newest check-in is always at the top of the roster, with a button to flip the order. Name, address, and location fill in from QRZ — or, with no QRZ or no internet, from an offline copy of the FCC amateur-license database. GMRS call signs (like WRAB123) fill in from an offline copy of the FCC GMRS database. Export the roster as CSV (see it as a table first), or as an ICS-309 communications log for Winlink Express's own Form-309 (or to print).
 - **Put people on a map.** Check-ins are plotted at their real location when known (QRZ coordinates, a pin you drop, typed coordinates), falling back to ZIP centre, then grid square. Say "mile marker 182 on the turnpike" and it lands on the map, offline.
 - **Run a range check.** Test a repeater's reach: each station gives a cross street you pin on the map, station type and power, and signal reports both ways. The map colors each station by how well it's heard.
 - **Relay traffic.** As a relay station, log each message as it comes in and keep a *To pass* list until it's passed on — by radio on another frequency, or by phone, Winlink, or runner — with failed attempts and undeliverable traffic recorded too. Exports to CSV, the ICS-309, and the ICS-214.
@@ -17,8 +16,9 @@ It's an operations logger first, not a contest logbook: one app that handles a r
 - **Log spotter reports.** Who / what / where, with NWS-style hail and wind scales and a wind-damage guide, and export as CSV, readable text, or an ICS-213 for Winlink or print. Reports are plotted at the location of the *damage*, with icons for hail, wind, flooding, tornado, snow/ice.
 - **Watch the weather.** NWS alerts and forecast for your area, plus a radar loop from the nearest NEXRAD station.
 - **See live APRS.** A receive-only APRS-IS feed for a chosen area, on a map. Nothing is ever transmitted.
-- **Start it, end it, wrap it up.** Start a net, and when it ends get a summary, a warning about open traffic, your closing notes, and saved copies of the records. A closed net is locked until you reopen it (with a reason).
+- **Start it, end it, wrap it up.** Start a net, and when it ends get a summary, a warning about open traffic, your closing notes, and saved copies of the records. End it now or at the last check-in, and correct its start and end times later if needed. A closed net is locked until you reopen it (with a reason) — handy for a late check-in.
 - **Log your part in an exercise.** An ICS-214 activity log for a whole period of operation, filled in from every net and report in it, edited and kept, then exported for Winlink Express's ICS-214 form or printed.
+- **Log under the right call sign.** Each activity is run by an operator, chosen when you create it — so a ham net and a GMRS net each go under the right call sign — and can be corrected later, records and all.
 - **Keep a record.** Traffic noted on each check-in, and a full attributed, timestamped history of every change. Removed check-ins and reports can be restored; deleting a whole activity for good asks you to confirm first.
 - **See it before you save it.** Every export (CSV, text, net summary) can be viewed first, then copied or saved.
 - **Never lose your data.** One-click database backup and restore in Settings, and a copy saved automatically before each update.
@@ -99,19 +99,19 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 
 ## Using it
 
-**First run:** go to **Operations**, add an operator (name and call sign — no password), then create an activity, such as a weekly net. Switch to **Check-ins** and start logging.
+**First run:** the **Operations** tab shows a short *Getting started* checklist. Add yourself as an operator (name and call sign — no password), download the FCC call-sign directory while you're online (**Download now** takes you there) so call signs fill in even offline, then create an activity, such as a weekly net. Switch to **Check-ins** and start logging.
 
 | Tab | For |
 | --- | --- |
-| Operations | Operators, the repeater directory, saved places, creating/editing/archiving activities |
-| Check-ins | Taking check-ins (with any traffic they have), the roster, the check-in map |
+| Operations | Creating, editing, and archiving activities; operators (and which is the default), the repeater directory, saved places |
+| Check-ins | Taking check-ins (with any traffic they have), the roster, the check-in map. Called **Contacts** for a station log and **Messages** for a relay station |
 | Spotter Reports | Hazard reports and the report map |
 | Weather | NWS alerts, forecast, radar |
 | APRS | Live APRS-IS feed for an area |
-| Exports | Everything that leaves the app, in one place: check-ins, spotter reports, history and the net summary as CSV or text, and the ICS forms — each viewable before saving — plus ICS-214 activity logs covering a whole period of operation |
+| Exports | Everything that leaves the app: records as CSV or text, the net summary, and the ICS 213, 214, and 309 forms — each viewable before saving |
 | History | The audit trail of everything that changed |
 | Nets | Nets you can join, day by day for the coming week — when, how to tune in, how far the repeater is, how to check in; start an activity from one |
-| Settings | QRZ login, theme, coordinate format, offline data, backup & restore |
+| Settings | Theme, font and text size, coordinate format, QRZ login, offline data downloads, storage, backup & restore, checking for updates |
 
 **Shortcuts:** `Ctrl+1`–`9` jump to a tab · `Ctrl+K` focus the call-sign box · `Ctrl+[` / `Ctrl+]` previous/next activity · `Ctrl+Shift+ +/-/0` zoom.
 

@@ -18,6 +18,8 @@ interface Props {
   onSelectCheckin: (id: string | null) => void;
   focusCallSignSignal: number;
   onOpenExports: () => void;
+  /** Goes to Settings → the FCC call-sign directories. */
+  onOpenCallsignDirectories: () => void;
 }
 
 export default function CheckinsTab({
@@ -29,11 +31,14 @@ export default function CheckinsTab({
   onSelectCheckin,
   focusCallSignSignal,
   onOpenExports,
+  onOpenCallsignDirectories,
 }: Props) {
   const [rapidEntryMode, setRapidEntryMode] = useState(true);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [qrzConfigured, setQrzConfigured] = useState(false);
   const [offlineCallsAvailable, setOfflineCallsAvailable] = useState(false);
+  // Whether any way of filling in call signs exists; null until known.
+  const [canLookUp, setCanLookUp] = useState<boolean | null>(null);
   const [showMap, setShowMap] = useState(false);
 
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
@@ -102,6 +107,13 @@ export default function CheckinsTab({
       .callsignPackStatus("amateur")
       .then((s) => setOfflineCallsAvailable(s.installed))
       .catch(() => setOfflineCallsAvailable(false));
+    Promise.all([
+      api.getSettings().catch(() => null),
+      api.callsignPackStatus("amateur").catch(() => null),
+      api.callsignPackStatus("gmrs").catch(() => null),
+    ]).then(([s, ham, gmrs]) =>
+      setCanLookUp(Boolean((s?.qrz_username && s.qrz_password) || ham?.installed || gmrs?.installed))
+    );
   }, []);
 
   // A new entry just appears in the roster; it isn't selected (highlighted),
@@ -153,6 +165,16 @@ export default function CheckinsTab({
       {focusedActivity && rangeCheck && !repeater && !closed && (
         <p className="weather-area-error" role="alert">
           Set this range check's repeater (Operations tab → Edit) before taking check-ins.
+        </p>
+      )}
+
+      {focusedActivity && !relay && !closed && canLookUp === false && (
+        <p className="closeout-warning">
+          Call signs won't fill in names and locations yet.{" "}
+          <button className="link-button" onClick={onOpenCallsignDirectories}>
+            Download the FCC call-sign directory
+          </button>{" "}
+          (works offline), or add a QRZ.com login in Settings.
         </p>
       )}
 

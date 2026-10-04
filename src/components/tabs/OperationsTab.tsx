@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import GettingStarted from "../operations/GettingStarted";
+import type { SettingsSection } from "./SettingsTab";
 import * as api from "../../api";
 import type { Activity, NetListing, Operator, Repeater } from "../../types";
 import type { ActivityPrefill } from "../operations/activityPrefill";
@@ -8,7 +10,6 @@ import ArchivedActivitiesPanel from "../operations/ArchivedActivitiesPanel";
 import OperatorsPanel from "../operations/OperatorsPanel";
 import RepeatersPanel from "../operations/RepeatersPanel";
 import PlacesPanel from "../operations/PlacesPanel";
-import { Lightbulb } from "lucide-react";
 
 interface Props {
   activities: Activity[];
@@ -31,6 +32,9 @@ interface Props {
   newActivityRequested: boolean;
   onNewActivity: () => void;
   onNewActivityHandled: () => void;
+  /** For the getting-started steps. */
+  onOpenSettings: (section: SettingsSection) => void;
+  onOpenWeather: () => void;
 }
 
 export default function OperationsTab({
@@ -50,6 +54,8 @@ export default function OperationsTab({
   newActivityRequested,
   onNewActivity,
   onNewActivityHandled,
+  onOpenSettings,
+  onOpenWeather,
 }: Props) {
 
   // The repeater directory, shared by its panel and the activity forms.
@@ -76,20 +82,16 @@ export default function OperationsTab({
   }
 
 
-  const isFirstRun = activities.length === 0 && operators.length === 0;
 
   return (
     <>
-      {isFirstRun && (
-        <div className="panel tip-panel">
-          <h3><Lightbulb className="heading-icon" />Getting started</h3>
-          <p className="settings-hint">
-            Add an operator on the right, then create your first activity below (e.g. a weekly net).
-            Once an activity exists, it's chosen in the top bar and every tab works on it — switch
-            to the Check-ins tab to start logging contacts.
-          </p>
-        </div>
-      )}
+      <GettingStarted
+        hasOperators={operators.length > 0}
+        hasActivities={activities.length > 0}
+        onNewActivity={onNewActivity}
+        onOpenSettings={onOpenSettings}
+        onOpenWeather={onOpenWeather}
+      />
       <div className="operations-workspace">
         <div className="operations-column">
           <CreateActivityPanel

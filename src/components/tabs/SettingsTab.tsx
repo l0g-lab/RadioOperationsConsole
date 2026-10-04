@@ -32,7 +32,17 @@ const DEFAULT_SETTINGS: AppSettings = {
   weather_area_resolved_at: null,
 };
 
-export default function SettingsTab() {
+/** A part of Settings another page can send the operator straight to. */
+export type SettingsSection = "callsigns" | "roads" | "qrz";
+
+export default function SettingsTab({
+  focus = null,
+  onFocusHandled,
+}: {
+  /** Scroll to and highlight this section on opening. */
+  focus?: SettingsSection | null;
+  onFocusHandled?: () => void;
+} = {}) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -51,6 +61,20 @@ export default function SettingsTab() {
       .then(setSettings)
       .catch(() => setSettings(DEFAULT_SETTINGS));
   }, []);
+
+  useEffect(() => {
+    if (!focus) return;
+    // After the page (and the offline data list) has laid out.
+    setTimeout(() => {
+      onFocusHandled?.();
+      const el = document.getElementById(`settings-${focus}`);
+      if (!el) return;
+      el.scrollIntoView?.({ block: "start", behavior: "smooth" });
+      el.classList.add("settings-highlight");
+      setTimeout(() => el.classList.remove("settings-highlight"), 2500);
+    }, 150);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus]);
 
   function updateField<K extends keyof AppSettings>(field: K, value: AppSettings[K]) {
     setSettings((s) => ({ ...s, [field]: value }));
@@ -176,7 +200,7 @@ export default function SettingsTab() {
           </InfoToggle>
         </h2>
       </div>
-      <div className="panel">
+      <div className="panel" id="settings-qrz">
         <h3>
           <Search className="heading-icon" />
           QRZ.com Call Sign Lookup

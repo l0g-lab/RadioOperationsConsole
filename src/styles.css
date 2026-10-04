@@ -2626,3 +2626,46 @@ button.online-pill-working-offline:hover {
 .activity-form .activity-repeater select {
   max-width: 15rem;
 }
+
+/* A Settings section another page sent the operator to (SettingsTab focus). */
+.settings-highlight {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  transition: outline-color 0.3s;
+}
+
+/* The Operations tab's getting-started steps (GettingStarted.tsx). */
+.getting-started {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.getting-started li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.getting-started-icon {
+  width: 1.1em;
+  height: 1.1em;
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+.getting-started-done {
+  color: var(--text-dim);
+}
+
+.getting-started-done .getting-started-icon {
+  color: var(--accent);
+}
+
+.getting-started-optional {
+  margin: 6px 0 0;
+}
