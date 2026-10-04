@@ -13,16 +13,18 @@ top. Each release's section here is also its description on the
   exact point. A location you placed by hand (on the map, or as typed
   coordinates or a mile marker) is never moved.
 
+### Added
+- **Sort button** on the check-in and contact lists, spotter reports, and
+  relayed messages: switch between newest first and oldest first. Each list
+  remembers your choice on this computer.
+
 ### Changed
 - **Traffic is just a field.** The check-in form always shows the traffic
   field; type something there and the check-in has traffic, leave it blank and
   it doesn't. The "Has traffic" checkbox is gone, here and when editing a
   check-in.
-
-### Added
-- **Sort button** on the check-in and contact lists, spotter reports, and
-  relayed messages: switch between newest first and oldest first. Each list
-  remembers your choice on this computer.
+- **Newest check-ins are at the top** of the check-in and contact lists, so
+  the one just logged is always in view. Use the sort button to flip it.
 
 ## [2.2.0] - 2026-10-04
 

@@ -71,7 +71,7 @@ export default function CheckinRoster({
   /** Contacts whose details (power, antenna, notes, address…) are expanded. */
   const [openDetails, setOpenDetails] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [order, toggleOrder] = useSortOrder(log ? "contacts" : "checkins", "oldest");
+  const [order, toggleOrder] = useSortOrder(log ? "contacts" : "checkins", "newest");
   const [openTraffic, setOpenTraffic] = useState<Set<string>>(new Set());
   const [checkinLookupStatus, setCheckinLookupStatus] = useState<QrzStatus>("idle");
   const [lookupSource, setLookupSource] = useState<CallsignSource>("qrz");
