@@ -362,7 +362,9 @@ export default function CheckinEntryForm({
       reportedLabel || trimmedQth || trimmedAddress || resolved?.sourceText || null,
       hasTraffic,
       hasTraffic ? traffic.trim() || null : null,
-      log ? toContactDetails(contact) : null
+      log ? toContactDetails(contact) : null,
+      // Typed over the auto-filled point: coordinates or a mile marker.
+      coordsEditedRef.current && typed != null
     );
     // The station setup carries over to the next contact.
     setContact(nextContact(contact));

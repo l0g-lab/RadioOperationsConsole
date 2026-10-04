@@ -45,6 +45,7 @@ function contact(overrides: Partial<Checkin>): Checkin {
     location_lat: null,
     location_lon: null,
     location_label: "",
+    location_manual: false,
     has_traffic: false,
     traffic: "",
     traffic_handled: false,

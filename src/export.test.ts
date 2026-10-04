@@ -43,6 +43,7 @@ function checkin(overrides: Partial<Checkin> = {}): Checkin {
     location_lat: 25.77,
     location_lon: -80.19,
     location_label: "Miami",
+    location_manual: false,
     has_traffic: false,
     traffic: "",
     traffic_handled: false,

@@ -108,6 +108,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0026_relay_messages.sql",
         include_str!("../migrations/0026_relay_messages.sql"),
     ),
+    (
+        "0027_checkin_location_manual.sql",
+        include_str!("../migrations/0027_checkin_location_manual.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't

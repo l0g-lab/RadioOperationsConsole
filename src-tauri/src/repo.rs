@@ -91,6 +91,8 @@ pub struct Checkin {
     pub location_lat: Option<f64>,
     pub location_lon: Option<f64>,
     pub location_label: String,
+    /// The location was placed by hand, so Lookup and edits leave it alone.
+    pub location_manual: bool,
     /// The station has traffic to pass; `traffic` holds the details, if any yet.
     pub has_traffic: bool,
     pub traffic: String,
@@ -157,7 +159,7 @@ pub struct PastContact {
 }
 
 /// Columns `map_checkin` reads, in order.
-const CHECKIN_COLUMNS: &str = "id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled, coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,''), coalesce(station_kind,''), coalesce(cross_street,'')";
+const CHECKIN_COLUMNS: &str = "id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled, coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,''), coalesce(station_kind,''), coalesce(cross_street,''), location_manual";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SpotterReport {
@@ -573,6 +575,7 @@ impl Repository {
             notes: r.get(19)?,
             station_kind: r.get(20)?,
             cross_street: r.get(21)?,
+            location_manual: r.get(22)?,
         })
     }
 
@@ -696,7 +699,7 @@ impl Repository {
         label: Option<&str>,
     ) -> rusqlite::Result<()> {
         self.conn.execute(
-            "UPDATE checkins SET location_lat = ?1, location_lon = ?2, location_label = ?3 WHERE id = ?4",
+            "UPDATE checkins SET location_lat = ?1, location_lon = ?2, location_label = ?3, location_manual = 1 WHERE id = ?4",
             params![lat, lon, label, id],
         )?;
         Ok(())
@@ -704,9 +707,15 @@ impl Repository {
 
     pub fn clear_checkin_location(&self, id: &str) -> rusqlite::Result<()> {
         self.conn.execute(
-            "UPDATE checkins SET location_lat = NULL, location_lon = NULL, location_label = NULL WHERE id = ?1",
+            "UPDATE checkins SET location_lat = NULL, location_lon = NULL, location_label = NULL, location_manual = 0 WHERE id = ?1",
             params![id],
         )?;
+        Ok(())
+    }
+
+    /// Records that a new check-in's location was placed by hand.
+    pub fn mark_checkin_location_manual(&self, id: &str) -> rusqlite::Result<()> {
+        self.conn.execute("UPDATE checkins SET location_manual = 1 WHERE id = ?1", params![id])?;
         Ok(())
     }
 
@@ -1069,6 +1078,23 @@ mod lifecycle_tests {
     fn repo() -> Repository {
         let path = std::env::temp_dir().join(format!("roc-life-{}.db", Uuid::new_v4()));
         Repository::new(crate::db::open_db(&path).unwrap())
+    }
+
+    #[test]
+    fn a_location_set_by_hand_is_marked_and_clearing_resets_it() {
+        let r = repo();
+        let a = r.create_activity("Net", "directed_net", None, None).unwrap();
+        let c = r
+            .create_checkin(&a, "K4ABC", None, None, None, Some("33157"), None, Some(25.6), Some(-80.3), None, false, None, &ContactDetails::default())
+            .unwrap();
+        let manual = |r: &Repository| r.get_checkin(&c).unwrap().location_manual;
+        assert!(!manual(&r), "worked out from the address");
+        r.set_checkin_location_coords(&c, 25.7, -80.2, Some("Home")).unwrap();
+        assert!(manual(&r), "picked on the map");
+        r.clear_checkin_location(&c).unwrap();
+        assert!(!manual(&r));
+        r.mark_checkin_location_manual(&c).unwrap();
+        assert!(manual(&r));
     }
 
     #[test]

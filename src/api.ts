@@ -235,7 +235,9 @@ export const createCheckin = (
   location_label: string | null,
   has_traffic: boolean,
   traffic: string | null,
-  contact: ContactDetails | null = null
+  contact: ContactDetails | null = null,
+  /** The location was placed by hand (typed coordinates or a mile marker). */
+  location_manual = false
 ) =>
   invoke<string>("create_checkin", {
     activityId: activity_id,
@@ -251,6 +253,7 @@ export const createCheckin = (
     hasTraffic: has_traffic,
     traffic,
     contact,
+    locationManual: location_manual,
   });
 
 /** Earlier records of a call sign across every activity. */

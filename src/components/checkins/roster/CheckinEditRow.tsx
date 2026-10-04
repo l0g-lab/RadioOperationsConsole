@@ -51,15 +51,18 @@ export function CheckinEditRow({
     const trimmedGrid = gridSquare.trim() || null;
     const trimmedAddress = address.trim() || null;
 
-    // A location already on the check-in — auto-resolved earlier or set by
-    // hand via "Edit location" — is left as-is; only resolve fresh when
-    // there's nothing there yet, so editing a typo in the address later
-    // never silently discards a manual pin (mirrors the QRZ auto-fill
-    // fields: never overwrite something already set).
+    // A location placed by hand ("Edit location", typed coordinates) is
+    // never moved by editing the details. An automatic one follows them: it's
+    // worked out again when the QTH, grid, or address changed. If the new
+    // details don't resolve, the old point is kept.
     let locationLat = checkin.location_lat;
     let locationLon = checkin.location_lon;
     let locationLabel = checkin.location_label || null;
-    if (locationLat == null || locationLon == null) {
+    const detailsChanged =
+      trimmedQth !== (checkin.qth_location.trim() || null) ||
+      trimmedGrid !== (checkin.grid_square.trim() || null) ||
+      trimmedAddress !== (checkin.address.trim() || null);
+    if (locationLat == null || locationLon == null || (!checkin.location_manual && detailsChanged)) {
       const resolved = await resolveOfflineLocationAsync({
         gridSquare: trimmedGrid,
         address: trimmedAddress,

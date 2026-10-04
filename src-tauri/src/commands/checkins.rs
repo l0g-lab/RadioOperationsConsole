@@ -40,12 +40,14 @@ pub fn create_checkin(
     has_traffic: bool,
     traffic: Option<String>,
     contact: Option<ContactDetails>,
+    location_manual: Option<bool>,
 ) -> Result<String, String> {
     let mut contact = normalize_contact(contact)?.unwrap_or_default();
     let repo = state.repo.lock().unwrap();
     ensure_open(&repo, &activity_id)?;
     let activity = repo.get_activity(&activity_id).map_err(|e| e.to_string())?;
-    if range_check::is_range_check(&activity.activity_type) {
+    let range = range_check::is_range_check(&activity.activity_type);
+    if range {
         // RANGE-002, RANGE-011
         if activity.repeater_lat.is_none() || activity.repeater_lon.is_none() {
             return Err(range_check::NEEDS_REPEATER.to_string());
@@ -53,7 +55,7 @@ pub fn create_checkin(
         range_check::normalize(&mut contact);
         range_check::validate(&contact, location_lat.is_some() && location_lon.is_some())?;
     }
-    repo.create_checkin(
+    let id = repo.create_checkin(
             &activity_id,
             &call_sign,
             name.as_deref(),
@@ -68,7 +70,12 @@ pub fn create_checkin(
             traffic.as_deref(),
             &contact,
         )
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    // A range check's point is always pinned by hand (RANGE-014).
+    if location_lat.is_some() && (range || location_manual == Some(true)) {
+        repo.mark_checkin_location_manual(&id).map_err(|e| e.to_string())?;
+    }
+    Ok(id)
 }
 
 /// Earlier records of a call sign across every activity: the "worked

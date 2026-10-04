@@ -169,7 +169,10 @@ export default function CheckinRoster({
       let locationLat = selectedCheckin.location_lat;
       let locationLon = selectedCheckin.location_lon;
       let locationLabel = selectedCheckin.location_label || null;
-      if (locationLat == null || locationLon == null) {
+      // An automatic location is worked out again from what the lookup found,
+      // which may be better (QRZ's exact point instead of a ZIP's center). One
+      // placed by hand is kept.
+      if (locationLat == null || locationLon == null || !selectedCheckin.location_manual) {
         const resolved = await resolveOfflineLocationAsync({
           qrzLat: result.exact_lat,
           qrzLon: result.exact_lon,

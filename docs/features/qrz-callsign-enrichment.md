@@ -120,7 +120,9 @@ wait on it at all.
   blank on that check-in (name, QTH location, grid square, full address),
   subject to the same non-destructive prefill rule as `QRZ-021`/`025`/`028`
   — it MUST NOT overwrite a field the operator has already entered or
-  corrected.
+  corrected. Its map location is the exception: one worked out automatically
+  is worked out again from what the lookup found, and one placed by hand is
+  kept (`CIMAP-003`).
 - **QRZ-036:** This control MUST only be offered when QRZ is configured
   (`QRZ-003`), and MUST fail silently on an offline or unconfigured
   connector (`QRZ-030`) rather than surfacing an error for what remains an

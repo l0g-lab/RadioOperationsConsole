@@ -159,6 +159,8 @@ export interface Checkin {
   location_lat: number | null;
   location_lon: number | null;
   location_label: string;
+  /** Placed by hand, so Lookup and edits leave it alone. */
+  location_manual: boolean;
   /** The station has traffic to pass; `traffic` holds the details, if any yet. */
   has_traffic: boolean;
   traffic: string;

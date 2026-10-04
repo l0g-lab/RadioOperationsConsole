@@ -6,6 +6,13 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Fixed
+- **Check-in locations now update.** Looking up a check-in again, or editing
+  its address, QTH, or grid square, moves it on the map when its location was
+  worked out automatically — for example from a ZIP code's center to QRZ's
+  exact point. A location you placed by hand (on the map, or as typed
+  coordinates or a mile marker) is never moved.
+
 ## [2.2.0] - 2026-10-04
 
 ### Added

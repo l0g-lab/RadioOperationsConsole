@@ -57,6 +57,15 @@ the Check-ins workspace, not part of the rapid check-in entry path.
   check-in's QTH location, grid square, or address — overriding or bypassing
   any QRZ suggestion — the map MUST plot that stored value. It MUST NOT
   substitute a QRZ-linked location for the call sign instead.
+- **CIMAP-003:** A check-in MUST record whether its location was placed by
+  hand (picked on the map, typed as coordinates or a mile marker, or a range
+  check's pin) or worked out from its details (QRZ's exact point, the
+  address's ZIP, the grid square, or the QTH). A location worked out
+  automatically MUST be worked out again when a lookup is run on the check-in
+  (`QRZ-035`) or its QTH, grid square, or address is edited, keeping the old
+  point if the new details give none. A location placed by hand MUST NOT be
+  changed by either. Check-ins logged before this was recorded count as
+  automatic, except range checks.
 
 ## Coordinate resolution
 
