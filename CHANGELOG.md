@@ -6,23 +6,23 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-10-05
+
 ### Changed
 - **The Weather tab is simpler.** Opening it shows everything at once — no
   more Show buttons: **Now** (what the nearest weather station is reporting),
   the **Forecast** one line per period (today and tomorrow, with *Show all 7
-  days*; ⓘ opens a period's full wording), and **Alerts** one line each — warnings in red, watches and
-  advisories in amber, most serious first, with when each ends; click one for
-  the full text. One **Refresh** updates it all. Your area is in the heading
+  days*; ⓘ opens a period's full wording), and **Alerts** one line each —
+  warnings in red, watches and advisories in amber, most serious first, with
+  when each ends; click one for the full text. One **Refresh** updates it all. Your area is in the heading
   with a *Change area* link, and with no area set the tab asks for one rather
   than listing alerts for the whole country. Radar is still one click away.
-
 - **Harder to forget to start a net.** A net that hasn't started shows an
   amber banner above the Check-ins and Spotter Reports forms — "This net
   hasn't started — scheduled for 19:00, 5 min ago" — pointing to **Start
   net** in the top bar, where nets are started and ended. There, **Start
   net** and **End net** are now filled green buttons, and *Not started* is
-  amber. You can still log check-ins before
-  starting (for early check-ins).
+  amber. You can still log check-ins before starting (for early check-ins).
 
 ### Added
 - **Weather now on a SKYWARN net's Spotter Reports tab:** one line with the
@@ -380,7 +380,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.1...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.2...HEAD
+[2.4.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.0...v2.3.1
