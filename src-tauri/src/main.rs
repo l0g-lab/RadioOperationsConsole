@@ -7,6 +7,7 @@ mod commands;
 mod connectors;
 mod datapacks;
 mod db;
+mod events;
 mod ics214;
 mod relay;
 mod net;
@@ -68,6 +69,10 @@ fn main() {
             commands::save_ics214_log,
             commands::delete_ics214_log,
             commands::set_activity_times,
+            commands::set_activity_event,
+            commands::list_events,
+            commands::save_event,
+            commands::delete_event,
             commands::change_activity_operator,
             commands::operator_usage,
             commands::list_relay_messages,

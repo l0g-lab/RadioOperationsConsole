@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { eventSpan } from "../../events";
 import * as api from "../../api";
 import type { Activity, Ics214Details, Ics214Line, Ics214Log, Operator } from "../../types";
 import { saveFilesToFolder, saveTextFile } from "../../export";
@@ -85,7 +86,16 @@ const draftLines = (lines: Ics214Line[]): DraftLine[] =>
  * for Winlink's ICS 214 form or printed. Not tied to the activity in the top
  * bar, since one log usually spans several.
  */
-export default function Ics214Dialog({ operator, onClose }: { operator: Operator | null; onClose: () => void }) {
+export default function Ics214Dialog({
+  operator,
+  onClose,
+  event,
+}: {
+  operator: Operator | null;
+  onClose: () => void;
+  /** Opens straight to this event's log: its saved one, or a new one set to it (EVT-041). */
+  event?: { id: string; name: string; activities: Activity[] };
+}) {
   const [logs, setLogs] = useState<Ics214Log[] | null>(null);
   const [editing, setEditing] = useState<{ id: string | null; details: Ics214Details } | null>(null);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
@@ -99,23 +109,49 @@ export default function Ics214Dialog({ operator, onClose }: { operator: Operator
     refresh();
   }, []);
 
-  function startNew() {
+  // For an event: its saved log if there is one, else a new one covering it.
+  const [eventOpened, setEventOpened] = useState(false);
+  useEffect(() => {
+    if (!event || logs == null || eventOpened) return;
+    setEventOpened(true);
+    const saved = logs.find((l) => l.event_id === event.id);
+    if (saved) {
+      setEditing({ id: saved.id, details: saved });
+      return;
+    }
+    const span = eventSpan(event.activities) ?? {
+      from: new Date(Date.now() - 3_600_000).toISOString(),
+      to: new Date(Math.ceil(Date.now() / 60_000) * 60_000).toISOString(),
+    };
+    api
+      .listActivities()
+      .catch(() => [] as Activity[])
+      .then((all) => {
+        // Everything else that ran in the period is left out, so it's just the event.
+        const others = activitiesInPeriod(all, span.from, span.to).filter((a) => a.event_id !== event.id);
+        startNew({ incident: event.name, ...span, excluded: others.map((a) => a.id), eventId: event.id });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event, logs]);
+
+  function startNew(preset?: { incident: string; from: string; to: string; excluded: string[]; eventId: string }) {
     const now = new Date();
     const morning = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0);
     const last = logs?.[0];
     setEditing({
       id: null,
       details: {
-        incident_name: "",
-        period_from: morning.toISOString(),
-        period_to: new Date(Math.ceil(now.getTime() / 60_000) * 60_000).toISOString(),
+        incident_name: preset?.incident ?? "",
+        period_from: preset?.from ?? morning.toISOString(),
+        period_to: preset?.to ?? new Date(Math.ceil(now.getTime() / 60_000) * 60_000).toISOString(),
         name: [operator?.display_name, operator?.call_sign].filter(Boolean).join(" "),
         // Usually the same as last time.
         ics_position: last?.ics_position ?? "",
         home_agency: last?.home_agency ?? "",
         prepared_name: operator?.display_name ?? "",
         resources: [],
-        excluded_activities: [],
+        excluded_activities: preset?.excluded ?? [],
+        event_id: preset?.eventId ?? null,
         lines: [],
         dismissed: [],
       },
@@ -166,7 +202,7 @@ export default function Ics214Dialog({ operator, onClose }: { operator: Operator
               there next time.
             </p>
             <div className="inline-form">
-              <button onClick={startNew}>New activity log</button>
+              <button onClick={() => startNew()}>New activity log</button>
             </div>
             {logs && logs.length === 0 && <p className="checkin-empty-state">No activity logs yet.</p>}
             <div className="operator-list">

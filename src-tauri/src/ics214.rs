@@ -47,6 +47,9 @@ pub struct Ics214Details {
     /// Sources of generated lines the operator deleted, so a refresh doesn't
     /// bring them back.
     pub dismissed: Vec<String>,
+    /// The event this is the log of (events.rs), if any.
+    #[serde(default)]
+    pub event_id: Option<String>,
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq)]
@@ -107,10 +110,11 @@ pub fn clean(mut d: Ics214Details) -> Result<Ics214Details, String> {
     d.lines = lines.into_iter().map(|(_, l)| l).collect();
     d.dismissed.sort();
     d.dismissed.dedup();
+    d.event_id = d.event_id.filter(|e| !e.trim().is_empty());
     Ok(d)
 }
 
-const COLS: &str = "id, incident_name, period_from, period_to, coalesce(name,''), coalesce(ics_position,''), coalesce(home_agency,''), coalesce(prepared_name,''), resources, excluded_activities, lines, dismissed, updated_at";
+const COLS: &str = "id, incident_name, period_from, period_to, coalesce(name,''), coalesce(ics_position,''), coalesce(home_agency,''), coalesce(prepared_name,''), resources, excluded_activities, lines, dismissed, updated_at, event_id";
 
 fn json<T: for<'de> Deserialize<'de>>(v: String) -> rusqlite::Result<T> {
     serde_json::from_str(&v).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))
@@ -135,6 +139,7 @@ fn map(r: &rusqlite::Row) -> rusqlite::Result<Ics214Log> {
             excluded_activities: json(r.get(9)?)?,
             lines: json(r.get(10)?)?,
             dismissed: json(r.get(11)?)?,
+            event_id: r.get(13)?,
         },
         updated_at: r.get(12)?,
     })
@@ -164,8 +169,8 @@ impl Repository {
         let id = Uuid::new_v4().to_string();
         let now = Utc::now().to_rfc3339();
         self.conn.execute(
-            "INSERT INTO ics214_logs(id, incident_name, period_from, period_to, name, ics_position, home_agency, prepared_name, resources, excluded_activities, lines, dismissed, created_at, updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?13)",
-            params![id, d.incident_name, d.period_from, d.period_to, blank(&d.name), blank(&d.ics_position), blank(&d.home_agency), blank(&d.prepared_name), to_json(&d.resources), to_json(&d.excluded_activities), to_json(&d.lines), to_json(&d.dismissed), now],
+            "INSERT INTO ics214_logs(id, incident_name, period_from, period_to, name, ics_position, home_agency, prepared_name, resources, excluded_activities, lines, dismissed, created_at, updated_at, event_id) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?13,?14)",
+            params![id, d.incident_name, d.period_from, d.period_to, blank(&d.name), blank(&d.ics_position), blank(&d.home_agency), blank(&d.prepared_name), to_json(&d.resources), to_json(&d.excluded_activities), to_json(&d.lines), to_json(&d.dismissed), now, d.event_id],
         )?;
         Ok(id)
     }
@@ -173,8 +178,8 @@ impl Repository {
     /// Replaces a log's details (already checked with `clean`).
     pub fn update_ics214_log(&self, id: &str, d: &Ics214Details) -> rusqlite::Result<()> {
         let n = self.conn.execute(
-            "UPDATE ics214_logs SET incident_name = ?1, period_from = ?2, period_to = ?3, name = ?4, ics_position = ?5, home_agency = ?6, prepared_name = ?7, resources = ?8, excluded_activities = ?9, lines = ?10, dismissed = ?11, updated_at = ?12 WHERE id = ?13",
-            params![d.incident_name, d.period_from, d.period_to, blank(&d.name), blank(&d.ics_position), blank(&d.home_agency), blank(&d.prepared_name), to_json(&d.resources), to_json(&d.excluded_activities), to_json(&d.lines), to_json(&d.dismissed), Utc::now().to_rfc3339(), id],
+            "UPDATE ics214_logs SET incident_name = ?1, period_from = ?2, period_to = ?3, name = ?4, ics_position = ?5, home_agency = ?6, prepared_name = ?7, resources = ?8, excluded_activities = ?9, lines = ?10, dismissed = ?11, updated_at = ?12, event_id = ?14 WHERE id = ?13",
+            params![d.incident_name, d.period_from, d.period_to, blank(&d.name), blank(&d.ics_position), blank(&d.home_agency), blank(&d.prepared_name), to_json(&d.resources), to_json(&d.excluded_activities), to_json(&d.lines), to_json(&d.dismissed), Utc::now().to_rfc3339(), id, d.event_id],
         )?;
         if n == 0 {
             return Err(rusqlite::Error::QueryReturnedNoRows);

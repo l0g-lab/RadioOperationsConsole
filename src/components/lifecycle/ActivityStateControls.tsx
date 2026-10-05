@@ -11,10 +11,13 @@ export default function ActivityStateControls({
   activity,
   operator,
   onChanged,
+  onSelectActivity,
 }: {
   activity: Activity;
   operator: Operator | null;
   onChanged: () => void;
+  /** Switches activity, e.g. to the next in an event once it's started. */
+  onSelectActivity?: (id: string) => void;
 }) {
   const [dialog, setDialog] = useState<"close" | "reopen" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,8 +54,12 @@ export default function ActivityStateControls({
         <CloseOutDialog
           activity={activity}
           operator={operator}
-          onClose={() => setDialog(null)}
+          onClose={() => {
+            setDialog(null);
+            onChanged();
+          }}
           onDone={finished}
+          onSelectActivity={onSelectActivity}
         />
       )}
       {dialog === "reopen" && (

@@ -25,6 +25,8 @@ const activity: Activity = {
   repeater_lat: null,
   repeater_lon: null,
   operator_id: "",
+  event_id: "",
+  event: "",
 };
 
 function renderDialog(onDeleted = vi.fn()) {

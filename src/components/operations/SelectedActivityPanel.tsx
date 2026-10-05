@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
-import type { Activity, Operator, Repeater } from "../../types";
+import type { Activity, EventRecord, Operator, Repeater } from "../../types";
 import ActivitySummaryPanel from "./ActivitySummaryPanel";
 import type { ActivityRepeater } from "./ActivityRepeaterField";
 import ActivityForm, { type ActivityDraft } from "./ActivityForm";
@@ -25,6 +25,8 @@ interface Props {
   onNewActivity: () => void;
   /** To choose who runs the activity. */
   operators: Operator[];
+  /** The events there are, to move the activity into or out of one. */
+  events?: EventRecord[];
 }
 
 /**
@@ -42,6 +44,7 @@ export default function SelectedActivityPanel({
   repeaters,
   onNewActivity,
   operators,
+  events = [],
 }: Props) {
   const [editingFocused, setEditingFocused] = useState(false);
   const [draft, setDraft] = useState<ActivityDraft | null>(null);
@@ -64,6 +67,7 @@ export default function SelectedActivityPanel({
       // When it actually started and ended, correctable without reopening (LIFE-009).
       started: focusedActivity.opened_at ? formatContactTime(focusedActivity.opened_at) : "",
       ended: focusedActivity.closed_at ? formatContactTime(focusedActivity.closed_at) : "",
+      eventId: focusedActivity.event_id,
     });
     setEditError(null);
     setEditingFocused(true);
@@ -154,6 +158,10 @@ export default function SelectedActivityPanel({
           await api.setActivityLocation(focusedActivity.id, "");
         }
       }
+      const eventId = isLog(editType) ? "" : draft.eventId;
+      if (eventId !== focusedActivity.event_id) {
+        await api.setActivityEvent(focusedActivity.id, eventId || null, selectedOperatorId);
+      }
       // Last, so the corrections above move with everything else.
       if (editOperator && editOperator !== selectedOperatorId) {
         await api.changeActivityOperator(focusedActivity.id, editOperator);
@@ -227,6 +235,7 @@ export default function SelectedActivityPanel({
           onCancel={cancelEditFocused}
           error={editError}
           mapTitle={focusedActivity.title}
+          events={events}
         />
       )}
 

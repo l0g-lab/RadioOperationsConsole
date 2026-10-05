@@ -116,6 +116,7 @@ export default function Header({
             activity={selectedActivity}
             operator={operators.find((o) => o.id === activityOperatorId) ?? null}
             onChanged={onActivitiesChanged}
+            onSelectActivity={onSelectActivity}
           />
           <button className="link-button" onClick={onEditActivity}>
             Edit

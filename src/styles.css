@@ -260,7 +260,9 @@ select {
   border-radius: 3px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  /* Ten tabs fit on one line beside the Operations sidebar. */
+  padding: 4px 8px;
 }
 
 .tab-icon {
@@ -2797,4 +2799,107 @@ button.online-pill-working-offline:hover {
 .operator-row-icons {
   gap: 2px;
   align-items: center;
+}
+
+/* The End net window's "next in this event" line (CloseOutDialog.tsx). */
+.closeout-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-input);
+}
+
+/* Events tab (EventsTab.tsx): the list of events beside the chosen one. */
+.events-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.events-list,
+.events-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.event-form {
+  align-items: flex-end;
+}
+
+.event-detail-dates {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+}
+
+.events-other-logs {
+  margin: 4px 0 0;
+}
+
+.event-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.event-timeline-row {
+  display: grid;
+  grid-template-columns: 9.5em minmax(0, auto) minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.event-state {
+  font-size: calc(12px * var(--font-scale));
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.event-state-active {
+  color: var(--accent);
+}
+
+.button-icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+}
+
+@media (max-width: 900px) {
+  .events-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The chosen event: marked with a bar rather than a solid fill, so its grey
+   details line stays readable in both themes. */
+.event-row {
+  border-left: 3px solid transparent;
+}
+
+.event-row.selected {
+  background: var(--bg-input);
+  color: var(--text);
+  border-left-color: var(--accent);
+}
+
+.event-row.selected strong {
+  color: var(--accent);
 }

@@ -24,6 +24,8 @@ function activity(activity_type: string, state: string): Activity {
     repeater_lat: null,
     repeater_lon: null,
     operator_id: "",
+    event_id: "",
+    event: "",
   };
 }
 

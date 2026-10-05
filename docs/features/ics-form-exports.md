@@ -150,8 +150,8 @@ exercise or a shift — rather than one activity, so it is kept as its own
 record, edited, and exported again as the period fills in.
 
 - **ICSF-050:** The operator MUST be able to create, reopen, change, and delete
-  activity logs, reached from the Exports tab whether or not an activity is
-  chosen. A log MUST hold the incident name, the operational period (from and
+  activity logs, reached from the Events tab ([events.md](events.md),
+  `EVT-041`), where an event's page opens its own. A log MUST hold the incident name, the operational period (from and
   to, ending after it starts), name, ICS position, home agency, prepared-by,
   up to 8 resources assigned, and the log lines. Each change MUST be recorded in
   the history (`AUDIT-*`).

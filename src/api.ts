@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   Activity,
+  EventRecord,
   OperatorUsage,
   RelayMessage,
   RelayMessageInput,
@@ -99,6 +100,21 @@ export const createActivity = (
     frequency,
     operatorId: operator_id,
   });
+
+// Events (docs/features/events.md).
+
+export const listEvents = () => invoke<EventRecord[]>("list_events");
+
+/** Adds an event (no id) or renames / re-dates one; returns its id. */
+export const saveEvent = (event_id: string | null, name: string, date: string, operator_id: string | null) =>
+  invoke<string>("save_event", { eventId: event_id, name, date, operatorId: operator_id });
+
+export const deleteEvent = (event_id: string, operator_id: string | null) =>
+  invoke<void>("delete_event", { eventId: event_id, operatorId: operator_id });
+
+/** Puts an activity in an event, or takes it out with null. */
+export const setActivityEvent = (activity_id: string, event_id: string | null, operator_id: string | null) =>
+  invoke<void>("set_activity_event", { activityId: activity_id, eventId: event_id, operatorId: operator_id });
 
 /** Moves an activity, and what was recorded in it, to another operator. */
 export const changeActivityOperator = (activity_id: string, operator_id: string) =>

@@ -13,4 +13,6 @@ export interface ActivityPrefill {
   time: string;
   frequency: string;
   repeater: ActivityRepeater | null;
+  /** The event it's being added to, from that event's page. */
+  eventId?: string;
 }

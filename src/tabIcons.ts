@@ -1,5 +1,6 @@
 import {
   CalendarClock,
+  CalendarRange,
   ClipboardCheck,
   CloudSunRain,
   FileDown,
@@ -22,5 +23,6 @@ export const TAB_ICONS: Record<Tab, LucideIcon> = {
   Exports: FileDown,
   History: History,
   Nets: CalendarClock,
+  Events: CalendarRange,
   Settings: Settings,
 };

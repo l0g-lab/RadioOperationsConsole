@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import GettingStarted from "../operations/GettingStarted";
 import type { SettingsSection } from "./SettingsTab";
 import * as api from "../../api";
-import type { Activity, NetListing, Operator, Repeater } from "../../types";
+import type { Activity, NetListing, Operator, Repeater, EventRecord } from "../../types";
 import type { ActivityPrefill } from "../operations/activityPrefill";
 import SelectedActivityPanel from "../operations/SelectedActivityPanel";
 import CreateActivityPanel from "../operations/CreateActivityPanel";
@@ -27,6 +27,8 @@ interface Props {
   /** From a net listing's "Start activity": fills the create form. */
   activityPrefill: ActivityPrefill | null;
   onActivityPrefillHandled: () => void;
+  /** The events there are, to put activities in. */
+  events: EventRecord[];
   /** Open the new-activity form (from the top bar or the button here). */
   newActivityRequested: boolean;
   onNewActivity: () => void;
@@ -50,6 +52,7 @@ export default function OperationsTab({
   onEditActivityHandled,
   activityPrefill,
   onActivityPrefillHandled,
+  events,
   newActivityRequested,
   onNewActivity,
   onNewActivityHandled,
@@ -102,6 +105,7 @@ export default function OperationsTab({
             repeaters={repeaters}
             prefill={activityPrefill}
             onPrefillHandled={onActivityPrefillHandled}
+            events={events}
             openRequested={newActivityRequested}
             onOpenHandled={onNewActivityHandled}
           />
@@ -115,6 +119,7 @@ export default function OperationsTab({
             onEditRequestHandled={onEditActivityHandled}
             repeaters={repeaters}
             onNewActivity={onNewActivity}
+            events={events}
           />
         </div>
 

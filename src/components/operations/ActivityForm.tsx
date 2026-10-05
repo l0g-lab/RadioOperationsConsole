@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import type { Operator, Repeater } from "../../types";
+import type { EventRecord, Operator, Repeater } from "../../types";
 import { formatCoordsWithGrid } from "../../geo";
 import LocationPicker from "../LocationPicker";
 import ActivityTypeSelect from "./ActivityTypeSelect";
@@ -26,6 +26,8 @@ export interface ActivityDraft {
   /** When it actually started and ended (editing a started activity only). */
   started: string;
   ended: string;
+  /** The id of the event it belongs to; "" for none. */
+  eventId: string;
 }
 
 /** A labelled field: the label above, the control below. */
@@ -68,6 +70,7 @@ export default function ActivityForm({
   onCancel,
   error,
   mapTitle,
+  events = [],
 }: {
   draft: ActivityDraft;
   onChange: (patch: Partial<ActivityDraft>) => void;
@@ -85,6 +88,8 @@ export default function ActivityForm({
   error?: string | null;
   /** Names what the maps are for, e.g. "new activity". */
   mapTitle: string;
+  /** The events there are; the Event choice only appears when there's at least one. */
+  events?: EventRecord[];
 }) {
   const [placing, setPlacing] = useState(false);
   const rangeCheck = isRangeCheck(draft.type);
@@ -144,6 +149,20 @@ export default function ActivityForm({
                 <option key={o.id} value={o.id}>
                   {o.display_name}
                   {o.call_sign ? ` (${o.call_sign})` : ""}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+        {/* Only once events exist, and never for a station log (it's ongoing). Activities
+            are usually added to an event from its page on the Events tab. */}
+        {events.length > 0 && !isLog(draft.type) && (
+          <Field label="Event">
+            <select value={draft.eventId} onChange={(e) => onChange({ eventId: e.target.value })}>
+              <option value="">(none)</option>
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id}>
+                  {ev.name}
                 </option>
               ))}
             </select>

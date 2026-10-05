@@ -17,7 +17,8 @@ It's an operations logger first, not a contest logbook: one app that handles a r
 - **Watch the weather.** NWS alerts and forecast for your area, plus a radar loop from the nearest NEXRAD station.
 - **See live APRS.** A receive-only APRS-IS feed for a chosen area, on a map. Nothing is ever transmitted.
 - **Start it, end it, wrap it up.** Start a net, and when it ends get a summary, a warning about open traffic, your closing notes, and saved copies of the records. End it now or at the last check-in, and correct its start and end times later if needed. A closed net is locked until you reopen it (with a reason) — handy for a late check-in.
-- **Log your part in an exercise.** An ICS-214 activity log for a whole period of operation, filled in from every net and report in it, edited and kept, then exported for Winlink Express's ICS-214 form or printed.
+- **Run an exercise as one event.** On the Events tab, put its nets and relays together and see them in the order they run; the next one is a click away when you end a net, and the event's page has its ICS-214 activity log and one ICS-309 for the whole thing.
+- **Log your part in an exercise.** An event's ICS-214 activity log, filled in from every net, relay and report in it, edited and kept, then exported for Winlink Express's ICS-214 form or printed.
 - **Log under the right call sign.** Each activity is run by an operator, chosen when you create it — so a ham net and a GMRS net each go under the right call sign — and can be corrected later, records and all.
 - **Keep a record.** Traffic noted on each check-in, and a full attributed, timestamped history of every change. Removed check-ins and reports can be restored; deleting a whole activity for good asks you to confirm first.
 - **See it before you save it.** Every export (CSV, text, net summary) can be viewed first, then copied or saved.
@@ -108,12 +109,13 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 | Spotter Reports | Hazard reports and the report map |
 | Weather | NWS alerts, forecast, radar |
 | APRS | Live APRS-IS feed for an area |
-| Exports | Everything that leaves the app: records as CSV or text, the net summary, and the ICS 213, 214, and 309 forms — each viewable before saving |
+| Exports | Everything that leaves the app for the chosen activity: records as CSV or text, the net summary, and the ICS 213 and 309 forms — each viewable before saving |
 | History | The audit trail of everything that changed |
 | Nets | Nets you can join, day by day for the coming week — when, how to tune in, how far the repeater is, how to check in; start an activity from one |
+| Events | Exercises and other occasions that span several activities: their activities in order, and the event's ICS 214 activity log and combined ICS 309 |
 | Settings | Theme, font and text size, coordinate format, QRZ login, offline data downloads, storage, backup & restore, checking for updates |
 
-**Shortcuts:** `Ctrl+1`–`9` jump to a tab · `Ctrl+K` focus the call-sign box · `Ctrl+[` / `Ctrl+]` previous/next activity · `Ctrl+Shift+ +/-/0` zoom.
+**Shortcuts:** `Ctrl+1`–`9`, `Ctrl+0` jump to a tab · `Ctrl+K` focus the call-sign box · `Ctrl+[` / `Ctrl+]` previous/next activity · `Ctrl+Shift+ +/-/0` zoom.
 
 ## Working offline
 

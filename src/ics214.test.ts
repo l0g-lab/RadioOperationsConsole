@@ -36,6 +36,8 @@ function activity(o: Partial<Activity>): Activity {
     repeater_lat: null,
     repeater_lon: null,
     operator_id: "",
+    event_id: "",
+    event: "",
     ...o,
   };
 }

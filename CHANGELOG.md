@@ -6,6 +6,23 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **Events tab:** an event brings together the activities of one occasion —
+  say the nets and relays of a SET. Create one on the new **Events** tab, add
+  its activities from its page (or pick existing ones), and see them in the
+  order they run. The page holds the forms for the whole event: its **ICS 214**
+  activity log and an **ICS 309** with every net and relay in one log (leave
+  any out). The Activities list shows each event as its own group, and when
+  you end a net, the window tells you what's next in the event and, within 15
+  minutes of its time, offers to start it. The activity form only offers an
+  *Event* choice once you have an event. `Ctrl+9` is Events; Settings moves to
+  `Ctrl+0`.
+
+### Changed
+- **The ICS 214 activity log moved to the Events tab,** since it covers an
+  event rather than one net; the Exports tab points to it. Logs you've already
+  saved are under *All activity logs* there.
+
 ## [2.3.1] - 2026-10-04
 
 ### Fixed

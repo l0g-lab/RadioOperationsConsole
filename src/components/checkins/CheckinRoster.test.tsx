@@ -32,6 +32,8 @@ const LOG: Activity = {
   repeater_lat: null,
   repeater_lon: null,
   operator_id: "",
+  event_id: "",
+  event: "",
 };
 
 function contact(overrides: Partial<Checkin>): Checkin {

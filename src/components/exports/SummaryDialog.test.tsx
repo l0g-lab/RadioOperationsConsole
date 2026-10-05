@@ -33,6 +33,8 @@ const NET: Activity = {
   repeater_lat: null,
   repeater_lon: null,
   operator_id: "",
+  event_id: "",
+  event: "",
 };
 
 const SUMMARY: ActivitySummary = {

@@ -30,7 +30,16 @@ type Props = {
   operatorName: string;
   operatorCall: string;
   onClose: () => void;
-} & ({ form: "309" } | { form: "213"; initial: GeneralMessage213Input });
+} & (
+  | {
+      form: "309";
+      /** An event's activities, for one log of them all (EVT-040); just `activity` when absent. */
+      event?: { name: string; activities: Activity[] };
+      /** Who ran an activity (its "to" on each line); the header's call sign otherwise. */
+      callFor?: (a: Activity) => string;
+    }
+  | { form: "213"; initial: GeneralMessage213Input }
+);
 
 function Text({
   label,
@@ -109,13 +118,15 @@ export default function IcsFormDialog(props: Props) {
         {props.form === "309" ? (
           <Form309
             activity={activity}
+            event={props.event}
+            callFor={props.callFor}
             operatorName={operatorName}
             operatorCall={operatorCall}
             save={save}
             saveFolder={saveFolder}
             copy={copy}
             onSavePrint={(html) =>
-              save(exportFilename(activity, "ICS 309", "html"), html, PRINT_HINT)
+              save(exportFilename(fileActivity(activity, props.event), "ICS 309", "html"), html, PRINT_HINT)
             }
           />
         ) : (
@@ -145,12 +156,19 @@ export default function IcsFormDialog(props: Props) {
   );
 }
 
+/** What files are named after: the activity, or the event for a combined log. */
+function fileActivity(activity: Activity, event?: { name: string }): Activity {
+  return event ? { ...activity, title: event.name } : activity;
+}
+
 type SaveFn = (name: string, content: string, hint: string) => void;
 type SaveFolderFn = (files: { path: string; content: string }[], hint: string) => void;
 type CopyFn = (text: string, what: string) => void;
 
 function Form309({
-  activity,
+  activity: focused,
+  event,
+  callFor,
   operatorName,
   operatorCall,
   save,
@@ -159,6 +177,8 @@ function Form309({
   onSavePrint,
 }: {
   activity: Activity;
+  event?: { name: string; activities: Activity[] };
+  callFor?: (a: Activity) => string;
   operatorName: string;
   operatorCall: string;
   save: SaveFn;
@@ -166,37 +186,55 @@ function Form309({
   copy: CopyFn;
   onSavePrint: (html: string) => void;
 }) {
-  const [checkins, setCheckins] = useState<Checkin[]>([]);
-  const [relayed, setRelayed] = useState<RelayMessage[]>([]);
+  // One activity, or every activity in an event, any of which can be left out.
+  const all = useMemo(() => event?.activities ?? [focused], [event, focused]);
+  const [left, setLeft] = useState<Set<string>>(new Set());
+  const included = all.filter((a) => !left.has(a.id));
+  // The one whose times and names the header starts from.
+  const activity = included[0] ?? focused;
+  const [records, setRecords] = useState<Map<string, { checkins: Checkin[]; relayed: RelayMessage[] }>>(new Map());
   const [loaded, setLoaded] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
-  // A relay station logs messages in and out instead of check-ins (RELAY-041).
-  const relay = isRelay(activity.activity_type);
+  const anyRelay = all.some((a) => isRelay(a.activity_type));
 
   useEffect(() => {
-    Promise.all([
-      api.listCheckins(activity.id).catch(() => [] as Checkin[]),
-      relay ? api.listRelayMessages(activity.id).catch(() => [] as RelayMessage[]) : [],
-    ]).then(([c, m]) => {
-      setCheckins(c);
-      setRelayed(m);
+    Promise.all(
+      all.map(async (a) => {
+        // A relay station logs messages in and out instead of check-ins (RELAY-041).
+        const [c, m] = await Promise.all([
+          api.listCheckins(a.id).catch(() => [] as Checkin[]),
+          isRelay(a.activity_type) ? api.listRelayMessages(a.id).catch(() => [] as RelayMessage[]) : [],
+        ]);
+        return [a.id, { checkins: c, relayed: m }] as const;
+      })
+    ).then((pairs) => {
+      setRecords(new Map(pairs));
       setLoaded(true);
     });
-  }, [activity.id, relay]);
+  }, [all]);
 
-  const netControl = operatorCall || operatorName || (relay ? "Relay" : "Net control");
+  const netControl = operatorCall || operatorName || (anyRelay ? "Relay" : "Net control");
   const entries = useMemo(
-    () => (relay ? relay309Entries(relayed, netControl) : comms309Entries(checkins, netControl)),
-    [relay, relayed, checkins, netControl]
+    () =>
+      included
+        .flatMap((a) => {
+          const r = records.get(a.id);
+          if (!r) return [];
+          const to = callFor?.(a) || netControl;
+          return isRelay(a.activity_type) ? relay309Entries(r.relayed, to) : comms309Entries(r.checkins, to);
+        })
+        .sort((x, y) => x.at - y.at),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [records, left, netControl, callFor]
   );
   const { rows, shortened } = useMemo(() => form309Rows(entries), [entries]);
   const pages = useMemo(() => form309Pages(rows), [rows]);
   const page = Math.min(pageIndex, pages.length - 1);
 
-  const [incidentName, setIncidentName] = useState(activity.title);
+  const [incidentName, setIncidentName] = useState(event?.name ?? activity.title);
   const [periodFrom, setPeriodFrom] = useState("");
   const [periodTo, setPeriodTo] = useState("");
-  const [netName, setNetName] = useState(activity.title);
+  const [netName, setNetName] = useState(event?.name ?? activity.title);
   const [opName, setOpName] = useState(operatorName);
   const [opCall, setOpCall] = useState(operatorCall);
   const [prepName, setPrepName] = useState(operatorName);
@@ -204,21 +242,24 @@ function Form309({
   const [task, setTask] = useState("");
   const [opPeriod, setOpPeriod] = useState("");
 
-  // The period starts and ends when the net did, or else at its first and last check-ins.
+  // The period starts when the first included net did and ends when the last
+  // did, or else at the first and last entries.
   useEffect(() => {
     if (!loaded) return;
     const iso = (at: number) => new Date(at).toISOString();
-    const from =
-      localDateTime(activity.opened_at) || (entries[0] ? localDateTime(iso(entries[0].at)) : "");
+    const opened = included.map((a) => a.opened_at).filter(Boolean).sort();
+    const closed = included.map((a) => a.closed_at).filter(Boolean).sort();
+    const stillOn = included.some((a) => a.state === "active");
+    const from = localDateTime(opened[0] ?? "") || (entries[0] ? localDateTime(iso(entries[0].at)) : "");
     setPeriodFrom(from);
     setPeriodTo(
-      localDateTime(activity.closed_at) ||
+      (!stillOn && localDateTime(closed[closed.length - 1] ?? "")) ||
         (entries.length ? localDateTime(iso(entries[entries.length - 1].at)) : "")
     );
     // Winlink's "Operational Period #" is a short label; the start date, as YYYYMMDD, is a sensible default.
     setOpPeriod(from.slice(0, 10).replace(/-/g, ""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded]);
+  }, [loaded, left]);
 
   const now = new Date();
   const preparedAt = `${localDate(now)} ${localTime(now)}`;
@@ -274,11 +315,38 @@ function Form309({
   return (
     <>
       <p className="settings-hint">
-        {relay
-          ? "Each relayed message as it came in and as it was passed on, with failed attempts, oldest first."
-          : "One line per check-in, oldest first, addressed to net control."}{" "}
+        {event
+          ? `Every activity in ${event.name} in one log, oldest first: check-ins to whoever ran each net, and relayed messages in and out.`
+          : anyRelay
+            ? "Each relayed message as it came in and as it was passed on, with failed attempts, oldest first."
+            : "One line per check-in, oldest first, addressed to net control."}{" "}
         {loaded ? `${entries.length} entries.` : "Loading…"}
       </p>
+      {event && all.length > 1 && (
+        <div className="ics214-activities">
+          {all.map((a) => (
+            <label key={a.id} className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={!left.has(a.id)}
+                onChange={(e) =>
+                  setLeft((cur) => {
+                    const next = new Set(cur);
+                    if (e.target.checked) next.delete(a.id);
+                    else next.add(a.id);
+                    return next;
+                  })
+                }
+              />
+              {a.title}
+              <span className="settings-hint">
+                {" "}
+                · {records.get(a.id) ? (isRelay(a.activity_type) ? `${records.get(a.id)!.relayed.length} messages` : `${records.get(a.id)!.checkins.length} check-ins`) : "…"}
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
 
       <div className="ics-fields">
         <Text label="Task name / incident" value={incidentName} onChange={setIncidentName} wide />
@@ -321,7 +389,7 @@ function Form309({
           onClick={() =>
             save(
               exportFilename(
-                activity,
+                fileActivity(activity, event),
                 `Form 309 data${pageCount > 1 ? ` page ${page + 1}` : ""}`,
                 "txt"
               ),

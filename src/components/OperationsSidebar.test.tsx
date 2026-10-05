@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { Activity } from "../types";
-import OperationsSidebar, { groupActivities } from "./OperationsSidebar";
+import OperationsSidebar, { foldedByDefault, groupActivities } from "./OperationsSidebar";
 
 function activity(
   id: string,
@@ -28,6 +28,8 @@ function activity(
     repeater_lat: null,
     repeater_lon: null,
     operator_id: "",
+    event_id: "",
+    event: "",
     ...extra,
   };
 }
@@ -121,5 +123,42 @@ describe("OperationsSidebar", () => {
     await user.clear(screen.getByRole("searchbox"));
     await user.type(screen.getByRole("searchbox"), "zzz");
     expect(screen.getByText(/No activities match “zzz”/)).toBeInTheDocument();
+  });
+});
+
+describe("events in the sidebar", () => {
+  const SET = "ARRL 2026 SET";
+  const ID = "ev1";
+  const exercise = [
+    activity("e3", "HF relays", "relay", "scheduled", { event: SET, event_id: ID, scheduled_at: "2026-10-01 10:30" }),
+    activity("e1", "Ham net", "directed_net", "closed", {
+      event: SET, event_id: ID,
+      opened_at: new Date(2026, 9, 1, 9, 0).toISOString(),
+      closed_at: new Date(2026, 9, 1, 9, 25).toISOString(),
+    }),
+    activity("e2", "GMRS net", "directed_net", "active", {
+      event: SET, event_id: ID,
+      opened_at: new Date(2026, 9, 1, 9, 30).toISOString(),
+    }),
+  ];
+
+  it("lists an event's activities together, in the order they run, first while it's on", () => {
+    const groups = groupActivities([...exercise, activity("x", "Tuesday Net", "directed_net", "active")], "", NOW);
+    expect(groups.map(([id]) => id)).toEqual([`event:${ID}`, "open"]);
+    expect(labels(groups[0][1])).toEqual([
+      "Thu 10/1 09:00 — Ham net (closed)",
+      "Thu 10/1 09:30 — GMRS net (open)",
+      "Thu 10/1 10:30 — HF relays",
+    ]);
+    expect(foldedByDefault(`event:${ID}`, groups[0][1])).toBe(false);
+    // Filtering by the event's name finds its activities.
+    expect(groupActivities(exercise, "arrl", NOW)[0][1]).toHaveLength(3);
+  });
+
+  it("puts a finished event after Closed, folded", () => {
+    const done = exercise.map((a) => ({ ...a, state: "closed" }));
+    const groups = groupActivities([...done, activity("x", "Old net", "directed_net", "closed")], "", NOW);
+    expect(groups.map(([id]) => id)).toEqual(["closed", `event:${ID}`]);
+    expect(foldedByDefault(`event:${ID}`, groups[1][1])).toBe(true);
   });
 });

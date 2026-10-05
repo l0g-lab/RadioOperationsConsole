@@ -7,6 +7,7 @@ import { formatDuration } from "../../export";
 import { isRelay } from "../../activityTypes";
 import { previousEnd, suggestedEnd } from "../../activityTimes";
 import { formatContactTime } from "../../utils";
+import { nextInEvent, relativeTime, type NextInEvent } from "../../events";
 import { CircleStop } from "lucide-react";
 
 /**
@@ -20,11 +21,14 @@ export default function CloseOutDialog({
   operator,
   onClose,
   onDone,
+  onSelectActivity,
 }: {
   activity: Activity;
   operator: Operator | null;
   onClose: () => void;
   onDone: () => void;
+  /** Switches to another activity: the next in the event, once it's started. */
+  onSelectActivity?: (id: string) => void;
 }) {
   const noun = isRelay(activity.activity_type) ? "relay" : "net";
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
@@ -35,6 +39,34 @@ export default function CloseOutDialog({
   // first ended or the last entry since if later; otherwise the last entry
   // (LIFE-008).
   const [earlier, setEarlier] = useState<{ at: string; why: string } | null>(null);
+  // What comes next in this activity's event, if it's in one (EVT-030).
+  const [next, setNext] = useState<NextInEvent | null>(null);
+  const [startedNext, setStartedNext] = useState(false);
+
+  useEffect(() => {
+    if (!activity.event) return;
+    api
+      .listActivities()
+      .then((all) => setNext(nextInEvent(all, activity)))
+      .catch(() => setNext(null));
+  }, [activity]);
+
+  async function startNext() {
+    if (!next) return;
+    setError(null);
+    try {
+      await api.startActivity(next.activity.id, next.activity.operator_id || operator?.id || null);
+      setStartedNext(true);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  // Once the next one is started, it's where the operator goes after this.
+  const leave = (then: () => void) => () => {
+    then();
+    if (startedNext && next) onSelectActivity?.(next.activity.id);
+  };
 
   useEffect(() => {
     api
@@ -83,7 +115,7 @@ export default function CloseOutDialog({
         operator?.id ?? null,
         endedAt
       );
-      onDone();
+      leave(onDone)();
     } catch (e) {
       setError(String(e));
       setBusy(false);
@@ -168,7 +200,7 @@ export default function CloseOutDialog({
               End at {shortTime(earlier.at)}
             </button>
           )}
-          <button onClick={onClose} disabled={busy}>
+          <button onClick={leave(onClose)} disabled={busy}>
             Cancel
           </button>
         </div>
@@ -176,6 +208,32 @@ export default function CloseOutDialog({
           <p className="settings-hint">
             {shortTime(earlier.at)} is {earlier.why}.
           </p>
+        )}
+
+        {next && (
+          <div className="closeout-next">
+            {startedNext ? (
+              <span>
+                <strong>{next.activity.title}</strong> has started; you'll be switched to it when
+                this window closes.
+              </span>
+            ) : (
+              <>
+                <span>
+                  Next in {activity.event}: <strong>{next.activity.title}</strong>
+                  {next.at != null &&
+                    ` at ${shortTime(new Date(next.at).toISOString())} (${relativeTime(next.at)})`}
+                  .
+                </span>
+                {/* Offered only near its time, so nobody starts it early by accident. */}
+                {next.due && (
+                  <button onClick={startNext} disabled={busy}>
+                    Start {next.activity.title}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>

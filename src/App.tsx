@@ -10,15 +10,17 @@ import ReportsTab from "./components/tabs/ReportsTab";
 import WeatherTab from "./components/tabs/WeatherTab";
 import MapAprsTab from "./components/tabs/MapAprsTab";
 import ExportsTab from "./components/tabs/ExportsTab";
+import EventsTab from "./components/tabs/EventsTab";
 import HistoryTab from "./components/tabs/HistoryTab";
 import SettingsTab, { type SettingsSection } from "./components/tabs/SettingsTab";
 import NetsTab from "./components/tabs/NetsTab";
 import type { ActivityPrefill } from "./components/operations/activityPrefill";
 import UpgradeBackupBanner from "./components/UpgradeBackupBanner";
 import UpdateBanner from "./components/UpdateBanner";
-import type { Activity, Operator, Tab } from "./types";
+import type { Activity, EventRecord, Operator, Tab } from "./types";
 import { TABS } from "./types";
-import { isLog, isRelay } from "./activityTypes";
+import { todayIso } from "./utils";
+import { DEFAULT_ACTIVITY_TYPE, isLog, isRelay } from "./activityTypes";
 import { activityOperatorId, loadDefaultOperatorId, saveDefaultOperatorId } from "./defaultOperator";
 
 const ZOOM_MIN = 0.5;
@@ -75,6 +77,15 @@ export default function App() {
     });
   }, []);
 
+  // Events (docs/features/events.md), for the Events tab and the activity forms.
+  const [events, setEvents] = useState<EventRecord[]>([]);
+  const refreshEvents = useCallback(() => {
+    api
+      .listEvents()
+      .then(setEvents)
+      .catch(() => setEvents([]));
+  }, []);
+
   const refreshActivities = useCallback(() => {
     api.listActivities().then((acts) => {
       setActivities(acts);
@@ -90,7 +101,8 @@ export default function App() {
   useEffect(() => {
     refreshOperators();
     refreshActivities();
-  }, [refreshOperators, refreshActivities]);
+    refreshEvents();
+  }, [refreshOperators, refreshActivities, refreshEvents]);
 
   useEffect(() => {
     getCurrentWebview()
@@ -142,9 +154,10 @@ export default function App() {
       }
 
       const idx = parseInt(e.key, 10);
-      if (idx >= 1 && idx <= 9) {
+      if (idx >= 0 && idx <= 9) {
         e.preventDefault();
-        const tab = TABS[idx - 1];
+        // Ctrl+0 is the tenth tab.
+        const tab = TABS[idx === 0 ? 9 : idx - 1];
         if (tab) setCurrentTab(tab);
         return;
       }
@@ -215,6 +228,7 @@ export default function App() {
               onEditActivityHandled={() => setEditActivityRequested(false)}
               activityPrefill={activityPrefill}
               onActivityPrefillHandled={() => setActivityPrefill(null)}
+              events={events}
               newActivityRequested={newActivityRequested}
               onNewActivity={requestNewActivity}
               onNewActivityHandled={() => setNewActivityRequested(false)}
@@ -252,10 +266,36 @@ export default function App() {
             <ExportsTab
               activity={selectedActivity ?? null}
               operator={runByOperator}
-              defaultOperator={operators.find((o) => o.id === defaultOperatorId) ?? null}
+              onOpenEvents={() => setCurrentTab("Events")}
             />
           )}
           {currentTab === "History" && <HistoryTab />}
+          {currentTab === "Events" && (
+            <EventsTab
+              events={events}
+              activities={activities}
+              operators={operators}
+              defaultOperatorId={defaultOperatorId}
+              onEventsChanged={refreshEvents}
+              onActivitiesChanged={refreshActivities}
+              onOpenActivity={(id) => {
+                setSelectedActivityId(id);
+                setCurrentTab("Operations");
+              }}
+              onAddActivity={(eventId) => {
+                setActivityPrefill({
+                  title: "",
+                  activityType: DEFAULT_ACTIVITY_TYPE,
+                  date: todayIso(),
+                  time: "",
+                  frequency: "",
+                  repeater: null,
+                  eventId,
+                });
+                setCurrentTab("Operations");
+              }}
+            />
+          )}
           {currentTab === "Nets" && (
             <NetsTab
               operators={operators}

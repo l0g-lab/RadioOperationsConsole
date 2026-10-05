@@ -41,6 +41,9 @@ pub struct Activity {
     pub repeater_lon: Option<f64>,
     /// The operator running it (net control), or empty if none was set.
     pub operator_id: String,
+    /// The event it belongs to (events.rs), or empty; and that event's name.
+    pub event_id: String,
+    pub event: String,
 }
 
 /// Whether a relay message `m` has an outcome (passed or given up on).
@@ -441,7 +444,7 @@ impl Repository {
         Ok(id)
     }
 
-    const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,''), coalesce(repeater_name,''), repeater_lat, repeater_lon, coalesce(operator_id,'')";
+    const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,''), coalesce(repeater_name,''), repeater_lat, repeater_lon, coalesce(operator_id,''), coalesce(event_id,''), coalesce((SELECT name FROM events WHERE events.id = activities.event_id),'')";
 
     fn map_activity(r: &rusqlite::Row) -> rusqlite::Result<Activity> {
         Ok(Activity {
@@ -461,6 +464,8 @@ impl Repository {
             repeater_lat: r.get(13)?,
             repeater_lon: r.get(14)?,
             operator_id: r.get(15)?,
+            event_id: r.get(16)?,
+            event: r.get(17)?,
         })
     }
 

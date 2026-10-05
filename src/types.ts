@@ -32,6 +32,9 @@ export interface Activity {
   repeater_lon: number | null;
   /** The operator running it (net control); "" if none was set. */
   operator_id: string;
+  /** The event it belongs to (an `EventRecord`'s id) and that event's name; "" if none. */
+  event_id: string;
+  event: string;
 }
 
 /** "none", "pl" (CTCSS) or "dcs". */
@@ -86,6 +89,8 @@ export interface Ics214Details {
   lines: Ics214Line[];
   /** Sources of generated lines the operator deleted. */
   dismissed: string[];
+  /** The event this is the log of, if any. */
+  event_id?: string | null;
 }
 
 export interface Ics214Log extends Ics214Details {
@@ -483,6 +488,8 @@ export const TABS = [
   "History",
   // Before Settings, so the working tabs keep their Ctrl+number (NETL-019).
   "Nets",
+  "Events",
+  // Ctrl+0.
   "Settings",
 ] as const;
 
@@ -641,4 +648,12 @@ export interface OperatorUsage {
   activities: OperatorActivityUse[];
   /** Their history entries on anything outside an activity, by kind. */
   other_history: { kind: string; count: number }[];
+}
+
+/** An event (docs/features/events.md): an occasion holding its activities and its ICS 214. */
+export interface EventRecord {
+  id: string;
+  name: string;
+  /** YYYY-MM-DD, or "". */
+  date: string;
 }

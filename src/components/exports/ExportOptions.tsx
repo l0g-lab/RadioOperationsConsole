@@ -89,14 +89,14 @@ export default function ExportOptions({
   activity,
   operator,
   conclusion,
-  ics214,
+  icsFormsNote,
 }: {
   activity: Activity;
   operator: Operator | null;
   /** Closing notes being written in the end-of-net step, used in the summary before they're saved. */
   conclusion?: string;
-  /** The Exports tab's ICS 214 row, which isn't tied to this activity; the forms are in number order. */
-  ics214?: ReactNode;
+  /** A line after the ICS forms, e.g. where the event forms are. */
+  icsFormsNote?: ReactNode;
 }) {
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [reports, setReports] = useState<SpotterReport[]>([]);
@@ -424,7 +424,6 @@ export default function ExportOptions({
             </>
           )}
         </Row>
-        {ics214}
         <Row
           notify={notify}
           title="ICS 309 — Communications Log"
@@ -442,6 +441,7 @@ export default function ExportOptions({
             },
           ]}
         />
+        {icsFormsNote}
       </section>
 
       {message && (

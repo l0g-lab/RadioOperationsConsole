@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as api from "../../api";
-import type { Activity, Operator, Repeater } from "../../types";
+import type { Activity, EventRecord, Operator, Repeater } from "../../types";
 import type { ActivityPrefill } from "./activityPrefill";
 import ActivityForm, { type ActivityDraft, type ActivityPlace } from "./ActivityForm";
 import { DEFAULT_ACTIVITY_TYPE, isLog, isRangeCheck } from "../../activityTypes";
@@ -16,6 +16,8 @@ interface Props {
   selectedOperatorId: string | null;
   /** The repeater directory, to pick from. */
   repeaters: Repeater[];
+  /** The events there are, to put the new activity in one. */
+  events?: EventRecord[];
   /** Values to fill the form with, e.g. from a net listing (NETL-030). */
   prefill?: ActivityPrefill | null;
   onPrefillHandled?: () => void;
@@ -35,6 +37,7 @@ const blank = (operatorId: string | null): ActivityDraft => ({
   location: null,
   started: "",
   ended: "",
+  eventId: "",
 });
 
 /** An operator's own location, if they have one. */
@@ -51,6 +54,7 @@ export default function CreateActivityPanel({
   operators,
   selectedOperatorId,
   repeaters,
+  events = [],
   prefill = null,
   onPrefillHandled,
   openRequested = false,
@@ -96,6 +100,7 @@ export default function CreateActivityPanel({
       time: prefill.time,
       frequency: prefill.frequency,
       repeater: prefill.repeater,
+      eventId: prefill.eventId ?? "",
     });
     onPrefillHandled?.();
     focusForm();
@@ -121,6 +126,9 @@ export default function CreateActivityPanel({
       draft.frequency.trim() || null,
       operatorId || null
     );
+    if (!isLog(draft.type) && draft.eventId) {
+      await api.setActivityEvent(id, draft.eventId, operatorId || null).catch(() => {});
+    }
     const where = draft.location ?? operatorLocation;
     if (where) {
       // The activity exists either way; a failed location just leaves it unset.
@@ -154,6 +162,7 @@ export default function CreateActivityPanel({
         onSubmit={handleAddActivity}
         onCancel={hasActivities ? handleCancel : undefined}
         mapTitle="new activity"
+        events={events}
       />
     </div>
   );

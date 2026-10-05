@@ -1,40 +1,31 @@
-import { useState } from "react";
 import type { Activity, Operator } from "../../types";
 import { activityTypeLabel } from "../../activityTypes";
 import ActivityStatus from "../lifecycle/ActivityStatus";
 import ExportOptions from "../exports/ExportOptions";
-import Ics214Dialog from "../exports/Ics214Dialog";
 import { FileDown } from "lucide-react";
 
 interface Props {
   activity: Activity | null;
   /** Who runs the activity: named on its forms. */
   operator: Operator | null;
-  /** Named on the ICS 214, which spans activities. */
-  defaultOperator: Operator | null;
+  /** Goes to the Events tab, where activity logs (ICS 214) and whole-event forms are. */
+  onOpenEvents: () => void;
 }
 
 /**
- * One place for everything that leaves the application: the chosen activity's
- * records and forms, and ICS 214 activity logs. A 214 covers a period across
- * activities, so it's offered even with no activity chosen.
+ * Everything that leaves the application for the chosen activity: its
+ * records and forms. Activity logs (ICS 214), which cover an event, and the
+ * event-wide ICS 309 are on the Events tab (EVT-040, EVT-041).
  */
-export default function ExportsTab({ activity, operator, defaultOperator }: Props) {
-  const [show214, setShow214] = useState(false);
-  const row214 = (
-    <div className="export-row">
-      <div className="export-row-info">
-        <strong>ICS 214 — Activity Log</strong>
-        <span className="settings-hint"> across all activities in a period</span>
-        <div className="settings-hint">
-          What you did over a period of operation — a whole SET, say. For Winlink Express, or
-          printable.
-        </div>
-      </div>
-      <div className="inline-form">
-        <button onClick={() => setShow214(true)}>Open…</button>
-      </div>
-    </div>
+export default function ExportsTab({ activity, operator, onOpenEvents }: Props) {
+  const eventsNote = (
+    <p className="settings-hint">
+      Activity logs (ICS 214) and one ICS 309 for a whole event are on the{" "}
+      <button className="link-button" onClick={onOpenEvents}>
+        Events tab
+      </button>
+      .
+    </p>
   );
   return (
     <div className="panel">
@@ -49,7 +40,7 @@ export default function ExportsTab({ activity, operator, defaultOperator }: Prop
             For the activity chosen in the top bar. Each file is saved where you choose, and nothing
             here needs an internet connection. Exports work on a closed activity too.
           </p>
-          <ExportOptions activity={activity} operator={operator} ics214={row214} />
+          <ExportOptions activity={activity} operator={operator} icsFormsNote={eventsNote} />
         </>
       ) : (
         <>
@@ -60,15 +51,9 @@ export default function ExportsTab({ activity, operator, defaultOperator }: Prop
           <p className="checkin-empty-state">
             Choose an activity in the top bar to export its records and forms.
           </p>
-          <div className="export-list">
-            <section className="export-section">
-              <h4 className="export-section-title">ICS forms</h4>
-              {row214}
-            </section>
-          </div>
+          {eventsNote}
         </>
       )}
-      {show214 && <Ics214Dialog operator={defaultOperator} onClose={() => setShow214(false)} />}
     </div>
   );
 }
