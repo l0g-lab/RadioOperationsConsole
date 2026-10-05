@@ -25,7 +25,7 @@ import type { Place } from "./roster/shared";
 interface Props {
   activity: Activity;
   operatorId: string | null;
-  /** Goes to the Exports tab. */
+  /** Goes to the activity's Exports & forms on the Operations tab. */
   onOpenExports: () => void;
   checkins: Checkin[];
   /** True for a closed activity: the roster is shown but can't be changed. */

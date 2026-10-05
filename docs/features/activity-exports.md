@@ -23,12 +23,14 @@ be in one predictable place, complete, and unambiguous about time.
 
 ## One home
 
-- **EXPORT-001:** The application MUST have an **Exports** tab that offers every
-  export for the activity focused in the header, and the tab MUST make clear which
-  activity that is and its state.
+- **EXPORT-001:** Every export for the activity focused in the header MUST be
+  offered in an **Exports & forms** panel directly under the selected activity
+  on the Operations tab, naming that activity. An event's forms are on its page
+  on the Events tab ([events.md](events.md)), which this panel MUST point to.
 - **EXPORT-002:** No other tab MUST carry its own export menu. The Check-ins and
-  Spotter Reports tabs MAY offer a link to the Exports tab, and per-record actions
-  (for example the ICS 213 for one spotter report) MAY remain where the record is.
+  Spotter Reports tabs MAY offer a link that goes to the panel, and per-record
+  actions (for example the ICS 213 for one spotter report) MAY remain where the
+  record is.
 - **EXPORT-003:** The end-of-net step MUST offer the same list, from the same
   component, so the two cannot differ (`LIFE-033`).
 - **EXPORT-004:** Exports MUST be available for a closed activity (`LIFE-010`)
@@ -98,7 +100,7 @@ be in one predictable place, complete, and unambiguous about time.
 ```gherkin
 Scenario: Everything in one place
   Given a focused activity with check-ins and reports
-  When the operator opens the Exports tab
+  When the operator looks at Exports & forms on the Operations tab
   Then each kind of record is listed with its count and formats
 
 Scenario: Nothing to export

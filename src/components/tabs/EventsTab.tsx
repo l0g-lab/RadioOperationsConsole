@@ -315,7 +315,7 @@ export default function EventsTab({
               <strong>ICS 309 — Communications Log</strong>
               <div className="settings-hint">
                 Every net's check-ins and every relayed message in one log, oldest first. Leave any
-                activity out. (Each activity's own 309 is on the Exports tab.)
+                activity out. (Each activity's own 309 is with it on the Operations tab.)
               </div>
             </div>
             <div className="inline-form">

@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-10-05
+
 ### Added
 - **Events tab:** an event brings together the activities of one occasion —
   say the nets and relays of a SET. Create one on the new **Events** tab, add
@@ -15,13 +17,21 @@ top. Each release's section here is also its description on the
   any out). The Activities list shows each event as its own group, and when
   you end a net, the window tells you what's next in the event and, within 15
   minutes of its time, offers to start it. The activity form only offers an
-  *Event* choice once you have an event. `Ctrl+9` is Events; Settings moves to
-  `Ctrl+0`.
+  *Event* choice once you have an event.
 
 ### Changed
+- **An activity's exports are with the activity:** the Exports tab is gone,
+  and everything it had — records as CSV or text, the net summary, the ICS 213
+  and 309 — is in an **Exports & forms** panel right under the selected
+  activity on the Operations tab. The *Exports…* links on the Check-ins and
+  Spotter Reports tabs take you there.
+- **The activity summary is easier to read:** one fact a line — check-ins,
+  traffic (with anything not handled in amber), when it started and ended in
+  local time with UTC alongside, how long it ran, and the closing notes —
+  without repeating the activity's details shown just above it.
 - **The ICS 214 activity log moved to the Events tab,** since it covers an
-  event rather than one net; the Exports tab points to it. Logs you've already
-  saved are under *All activity logs* there.
+  event rather than one net; an activity's Exports & forms points to it. Logs
+  you've already saved are under *All activity logs* there.
 
 ## [2.3.1] - 2026-10-04
 
@@ -295,7 +305,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.1...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.2...v2.3.0
 [2.2.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.1...v2.2.2

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import GettingStarted from "../operations/GettingStarted";
+import ActivityExportsPanel from "../operations/ActivityExportsPanel";
 import type { SettingsSection } from "./SettingsTab";
 import * as api from "../../api";
 import type { Activity, NetListing, Operator, Repeater, EventRecord } from "../../types";
@@ -29,6 +30,11 @@ interface Props {
   onActivityPrefillHandled: () => void;
   /** The events there are, to put activities in. */
   events: EventRecord[];
+  /** Goes to the Events tab. */
+  onOpenEvents: () => void;
+  /** Scroll to the selected activity's exports (from another tab's Exports link). */
+  exportsRequested: boolean;
+  onExportsHandled: () => void;
   /** Open the new-activity form (from the top bar or the button here). */
   newActivityRequested: boolean;
   onNewActivity: () => void;
@@ -53,6 +59,9 @@ export default function OperationsTab({
   activityPrefill,
   onActivityPrefillHandled,
   events,
+  onOpenEvents,
+  exportsRequested,
+  onExportsHandled,
   newActivityRequested,
   onNewActivity,
   onNewActivityHandled,
@@ -84,6 +93,8 @@ export default function OperationsTab({
   }
 
 
+
+  const selectedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
 
   return (
     <>
@@ -121,6 +132,15 @@ export default function OperationsTab({
             onNewActivity={onNewActivity}
             events={events}
           />
+          {selectedActivity && (
+            <ActivityExportsPanel
+              activity={selectedActivity}
+              operator={operators.find((o) => o.id === activityOperatorId) ?? null}
+              onOpenEvents={onOpenEvents}
+              scrollRequested={exportsRequested}
+              onScrollHandled={onExportsHandled}
+            />
+          )}
         </div>
 
         <div className="operations-column operations-column-narrow">

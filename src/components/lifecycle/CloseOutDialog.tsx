@@ -14,7 +14,7 @@ import { CircleStop } from "lucide-react";
  * Wrapping up a net: a summary of what happened, a heads-up about anything
  * left open, the chance to write a conclusion and save the records, and then
  * closing. Ending is one click at the bottom; nothing here blocks it, and every
- * export stays available afterward on the Exports tab.
+ * export stays available afterward under the activity on the Operations tab.
  */
 export default function CloseOutDialog({
   activity,
@@ -179,7 +179,7 @@ export default function CloseOutDialog({
         <details className="closeout-exports">
           <summary>Save copies of the records first (optional)</summary>
           <p className="settings-hint">
-            These are the same exports as the Exports tab, which keeps working after the net ends.
+            These are the same as Exports & forms on the Operations tab, which keep working after the net ends.
           </p>
           <ExportOptions activity={activity} operator={operator} conclusion={conclusion} />
         </details>

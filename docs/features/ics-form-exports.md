@@ -121,7 +121,7 @@ forms' own loading code and viewer pages. They are not guesses (`SCOPE-005`).
   the signature MUST be left blank.
 - **ICSF-033:** The printed table's header MUST repeat on each page and a line
   MUST NOT split across pages.
-- **ICSF-034:** The ICS 309 MUST be reachable from the Exports tab and the
+- **ICSF-034:** The ICS 309 MUST be reachable from the activity's Exports & forms and the
   end-of-net step.
 - **ICSF-035:** Winlink header values MUST default as follows: Task Name from the
   activity's title; Operator Name and Station ID from the acting operator; Date/Time
@@ -131,7 +131,7 @@ forms' own loading code and viewer pages. They are not guesses (`SCOPE-005`).
 ## ICS 213 — General Message
 
 - **ICSF-040:** The ICS 213 MUST be offerable for all of an activity's spotter
-  reports as one message and for one report, from the Exports tab and the
+  reports as one message and for one report, from the activity's Exports & forms and the
   end-of-net step, and for one report from the selected report's actions in the
   reports list, including on a closed activity, where it changes nothing.
 - **ICSF-041:** The message MUST carry each report completely: time, hazard and

@@ -484,7 +484,6 @@ export const TABS = [
   "Spotter Reports",
   "Weather",
   "APRS",
-  "Exports",
   "History",
   // Before Settings, so the working tabs keep their Ctrl+number (NETL-019).
   "Nets",

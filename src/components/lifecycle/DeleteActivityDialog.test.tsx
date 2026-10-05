@@ -53,7 +53,7 @@ describe("DeleteActivityDialog (AUDIT-007, AUDIT-008)", () => {
     expect(await screen.findByText(/12 check-ins and 3 spotter reports/)).toBeInTheDocument();
     expect(screen.getByText(/cannot be undone/i)).toBeInTheDocument();
     expect(screen.getByText(/backups and exported files/i)).toBeInTheDocument();
-    expect(screen.getByText(/Exports tab/)).toBeInTheDocument();
+    expect(screen.getByText(/Exports & forms/)).toBeInTheDocument();
   });
 
   it("stays locked until the title is typed, then deletes", async () => {

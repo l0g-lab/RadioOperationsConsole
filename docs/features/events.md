@@ -81,12 +81,13 @@ real-world need.
   addressed to whoever ran that activity and relayed messages logged in and
   out (`RELAY-041`), with a checklist to leave activities out. The header
   MUST default to the event's name and the default operator, and stay
-  editable. Each activity's own ICS 309 stays on the Exports tab.
+  editable. Each activity's own ICS 309 stays in its Exports & forms.
 - **EVT-041:** The ICS 214 activity log MUST be reached from the Events tab
   only. An event's page opens its log: the one saved for it if there is one,
   else a new one named after the event, covering its span, with any other
   activities in that span left out. All logs, including any not tied to an
-  event, MUST stay reachable from the Events tab. The Exports tab MUST say
+  event, MUST stay reachable from the Events tab. An activity's Exports &
+  forms MUST say
   where they are.
 
 ## Acceptance examples

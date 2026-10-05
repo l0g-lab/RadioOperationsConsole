@@ -7,12 +7,12 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 /**
  * The selected activity's summary, laid out like the end-of-net step
- * (EXPORT-017). Viewing or saving it as text is on the Exports tab.
+ * (EXPORT-017). Viewing or saving it as text is in Exports & forms.
  */
 export default function ActivitySummaryPanel({ activity }: { activity: Activity }) {
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
   // Folded to one line by default, so the page isn't mostly summary; the same
-  // summary is in the End net window and on the Exports tab.
+  // summary is in the End net window and in Exports & forms.
   const [open, setOpen] = useState(false);
 
   useEffect(() => {

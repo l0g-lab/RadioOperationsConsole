@@ -67,7 +67,7 @@ describe("SummaryDialog", () => {
     vi.mocked(api.activitySummary).mockResolvedValue({ ...SUMMARY, open_traffic_items: 2 });
     render(<ActivitySummaryPanel activity={NET} />);
     await user.click(await screen.findByRole("button", { name: /Summary/ }));
-    expect(screen.getByRole("alert")).toHaveTextContent("2 check-ins have traffic that weren't marked handled.");
+    expect(screen.getByRole("alert")).toHaveTextContent("2 not marked handled");
   });
 
   it("saves the same text as the summary export", async () => {

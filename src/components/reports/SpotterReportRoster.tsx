@@ -18,7 +18,7 @@ interface Props {
   operatorId: string | null;
   reports: SpotterReport[];
   readOnly?: boolean;
-  /** Goes to the Exports tab. */
+  /** Goes to the activity's Exports & forms on the Operations tab. */
   onOpenExports: () => void;
   /** Who is logging, for the printable ICS forms. */
   operatorName?: string;

@@ -21,7 +21,7 @@ It's an operations logger first, not a contest logbook: one app that handles a r
 - **Log your part in an exercise.** An event's ICS-214 activity log, filled in from every net, relay and report in it, edited and kept, then exported for Winlink Express's ICS-214 form or printed.
 - **Log under the right call sign.** Each activity is run by an operator, chosen when you create it — so a ham net and a GMRS net each go under the right call sign — and can be corrected later, records and all.
 - **Keep a record.** Traffic noted on each check-in, and a full attributed, timestamped history of every change. Removed check-ins and reports can be restored; deleting a whole activity for good asks you to confirm first.
-- **See it before you save it.** Every export (CSV, text, net summary) can be viewed first, then copied or saved.
+- **See it before you save it.** Every export (CSV, text, net summary) can be viewed first, then copied or saved — right under the activity on the Operations tab.
 - **Never lose your data.** One-click database backup and restore in Settings, and a copy saved automatically before each update.
 
 Coordinates can be shown as decimal degrees, degrees & decimal minutes, or degrees/minutes/seconds, and you can type them in any of those. There's a light, dark, or follow-the-system theme, a choice of font (including the easy-to-read Atkinson Hyperlegible), and four text sizes.
@@ -104,18 +104,17 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 
 | Tab | For |
 | --- | --- |
-| Operations | Creating, editing, and deleting activities; operators (and which is the default), the repeater directory, saved places |
+| Operations | Creating, editing, and deleting activities, and each activity's exports and forms (CSV, text, net summary, ICS 213 and 309); operators (and which is the default), the repeater directory, saved places |
 | Check-ins | Taking check-ins (with any traffic they have), the roster, the check-in map. Called **Contacts** for a station log and **Messages** for a relay station |
 | Spotter Reports | Hazard reports and the report map |
 | Weather | NWS alerts, forecast, radar |
 | APRS | Live APRS-IS feed for an area |
-| Exports | Everything that leaves the app for the chosen activity: records as CSV or text, the net summary, and the ICS 213 and 309 forms — each viewable before saving |
 | History | The audit trail of everything that changed |
 | Nets | Nets you can join, day by day for the coming week — when, how to tune in, how far the repeater is, how to check in; start an activity from one |
 | Events | Exercises and other occasions that span several activities: their activities in order, and the event's ICS 214 activity log and combined ICS 309 |
 | Settings | Theme, font and text size, coordinate format, QRZ login, offline data downloads, storage, backup & restore, checking for updates |
 
-**Shortcuts:** `Ctrl+1`–`9`, `Ctrl+0` jump to a tab · `Ctrl+K` focus the call-sign box · `Ctrl+[` / `Ctrl+]` previous/next activity · `Ctrl+Shift+ +/-/0` zoom.
+**Shortcuts:** `Ctrl+1`–`9` jump to a tab · `Ctrl+K` focus the call-sign box · `Ctrl+[` / `Ctrl+]` previous/next activity · `Ctrl+Shift+ +/-/0` zoom.
 
 ## Working offline
 

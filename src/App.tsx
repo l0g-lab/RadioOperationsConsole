@@ -9,7 +9,6 @@ import CheckinsTab from "./components/tabs/CheckinsTab";
 import ReportsTab from "./components/tabs/ReportsTab";
 import WeatherTab from "./components/tabs/WeatherTab";
 import MapAprsTab from "./components/tabs/MapAprsTab";
-import ExportsTab from "./components/tabs/ExportsTab";
 import EventsTab from "./components/tabs/EventsTab";
 import HistoryTab from "./components/tabs/HistoryTab";
 import SettingsTab, { type SettingsSection } from "./components/tabs/SettingsTab";
@@ -53,6 +52,12 @@ export default function App() {
   // Set by the header's Edit link; the activity panel opens its edit form and clears it.
   const [editActivityRequested, setEditActivityRequested] = useState(false);
   const [newActivityRequested, setNewActivityRequested] = useState(false);
+  // Set by the Exports links on other tabs; the Operations tab scrolls to the activity's exports.
+  const [exportsRequested, setExportsRequested] = useState(false);
+  const openExports = () => {
+    setCurrentTab("Operations");
+    setExportsRequested(true);
+  };
   // A Settings section to go straight to (getting started, the Check-ins hint).
   const [settingsFocus, setSettingsFocus] = useState<SettingsSection | null>(null);
   const openSettings = (section: SettingsSection) => {
@@ -174,7 +179,6 @@ export default function App() {
   const selectedActivity = activities.find((a) => a.id === selectedActivityId);
   // Everything recorded in the selected activity goes under its operator.
   const runBy = activityOperatorId(selectedActivity, defaultOperatorId);
-  const runByOperator = operators.find((o) => o.id === runBy) ?? null;
 
   return (
     <div className="app-shell">
@@ -229,6 +233,9 @@ export default function App() {
               activityPrefill={activityPrefill}
               onActivityPrefillHandled={() => setActivityPrefill(null)}
               events={events}
+              onOpenEvents={() => setCurrentTab("Events")}
+              exportsRequested={exportsRequested}
+              onExportsHandled={() => setExportsRequested(false)}
               newActivityRequested={newActivityRequested}
               onNewActivity={requestNewActivity}
               onNewActivityHandled={() => setNewActivityRequested(false)}
@@ -245,7 +252,7 @@ export default function App() {
               selectedCheckinId={selectedCheckinId}
               onSelectCheckin={setSelectedCheckinId}
               focusCallSignSignal={focusCallSignSignal}
-              onOpenExports={() => setCurrentTab("Exports")}
+              onOpenExports={openExports}
               onOpenCallsignDirectories={() => openSettings("callsigns")}
             />
           )}
@@ -255,19 +262,12 @@ export default function App() {
               selectedActivityId={selectedActivityId}
               selectedOperatorId={runBy}
               operators={operators}
-              onOpenExports={() => setCurrentTab("Exports")}
+              onOpenExports={openExports}
             />
           )}
           {currentTab === "Weather" && <WeatherTab />}
           {currentTab === "APRS" && (
             <MapAprsTab operators={operators} selectedOperatorId={defaultOperatorId} />
-          )}
-          {currentTab === "Exports" && (
-            <ExportsTab
-              activity={selectedActivity ?? null}
-              operator={runByOperator}
-              onOpenEvents={() => setCurrentTab("Events")}
-            />
           )}
           {currentTab === "History" && <HistoryTab />}
           {currentTab === "Events" && (

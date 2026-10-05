@@ -76,7 +76,7 @@ export default function DeleteActivityDialog({
         </p>
         <p className="settings-hint">
           Only this computer's records are erased: existing backups and exported files are not
-          affected. To keep a copy, export it from the Exports tab first. The history will note that
+          affected. To keep a copy, export it first (Operations tab → Exports & forms). The history will note that
           this activity was deleted, by whom, and how many records it held.
         </p>
         <div className="inline-form">

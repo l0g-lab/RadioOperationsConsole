@@ -11,14 +11,15 @@ Initial primary tabs:
 3. Spotter Reports
 4. Weather
 5. Map / APRS
-6. Exports
-7. History
-8. Nets — the net listings ([features/net-listings.md](features/net-listings.md)); placed
-   before Settings so the working tabs' shortcuts didn't change when it was added
-9. Events — occasions spanning several activities, with their ICS 214 and
-   combined ICS 309 ([features/events.md](features/events.md)); also before
-   Settings, for the same reason
-10. Settings (Ctrl+0)
+6. History
+7. Nets — the net listings ([features/net-listings.md](features/net-listings.md))
+8. Events — occasions spanning several activities, with their ICS 214 and
+   combined ICS 309 ([features/events.md](features/events.md))
+9. Settings
+
+An activity's exports and forms are under it on the Operations tab
+([features/activity-exports.md](features/activity-exports.md), `EXPORT-001`),
+not on a tab of their own.
 
 Traffic is recorded on the check-in it came from (`NETOPS-050`–`056`) rather than in a tab of its own.
 
@@ -90,8 +91,9 @@ Global shortcuts work from any tab. `UX-008` requires that shortcuts be
 discoverable and configurable; an in-app shortcut reference/editor is not
 yet built, so these are documented here as the interim source of truth.
 
-- **UX-011:** Ctrl+1 through Ctrl+9, then Ctrl+0 for the tenth, MUST switch to
-  the corresponding tab in the order defined in "Navigation model".
+- **UX-011:** Ctrl+1 through Ctrl+9 MUST switch to the corresponding tab in
+  the order defined in "Navigation model" (Ctrl+0 to a tenth, should there be
+  one).
 - **UX-012:** Ctrl+K MUST switch to the Check-ins tab and place keyboard
   focus on the call-sign entry field.
 - **UX-013:** Ctrl+Shift+Plus and Ctrl+Shift+Minus MUST increase and

@@ -2903,3 +2903,30 @@ button.online-pill-working-offline:hover {
 .event-row.selected strong {
   color: var(--accent);
 }
+
+/* The activity summary on the Operations tab (SummaryView.tsx): one fact a
+   line, the label on the left. */
+.summary-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 6px 0 2px;
+}
+
+.summary-list dt {
+  color: var(--text-dim);
+}
+
+.summary-list dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.summary-detail {
+  color: var(--text-dim);
+}
+
+.summary-warning {
+  color: var(--warning, #e8a33d);
+}

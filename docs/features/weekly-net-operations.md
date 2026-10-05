@@ -170,7 +170,7 @@ over Winlink when there's no other path to deliver it.
 - **NETOPS-046:** The active (non-voided) roster for the focused activity MUST
   be exportable as CSV, containing the fields shown in the roster
   (`NETOPS-015`), including coordinates and traffic (`NETOPS-050`). The export is
-  offered on the Exports tab ([activity-exports.md](activity-exports.md)), not in
+  offered in the activity's Exports & forms ([activity-exports.md](activity-exports.md)), not in
   the Check-ins workspace itself.
 - **NETOPS-047:** *(Superseded.)* The roster's Winlink ICS-213 export was
   replaced by the ICS 309 Communications Log, with its own Winlink import data

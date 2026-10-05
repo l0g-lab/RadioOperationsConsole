@@ -1,21 +1,39 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import type { Activity, ActivitySummary } from "../../types";
 import { formatDuration } from "../../export";
-import { summaryFacts } from "../../summaryFacts";
-import { activityTypeLabel } from "../../activityTypes";
-import { formatTimeLines } from "../../utils";
-import ActivityStatus from "../lifecycle/ActivityStatus";
+import { visibleSections } from "../../activityTypes";
+import { pad2 } from "../../utils";
 
-/** "2026-09-29 19:00 (23:00Z)": local time, with UTC alongside. */
-function when(iso: string): string {
-  const t = formatTimeLines(iso);
-  return t.utc ? `${t.local.replace("Local: ", "")} (${t.utc.replace("UTC: ", "")})` : t.local;
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const hm = (h: number, m: number) => `${pad2(h)}:${pad2(m)}`;
+
+/** "Sun 10/4 19:00" local, with "(23:00 UTC)" — the UTC date too when it differs. */
+function when(iso: string): { local: string; utc: string } {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { local: iso, utc: "" };
+  const local = `${WEEKDAYS[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()} ${hm(d.getHours(), d.getMinutes())}`;
+  const sameDay = d.getUTCDate() === d.getDate();
+  const utcDay = sameDay ? "" : `${d.getUTCMonth() + 1}/${d.getUTCDate()} `;
+  return { local, utc: `${utcDay}${hm(d.getUTCHours(), d.getUTCMinutes())} UTC` };
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** One line of the summary: a label, and what it says. */
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <dt>{label}</dt>
+      <dd>{children}</dd>
+    </>
+  );
 }
 
 /**
- * An activity's summary, laid out like the end-of-net step: what it was, the
- * counts its type emphasises, when it ran, anything left open, and the
- * closing notes. Shown on the Operations tab and in the end-of-net step.
+ * An activity's summary on the Operations tab, one fact a line: the counts its
+ * type emphasises (and any others with records), when it started and ended,
+ * how long it ran, anything left open, and the closing notes. The activity's
+ * type, date, and frequency are shown just above it, so aren't repeated.
  */
 export function SummaryView({
   activity,
@@ -27,73 +45,79 @@ export function SummaryView({
   /** The closing notes to show (saved, or still being written). */
   notes: string;
 }) {
+  const shown = visibleSections(activity.activity_type, summary);
   const ended = summary.closed_at || "";
   const duration = summary.opened_at
     ? formatDuration(summary.opened_at, ended || new Date().toISOString())
     : "";
-  const about = [
-    activityTypeLabel(activity.activity_type),
-    activity.scheduled_at,
-    activity.frequency,
-    activity.repeater_name && `Repeater ${activity.repeater_name}`,
-  ].filter(Boolean);
+  const started = summary.opened_at ? when(summary.opened_at) : null;
+  const finished = ended ? when(ended) : null;
+  const relayPassed = summary.relay_messages - summary.held_relay_messages - summary.unpassed_relay_messages;
 
   return (
-    <div className="summary-view">
-      <p className="settings-hint summary-about">
-        <ActivityStatus state={summary.state} /> {about.join(" · ")}
-      </p>
-
-      <div className="summary-grid">
-        {summaryFacts(activity.activity_type, summary).map((f) => (
-          <div key={f.key}>
-            {f.text}
-            {f.detail && <span className="settings-hint"> {f.detail}</span>}
-          </div>
-        ))}
-        {duration && (
-          <div>
-            {ended ? "Lasted" : "Open for"} <strong>{duration}</strong>
-          </div>
-        )}
-      </div>
-
-      <div className="summary-times">
-        <div>
-          <span className="report-notes-label">Started</span>{" "}
-          {summary.opened_at ? when(summary.opened_at) : "Not started"}
-        </div>
-        {ended && (
-          <div>
-            <span className="report-notes-label">Ended</span> {when(ended)}
-          </div>
-        )}
-      </div>
-
-      {summary.open_traffic_items > 0 && (
-        <p className="closeout-warning" role="alert">
-          {summary.open_traffic_items} check-in
-          {summary.open_traffic_items === 1
-            ? " has traffic that wasn't"
-            : "s have traffic that weren't"}{" "}
-          marked handled.
-        </p>
+    <dl className="summary-list">
+      {shown.has("checkins") && (
+        <Row label="Check-ins">
+          {summary.checkins}
+          {summary.checkins > 0 && (
+            <span className="summary-detail"> · {plural(summary.unique_stations, "station", "stations")}</span>
+          )}
+        </Row>
       )}
-
-      {summary.held_relay_messages > 0 && (
-        <p className="closeout-warning" role="alert">
-          {summary.held_relay_messages === 1
-            ? "1 relay message was never passed on"
-            : `${summary.held_relay_messages} relay messages were never passed on`}{" "}
-          or marked as not passed.
-        </p>
+      {shown.has("traffic") && (
+        <Row label="Traffic">
+          {plural(summary.traffic_items, "check-in", "check-ins")} with traffic
+          {summary.open_traffic_items > 0 && (
+            <span className="summary-warning" role="alert">
+              {" "}
+              · {summary.open_traffic_items} not marked handled
+            </span>
+          )}
+        </Row>
       )}
-
-      <div className="summary-conclusion">
-        <span className="report-notes-label">Conclusion / notes</span>
-        <p>{notes || <em className="settings-hint">None recorded.</em>}</p>
-      </div>
-    </div>
+      {shown.has("spotter") && (
+        <Row label="Spotter reports">
+          {summary.spotter_reports}
+          {summary.hazards.length > 0 && (
+            <span className="summary-detail">
+              {" "}
+              · {summary.hazards.map((h) => `${h.hazard_type} ${h.count}`).join(", ")}
+            </span>
+          )}
+        </Row>
+      )}
+      {shown.has("relay") && (
+        <Row label="Relayed messages">
+          {summary.relay_messages}
+          {summary.relay_messages > 0 && <span className="summary-detail"> · {relayPassed} passed</span>}
+          {summary.held_relay_messages > 0 && (
+            <span className="summary-warning" role="alert">
+              {" "}
+              · {summary.held_relay_messages} still to pass
+            </span>
+          )}
+          {summary.unpassed_relay_messages > 0 && (
+            <span className="summary-detail"> · {summary.unpassed_relay_messages} not passed</span>
+          )}
+        </Row>
+      )}
+      <Row label="Started">
+        {started ? (
+          <>
+            {started.local} <span className="summary-detail">({started.utc})</span>
+          </>
+        ) : (
+          <span className="summary-detail">Not started yet</span>
+        )}
+      </Row>
+      {finished && (
+        <Row label="Ended">
+          {finished.local} <span className="summary-detail">({finished.utc})</span>
+        </Row>
+      )}
+      {duration && <Row label={ended ? "Lasted" : "Running for"}>{duration}</Row>}
+      <Row label="Notes">{notes || <span className="summary-detail">None recorded</span>}</Row>
+    </dl>
   );
 }
 

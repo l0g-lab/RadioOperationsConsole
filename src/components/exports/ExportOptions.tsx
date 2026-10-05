@@ -81,7 +81,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 /**
  * Every export for one activity, in one list: the records as CSV, the spotter
  * reports and summary as readable text, the history, and the ICS forms, each
- * viewable before saving. Used by the Exports tab and by the end-of-net step,
+ * viewable before saving. Used by the Operations tab's Exports & forms and by the end-of-net step,
  * so they always offer the same things. Files are saved where the operator
  * chooses and nothing needs a network.
  */
