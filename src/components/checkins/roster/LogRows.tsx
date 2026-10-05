@@ -2,6 +2,8 @@ import { Fragment } from "react";
 import { formatCoords } from "../../../geo";
 import { rstPair } from "../ContactFields";
 import { ClipCell, DistanceCell, DistanceHeading, TimeCell, type Place, type RowProps } from "./shared";
+import { locationText } from "../../../checkinLocation";
+import { MapPin } from "lucide-react";
 
 /** A station log's column headings (LOG-020). */
 export function LogColumns({ distanceFrom }: { distanceFrom: Place | null }) {
@@ -60,7 +62,12 @@ export function LogRow({
       <div className={"checkin-row checkin-row-log" + (selected ? " selected" : "")} onClick={onSelect}>
         <span className="checkin-row-call">{c.call_sign}</span>
         <span className="checkin-row-name">{c.name}</span>
-        <span className="checkin-row-location">{c.qth_location}</span>
+        <span className="checkin-row-location" title={c.address || c.qth_location || undefined}>
+          {c.location_lat != null && c.location_lon != null && (
+            <MapPin className="checkin-row-pin" aria-label="On the map" />
+          )}
+          {locationText(c)}
+        </span>
         <DistanceCell checkin={c} from={distanceFrom} />
         <span className="checkin-row-mono">{c.frequency}</span>
         <span>{c.mode}</span>

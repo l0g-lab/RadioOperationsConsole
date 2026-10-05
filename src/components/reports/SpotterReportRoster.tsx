@@ -67,7 +67,6 @@ export default function SpotterReportRoster({
   const [icsDialog, setIcsDialog] = useState<
     null | { form: "309" } | { form: "213"; initial: GeneralMessage213Input }
   >(null);
-  const [openNotes, setOpenNotes] = useState<Set<string>>(new Set());
 
   const [order, toggleOrder] = useSortOrder("spotter-reports", "newest");
   const sortedReports = sortByTime(reports, (r) => r.reported_at, order);
@@ -87,16 +86,7 @@ export default function SpotterReportRoster({
 
   useEffect(() => {
     setShowMap(false);
-    setOpenNotes(new Set());
   }, [activity.id]);
-
-  function toggleNotes(id: string) {
-    setOpenNotes((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
-  }
 
   return (
     <>
@@ -147,8 +137,6 @@ export default function SpotterReportRoster({
             const gridDisplay = hasCoords
               ? latLonToGridSquare(r.lat as number, r.lon as number)
               : "—";
-            const hasNotes = r.notes.trim() !== "";
-            const notesOpen = openNotes.has(r.id);
             return (
               <Fragment key={r.id}>
                 <div
@@ -181,26 +169,11 @@ export default function SpotterReportRoster({
                     {coordsDisplay}
                   </span>
                   <span className="report-row-grid">{gridDisplay}</span>
-                  <span className="report-row-notes">
-                    {hasNotes && (
-                      <button
-                        className="link-button"
-                        aria-expanded={notesOpen}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleNotes(r.id);
-                        }}
-                      >
-                        {notesOpen ? "Hide notes" : "Show notes"}
-                      </button>
-                    )}
+                  {/* On the row, like check-in traffic: in full on hovering. */}
+                  <span className="report-row-notes" title={r.notes || undefined}>
+                    {r.notes}
                   </span>
                 </div>
-                {hasNotes && notesOpen && (
-                  <div className="report-notes-detail">
-                    <span className="report-notes-label">Notes:</span> {r.notes}
-                  </div>
-                )}
               </Fragment>
             );
           })}

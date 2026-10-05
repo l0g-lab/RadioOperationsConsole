@@ -21,6 +21,10 @@ top. Each release's section here is also its description on the
   row — amber until it's handled, then plain text with a green *Handled* tick —
   instead of behind a *Show traffic* button. Hover over a location for the
   full address and coordinates; exports still have every field.
+- **Spotter reports show their notes on the row** (in full on hovering) rather
+  than behind a *Show notes* button, and station-log contacts show their
+  location the same way as check-ins.
+- **Headings and their buttons line up** in every panel.
 
 ### Added
 - **Edit an operator:** correct a name or call sign with the ✎ button in the
