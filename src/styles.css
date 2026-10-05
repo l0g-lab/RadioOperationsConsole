@@ -143,6 +143,12 @@ button.primary:hover {
   filter: brightness(1.12);
 }
 
+/* The header's Start / End: filled like a primary button, but the normal
+   size, so the top bar keeps to one line. */
+button.primary.header-lifecycle-button {
+  padding: 4px 12px;
+}
+
 button.danger {
   border-color: var(--danger, #e05252);
   color: var(--danger, #e05252);
@@ -1644,6 +1650,12 @@ details > summary {
   white-space: nowrap;
 }
 
+/* Not started: pending, so amber (the app's color for what's still to do). */
+.state-pill-scheduled {
+  border-color: var(--warning, #e8a33d);
+  color: var(--warning, #e8a33d);
+}
+
 .state-pill-active {
   border-color: var(--accent-dim);
   color: var(--accent);
@@ -1652,6 +1664,26 @@ details > summary {
 .state-pill-closed {
   border-color: var(--danger, #e05252);
   color: var(--danger, #e05252);
+}
+
+.not-started-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--warning, #e8a33d);
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+.not-started-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--warning, #e8a33d);
+  flex-shrink: 0;
 }
 
 .closed-banner {

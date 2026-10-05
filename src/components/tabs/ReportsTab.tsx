@@ -5,6 +5,7 @@ import SpotterReportForm from "../reports/SpotterReportForm";
 import SpotterReportRoster from "../reports/SpotterReportRoster";
 import NetWeatherNow from "../reports/NetWeatherNow";
 import ClosedBanner from "../lifecycle/ClosedBanner";
+import NotStartedBanner from "../lifecycle/NotStartedBanner";
 
 interface Props {
   activities: Activity[];
@@ -67,6 +68,7 @@ export default function ReportsTab({
 
       {focusedActivity && (
         <>
+          <NotStartedBanner activity={focusedActivity} />
           {focusedActivity.activity_type === "skywarn" && focusedActivity.state === "active" && (
             <NetWeatherNow activity={focusedActivity} />
           )}

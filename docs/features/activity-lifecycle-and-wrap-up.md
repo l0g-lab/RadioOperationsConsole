@@ -79,6 +79,16 @@ and stops later edits from quietly changing a net that is over.
   **End net…**, or **Reopen…** (`UX-OPS-007`).
 - **LIFE-021:** Closed activities MUST be marked as closed in the activity
   selector.
+- **LIFE-022:** So a net isn't run without being started (`LIFE-006`), the
+  header's **Start** and **End** MUST be filled primary buttons, and *Not
+  started* MUST show in amber (pending), beside *Open* in green.
+- **LIFE-023:** Where records are logged (Check-ins, Spotter Reports, a
+  relay's messages), a not-yet-started net MUST show an amber banner — "This
+  net hasn't started", with when it was scheduled once that's today ("19:00,
+  5 min ago") — pointing to **Start net** in the top bar. It MUST NOT offer
+  its own Start: nets are started and ended in one place, the top bar, so
+  operators learn where to look. It MUST NOT block logging: some nets take
+  early check-ins. A station log, never started, has none.
 
 ## Wrapping up a net
 

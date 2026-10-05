@@ -16,6 +16,14 @@ top. Each release's section here is also its description on the
   with a *Change area* link, and with no area set the tab asks for one rather
   than listing alerts for the whole country. Radar is still one click away.
 
+- **Harder to forget to start a net.** A net that hasn't started shows an
+  amber banner above the Check-ins and Spotter Reports forms — "This net
+  hasn't started — scheduled for 19:00, 5 min ago" — pointing to **Start
+  net** in the top bar, where nets are started and ended. There, **Start
+  net** and **End net** are now filled green buttons, and *Not started* is
+  amber. You can still log check-ins before
+  starting (for early check-ins).
+
 ### Added
 - **Weather now on a SKYWARN net's Spotter Reports tab:** one line with the
   conditions at the repeater and any alerts in effect there, with Refresh.

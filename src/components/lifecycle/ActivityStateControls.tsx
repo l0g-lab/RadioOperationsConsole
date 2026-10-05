@@ -46,8 +46,17 @@ export default function ActivityStateControls({
   return (
     <>
       <ActivityStatus state={activity.state} />
-      {activity.state === "scheduled" && <button onClick={start}>Start {noun}</button>}
-      {activity.state === "active" && <button onClick={() => setDialog("close")}>End {noun}</button>}
+      {/* The one action that matters now, so it reads as one (LIFE-022). */}
+      {activity.state === "scheduled" && (
+        <button className="primary header-lifecycle-button" onClick={start}>
+          Start {noun}
+        </button>
+      )}
+      {activity.state === "active" && (
+        <button className="primary header-lifecycle-button" onClick={() => setDialog("close")}>
+          End {noun}
+        </button>
+      )}
       {activity.state === "closed" && <button onClick={() => setDialog("reopen")}>Reopen…</button>}
       {error && <span className="weather-area-error">{error}</span>}
       {dialog === "close" && (

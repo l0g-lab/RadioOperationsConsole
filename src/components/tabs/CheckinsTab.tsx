@@ -5,6 +5,7 @@ import { formatCoordsWithGrid } from "../../geo";
 import CheckinLocationMap from "../CheckinLocationMap";
 import CheckinEntryForm from "../checkins/CheckinEntryForm";
 import CheckinRoster from "../checkins/CheckinRoster";
+import NotStartedBanner from "../lifecycle/NotStartedBanner";
 import ClosedBanner from "../lifecycle/ClosedBanner";
 import { isLog, isRangeCheck, isRelay } from "../../activityTypes";
 import RelayWorkspace from "../relay/RelayWorkspace";
@@ -160,6 +161,10 @@ export default function CheckinsTab({
           Choose an activity in the top bar (or create one on the Operations tab) to begin recording
           check-ins or contacts.
         </p>
+      )}
+
+      {focusedActivity && (
+        <NotStartedBanner activity={focusedActivity} />
       )}
 
       {focusedActivity && rangeCheck && !repeater && !closed && (
