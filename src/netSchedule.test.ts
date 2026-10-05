@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeNext, describeSchedule, meetsOn, nextMeeting, weekAhead } from "./netSchedule";
+import { comingUp, describeNext, describeSchedule, meetsOn, nextMeeting, startsIn, weekAhead } from "./netSchedule";
 import type { NetListing } from "./types";
 
 function listing(overrides: Partial<NetListing> = {}): NetListing {
@@ -135,5 +135,34 @@ describe("describing (NETL-021)", () => {
       "Last Sunday 19:00"
     );
     expect(describeSchedule(listing({ schedule_kind: "as_needed" }))).toBe("As needed");
+  });
+});
+
+describe("coming up (NETL-025)", () => {
+  const now = at(2, 9); // Friday 09:00
+
+  it("lists the next nets, each once, soonest first, then later ones", () => {
+    const week = weekAhead(
+      [
+        listing({ id: "am", name: "Morning Net", weekdays: [1, 2, 3, 4, 5], start_time: "08:30", end_time: "09:30" }),
+        listing({ id: "tue" }),
+        listing({ id: "sat", name: "Saturday Net", weekdays: [6], start_time: "10:00" }),
+        listing({ id: "mon", name: "Monthly Net", schedule_kind: "monthly", weekdays: [4], weeks: ["2"], start_time: "20:00" }),
+      ],
+      now
+    );
+    expect(comingUp(week).map((e) => e.listing.id)).toEqual(["am", "sat", "tue"]);
+    expect(comingUp(week, 4).map((e) => e.listing.id)).toEqual(["am", "sat", "tue", "mon"]);
+  });
+
+  it("says when each starts at a glance", () => {
+    const m = (start: Date, end = new Date(start.getTime() + 3_600_000), underway = false) => ({ start, end, underway });
+    expect(startsIn(m(at(2, 8, 30), at(2, 9, 30), true), now)).toBe("On now · until 09:30");
+    expect(startsIn(m(at(2, 9, 25)), now)).toBe("in 25 min");
+    expect(startsIn(m(at(2, 11, 10)), now)).toBe("in 2 h 10 min");
+    expect(startsIn(m(at(2, 19)), now)).toBe("in 10 h");
+    expect(startsIn(m(at(3, 10)), now)).toBe("Tomorrow 10:00");
+    expect(startsIn(m(at(6, 19)), now)).toBe("Tue 19:00");
+    expect(startsIn(m(at(15, 20)), now)).toBe("Thu Oct 15 20:00");
   });
 });

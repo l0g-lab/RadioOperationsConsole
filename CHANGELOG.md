@@ -6,6 +6,18 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Changed
+- **The Nets tab is easier to read.** A **Coming up** box at the top shows
+  the next three nets — "On now", "in 25 min", "Tomorrow 07:30" — and each
+  meeting in the week below takes one line: time, name, and repeater with
+  its frequency. **▶** starts an activity from it; **ⓘ** shows the rest (how
+  to tune in, how far the repeater is, who runs it, check-in instructions,
+  notes, Edit and Retire). Days with no nets are left out, and the search and
+  repeater filter sit beside the heading. A colored band chip (**2m**,
+  **70cm**, **10m**, **GMRS**…) shows which radio each net needs, an icon
+  shows its type (SKYWARN stands out), a net starting within the hour is in
+  amber in Coming up, and Today's heading is highlighted.
+
 ## [2.4.2] - 2026-10-05
 
 ### Changed

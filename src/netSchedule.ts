@@ -149,6 +149,43 @@ export function describeNext(m: Meeting, now: Date): string {
   return `${DAY_SHORT[m.start.getDay()]} ${MONTH_SHORT[m.start.getMonth()]} ${m.start.getDate()}, ${hhmm(m.start)}`;
 }
 
+/**
+ * The next few nets from now for "Coming up" (NETL-025): each net once, at
+ * its next meeting, soonest first — the week's days, then later ones.
+ */
+export function comingUp(week: WeekAhead, count = 3): DayEntry[] {
+  const seen = new Set<string>();
+  const out: DayEntry[] = [];
+  for (const e of [...week.days.flatMap((d) => d.entries), ...week.later]) {
+    if (seen.has(e.listing.id)) continue;
+    seen.add(e.listing.id);
+    out.push(e);
+    if (out.length === count) break;
+  }
+  return out;
+}
+
+/**
+ * When a meeting starts, as a glance would want it: "On now · until 08:00",
+ * "in 25 min", "in 2 h 10 min" (within 12 hours), else "Tomorrow 07:30",
+ * "Wed 21:00" (within the week), "Thu Oct 15 20:00".
+ */
+export function startsIn(m: Meeting, now: Date): string {
+  if (m.underway) return `On now · until ${hhmm(m.end)}`;
+  const mins = Math.round((m.start.getTime() - now.getTime()) / 60_000);
+  if (mins < 60) return `in ${Math.max(mins, 1)} min`;
+  if (mins < 12 * 60) return `in ${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ""}`;
+  const days = Math.round(
+    (new Date(m.start.getFullYear(), m.start.getMonth(), m.start.getDate()).getTime() -
+      new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /
+      86_400_000
+  );
+  if (days === 0) return `Today ${hhmm(m.start)}`;
+  if (days === 1) return `Tomorrow ${hhmm(m.start)}`;
+  if (days < 7) return `${DAY_SHORT[m.start.getDay()]} ${hhmm(m.start)}`;
+  return `${DAY_SHORT[m.start.getDay()]} ${MONTH_SHORT[m.start.getMonth()]} ${m.start.getDate()} ${hhmm(m.start)}`;
+}
+
 /** "Tuesdays", "Mon–Fri", "Mon, Wed, Fri", "Daily". */
 function weeklyDays(days: number[]): string {
   if (days.length === 7) return "Daily";

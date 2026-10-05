@@ -74,20 +74,35 @@ who attended.
 - **NETL-020:** Listings MUST be shown as the coming week, one heading per
   day starting today ("Today · Fri Oct 2", "Tomorrow · Sat Oct 3", "Sun Oct
   4"), each day's nets in start-time order. A net that meets on several of
-  those days MUST be listed under each, and a day with no nets says so.
+  those days MUST be listed under each; a day with no nets is left out.
   Today MUST leave out nets already over, and mark one under way (between
   its start and end time, or for an hour after it starts when it has no end
   time). After the week come scheduled nets that don't meet in it, under
   "Later" with their next meeting ("Sun Oct 25, 19:00"), then "as needed"
   nets by name.
-- **NETL-021:** Each listing MUST show its time, its schedule ("Tuesdays
-  19:00–19:30"), its name, how to tune in, who runs it, its check-in
-  instructions, and its notes. How to tune in is the repeater's output and
-  input frequency, offset, tone, and mode ("Output 146.940 · Input 146.340
-  (-0.600) · Tone PL 100.0 · FM"), or the listing's own frequency text.
+- **NETL-021:** Each meeting MUST take one line: its time, its name, and its
+  repeater with the repeater's one-line frequency ("W4ABC Orlando 146.940
+  -0.600 PL 100.0"), or the listing's own frequency text; then ▶ (Start
+  activity, `NETL-030`) and ⓘ. ⓘ MUST open the rest under the line: its
+  schedule ("Tuesdays 19:00–19:30"), how to tune in (the repeater's output
+  and input frequency, offset, tone, and mode: "Output 146.940 · Input
+  146.340 (-0.600) · Tone PL 100.0 · FM"), the repeater and its distance
+  (`NETL-024`), who runs it, its check-in instructions, its notes, and Edit
+  and Retire.
 - **NETL-024:** When the current operator has a location and the listing's
   repeater has one, the listing MUST show how far the repeater is ("14.2 mi
-  away"), as a guide to whether it's in reach.
+  away"), as a guide to whether it's in reach, in its details (`NETL-021`).
+- **NETL-025:** Above the week, a **Coming up** box MUST list the next three
+  nets, each once at its next meeting, soonest first: "On now · until 08:00"
+  in green for one under way, "in 25 min" or "in 2 h 10 min" within 12
+  hours, else "Tomorrow 07:30", "Wed 21:00", or the date — each with ▶. A
+  net starting within the hour MUST show its time in amber (still to do).
+- **NETL-026:** Each line MUST show, at a glance, which radio it needs and
+  what kind of net it is: a band chip before the repeater, worked out from
+  the frequency ("2m", "70cm", "10m", "GMRS", "MURS", "CB"), colored by group
+  (HF, VHF, UHF, personal radio services) in colors clear of the app's
+  amber, red, and green; and an icon for the net's type before its name
+  (SKYWARN in the storm color). Today's heading MUST be in the accent color.
 - **NETL-022:** The list MUST be searchable by name, repeater, frequency,
   and who runs it, and MAY be filtered to one repeater. A repeater in the
   directory MUST show how many listings meet on it.
@@ -96,7 +111,7 @@ who attended.
 
 ## Starting a net from a listing
 
-- **NETL-030:** Every listing MUST offer "Start activity" as a secondary
+- **NETL-030:** Every listing MUST offer "Start activity" (▶) as a secondary
   action, which opens the create-activity form filled with the listing's
   name as the title, its type, its frequency (the repeater's one-line form,
   or its frequency text), its repeater, and its start time. The date is the

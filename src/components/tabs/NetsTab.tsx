@@ -1,19 +1,23 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import * as api from "../../api";
 import type { NetListing, NetListingDetails, Operator, Repeater } from "../../types";
-import { formatDistance, haversineKm } from "../../geo";
+import { haversineKm } from "../../geo";
 import { formatRepeater, tuningDetails } from "../../repeaters";
 import {
+  comingUp,
   describeNext,
   describeSchedule,
   isoDate,
+  startsIn,
   weekAhead,
   type Meeting,
 } from "../../netSchedule";
 import NetListingForm, { EMPTY_LISTING } from "../nets/NetListingForm";
 import type { ActivityPrefill } from "../operations/activityPrefill";
 import { shortMiles } from "../checkins/roster/shared";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Info, Play } from "lucide-react";
+import ActivityTypeIcon from "../ActivityTypeIcon";
+import { bandOf, mhzFromText } from "../../bands";
 
 interface Props {
   operators: Operator[];
@@ -58,7 +62,18 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
   const [repeaterFilter, setRepeaterFilter] = useState("");
   const [showRetired, setShowRetired] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Rows with their details open, by day and net.
+  const [openRows, setOpenRows] = useState<Set<string>>(new Set());
   const now = useMinuteClock();
+
+  function toggleRow(key: string) {
+    setOpenRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   const refresh = useCallback(() => {
     api.listNetListings().then(setListings).catch(() => setListings([]));
@@ -91,6 +106,7 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
     );
   });
   const week = weekAhead(matching, now);
+  const next = comingUp(week);
   const editingListing = listings.find((l) => l.id === editing) ?? null;
 
   async function save(id: string | null, details: NetListingDetails) {
@@ -129,58 +145,67 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
   const formRepeaters = (l: NetListingDetails) =>
     inUseRepeaters.concat(repeaters.filter((r) => r.retired_at && r.id === l.repeater_id));
 
-  /** One net: when, how to tune in, how far, how to check in (NETL-021). */
-  function row(l: NetListing, meeting: Meeting | null, when: string, key: string) {
+  /** The repeater and its frequency on one line ("W4ABC Orlando", "146.940 -0.600 PL 100.0"), or the typed frequency. */
+  function tuneLine(l: NetListing) {
+    const r = repeaterOf(l);
+    const band = bandOf(r ? r.output_mhz : mhzFromText(l.frequency));
+    return (
+      <span className="net-row-where">
+        {band ? (
+          <span className={`band-chip band-${band.group}`} title={`${band.label} band`}>
+            {band.label}
+          </span>
+        ) : (
+          <span className="band-chip band-none" aria-hidden />
+        )}
+        {r && <span className="net-row-repeater">{r.name}{r.retired_at ? " (retired)" : ""}</span>}
+        <span className="checkin-row-mono">{r ? formatRepeater(r) : l.frequency}</span>
+      </span>
+    );
+  }
+
+  function startButton(l: NetListing, meeting: Meeting | null) {
+    return (
+      <button
+        className="icon-button"
+        aria-label={`Start activity for ${l.name}`}
+        title="Run this net: opens a new activity filled in from it"
+        onClick={() => start(l, meeting)}
+      >
+        <Play />
+      </button>
+    );
+  }
+
+  /** Everything else about a net, under its row when ⓘ is clicked (NETL-021). */
+  function details(l: NetListing) {
     const r = repeaterOf(l);
     const km =
       here && r?.location_lat != null && r.location_lon != null
         ? haversineKm(here.lat, here.lon, r.location_lat, r.location_lon)
         : null;
-    const where = [
-      r && `${r.name}${r.retired_at ? " (retired)" : ""}`,
-      km != null && `${shortMiles(km)} away`,
-      l.run_by && `Run by ${l.run_by}`,
-    ].filter(Boolean);
+    const facts: [string, string][] = [
+      ["Meets", describeSchedule(l)],
+      ["Tune", r ? tuningDetails(r) : l.frequency],
+      ["Repeater", r ? `${r.name}${km != null ? ` · ${shortMiles(km)} away` : ""}` : ""],
+      ["Run by", l.run_by],
+      ["Check-in", l.checkin_info],
+      ["Notes", l.notes],
+    ];
     return (
-      <div key={key} className={"net-row" + (meeting?.underway ? " net-row-underway" : "")}>
-        <div className="net-row-when">
-          <strong className="checkin-row-mono">{when}</strong>
-          {meeting?.underway && <span className="net-row-badge">On now</span>}
-          {l.schedule_kind !== "as_needed" && (
-            <span className="settings-hint">{describeSchedule(l)}</span>
-          )}
-        </div>
-        <div className="net-row-what">
-          <strong>{l.name}</strong>
-          <span className="checkin-row-mono">{r ? tuningDetails(r) : l.frequency}</span>
-          {where.length > 0 && (
-            <span
-              className="settings-hint"
-              title={km != null ? `${formatDistance(km)} from your location` : undefined}
-            >
-              {where.join(" · ")}
-            </span>
-          )}
-          {l.checkin_info && (
-            <span>
-              <span className="report-notes-label">Check-in:</span> {l.checkin_info}
-            </span>
-          )}
-          {l.notes && <span className="settings-hint">{l.notes}</span>}
-        </div>
+      <div className="net-row-details">
+        <dl className="summary-list">
+          {facts
+            .filter(([, v]) => v)
+            .map(([k, v]) => (
+              <Fragment key={k}>
+                <dt>{k}</dt>
+                <dd className={k === "Tune" ? "checkin-row-mono" : undefined}>{v}</dd>
+              </Fragment>
+            ))}
+        </dl>
         <span className="operator-row-actions">
-          <button
-            className="link-button"
-            title="Run this net: opens a new activity filled in from it"
-            onClick={() => start(l, meeting)}
-          >
-            Start activity
-          </button>
-          <button
-            className="link-button"
-            aria-label={`Edit ${l.name}`}
-            onClick={() => setEditing(l.id)}
-          >
+          <button className="link-button" aria-label={`Edit ${l.name}`} onClick={() => setEditing(l.id)}>
             Edit
           </button>
           <button
@@ -196,6 +221,34 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
     );
   }
 
+  /** One meeting on one line: when, name, where to tune; ▶ to run it, ⓘ for the rest. */
+  function row(l: NetListing, meeting: Meeting | null, when: string, key: string) {
+    const open = openRows.has(key);
+    return (
+      <div key={key} className={"net-row" + (meeting?.underway ? " net-row-underway" : "")}>
+        <span className="net-row-when checkin-row-mono">{when}</span>
+        <strong className="net-row-name">
+                <ActivityTypeIcon type={l.activity_type} />
+                {l.name}
+              </strong>
+        {tuneLine(l)}
+        <span className="net-row-actions">
+          {startButton(l, meeting)}
+          <button
+            className={"icon-button" + (open ? " active" : "")}
+            aria-label={`${open ? "Hide" : "Show"} details of ${l.name}`}
+            aria-expanded={open}
+            title={open ? "Hide details" : "Details"}
+            onClick={() => toggleRow(key)}
+          >
+            <Info />
+          </button>
+        </span>
+        {open && details(l)}
+      </div>
+    );
+  }
+
   const timeRange = (m: Meeting, l: NetListing) => (l.end_time ? `${hhmm(m.start)}–${hhmm(m.end)}` : hhmm(m.start));
 
   return (
@@ -205,14 +258,38 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
           <CalendarClock className="heading-icon" />
           Nets
         </h3>
-        {editing !== "new" && (
-          <button className="link-button" onClick={() => setEditing("new")}>
-            + Add net
-          </button>
-        )}
+        <div className="checkin-roster-header-actions">
+          {listings.length > 0 && (
+            <input
+              type="search"
+              className="checkin-roster-search"
+              aria-label="Search nets"
+              placeholder="Search nets"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          )}
+          {repeaters.some((r) => listings.some((l) => l.repeater_id === r.id)) && (
+            <select aria-label="Show nets on" value={repeaterFilter} onChange={(e) => setRepeaterFilter(e.target.value)}>
+              <option value="">All repeaters</option>
+              {repeaters
+                .filter((r) => listings.some((l) => l.repeater_id === r.id))
+                .map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+            </select>
+          )}
+          {editing !== "new" && (
+            <button className="link-button" onClick={() => setEditing("new")}>
+              + Add net
+            </button>
+          )}
+        </div>
       </div>
       <p className="settings-hint">
-        Nets you can join, and when each meets over the coming week, in this computer's local time.
+        Times are this computer's local time.
         {!here && " Set a location on your operator to see how far each repeater is."}
       </p>
       {editing === "new" && (
@@ -233,33 +310,32 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
           onCancel={() => setEditing(null)}
         />
       )}
-      {listings.length > 0 && (
-        <div className="inline-form">
-          <input
-            type="search"
-            className="checkin-roster-search"
-            aria-label="Search nets"
-            placeholder="Search by name, repeater, frequency, or who runs it"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {repeaters.some((r) => listings.some((l) => l.repeater_id === r.id)) && (
-            <select
-              aria-label="Show nets on"
-              value={repeaterFilter}
-              onChange={(e) => setRepeaterFilter(e.target.value)}
-            >
-              <option value="">All repeaters</option>
-              {repeaters
-                .filter((r) => listings.some((l) => l.repeater_id === r.id))
-                .map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-            </select>
-          )}
-        </div>
+      {next.length > 0 && (
+        <section className="net-coming-up" aria-label="Coming up">
+          <h4 className="net-day-heading">Coming up</h4>
+          {next.map(({ listing: l, meeting }) => (
+            <div key={l.id} className={"net-coming-row" + (meeting.underway ? " net-row-underway" : "")}>
+              <span
+                className={
+                  "net-coming-when" +
+                  (meeting.underway
+                    ? " net-coming-now"
+                    : meeting.start.getTime() - now.getTime() < 60 * 60_000
+                      ? " net-coming-soon"
+                      : "")
+                }
+              >
+                {startsIn(meeting, now)}
+              </span>
+              <strong className="net-row-name">
+          <ActivityTypeIcon type={l.activity_type} />
+          {l.name}
+        </strong>
+              {tuneLine(l)}
+              <span className="net-row-actions">{startButton(l, meeting)}</span>
+            </div>
+          ))}
+        </section>
       )}
       {listings.length === 0 && editing !== "new" && (
         <p className="checkin-empty-state">
@@ -272,18 +348,21 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
       )}
       {matching.length > 0 && (
         <div className="net-schedule">
-          {week.days.map((day) => (
-            <section key={day.label} className="net-day" aria-label={day.label}>
-              <h4 className="net-day-heading">{day.label}</h4>
-              {day.entries.length === 0 ? (
-                <p className="settings-hint net-day-empty">No nets.</p>
-              ) : (
-                day.entries.map((e) =>
+          {/* Days without nets are left out. */}
+          {week.days
+            .filter((day) => day.entries.length > 0)
+            .map((day) => (
+              <section
+                key={day.label}
+                className={"net-day" + (day.label.startsWith("Today") ? " net-day-today" : "")}
+                aria-label={day.label}
+              >
+                <h4 className="net-day-heading">{day.label}</h4>
+                {day.entries.map((e) =>
                   row(e.listing, e.meeting, timeRange(e.meeting, e.listing), `${day.label}-${e.listing.id}`)
-                )
-              )}
-            </section>
-          ))}
+                )}
+              </section>
+            ))}
           {week.later.length > 0 && (
             <section className="net-day" aria-label="Later">
               <h4 className="net-day-heading">Later</h4>

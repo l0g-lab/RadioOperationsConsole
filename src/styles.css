@@ -13,6 +13,12 @@
   --accent-dim: #1f8f4e;
   --on-accent: #04140b;
   /* Forecast colors (forecastStyle.ts): conditions, then temperature. */
+  /* Band chips (bands.ts): HF, VHF, UHF, and GMRS/MURS/CB — clear of the
+     amber/red/green the app keeps for meaning. */
+  --band-hf: #b388ff;
+  --band-vhf: #4da3ff;
+  --band-uhf: #2fd0d8;
+  --band-personal: #ff7ac6;
   --fc-storm: #c77dff;
   --fc-winter: #9ad7ff;
   --fc-rain: #4da3ff;
@@ -45,6 +51,10 @@
   --on-accent: #ffffff;
   --warning: #a86200;
   --danger: #c0392b;
+  --band-hf: #6a1b9a;
+  --band-vhf: #1565c0;
+  --band-uhf: #00838f;
+  --band-personal: #c2185b;
   --fc-storm: #7b2cbf;
   --fc-winter: #15699a;
   --fc-rain: #1565c0;
@@ -76,6 +86,10 @@
     --on-accent: #ffffff;
     --warning: #a86200;
     --danger: #c0392b;
+    --band-hf: #6a1b9a;
+    --band-vhf: #1565c0;
+    --band-uhf: #00838f;
+    --band-personal: #c2185b;
     --fc-storm: #7b2cbf;
     --fc-winter: #15699a;
     --fc-rain: #1565c0;
@@ -2290,13 +2304,20 @@ button.online-pill-working-offline:hover {
   flex-direction: column;
 }
 
-.net-row {
+/* One meeting a line: when, name, where to tune, then ▶ and ⓘ; the
+   details open under it. */
+.net-row,
+.net-coming-row {
   display: grid;
-  grid-template-columns: minmax(170px, 220px) 1fr auto;
-  gap: 16px;
+  grid-template-columns: 9.5em minmax(12em, 1fr) minmax(0, 1.4fr) auto;
+  gap: 4px 14px;
   align-items: center;
-  padding: 10px 6px;
+  padding: 5px 6px;
   border-bottom: 1px solid var(--border);
+}
+
+.net-coming-row {
+  grid-template-columns: 11em minmax(12em, 1fr) minmax(0, 1.4fr) auto;
 }
 
 /* A net meeting right now stands out (NETL-020). */
@@ -2305,12 +2326,127 @@ button.online-pill-working-offline:hover {
   background: var(--bg-input);
 }
 
-.net-row-when,
-.net-row-what {
+.net-row-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.net-row-where {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  gap: 10px;
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.net-row-repeater {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.net-row-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.net-row .icon-button.active {
+  color: var(--accent);
+}
+
+.net-row-details {
+  grid-column: 2 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 4px;
+}
+
+/* The search, repeater filter and + Add net share the heading's line. */
+.nets-panel .checkin-roster-header-actions .checkin-roster-search {
+  width: 16em;
+}
+
+.nets-panel .checkin-roster-header-actions select {
+  max-width: 14em;
+}
+
+.nets-panel .checkin-roster-header-actions .link-button {
+  white-space: nowrap;
+}
+
+/* Band chip before the repeater (NETL-026): which radio a net needs. */
+.band-chip {
+  --band: var(--text-dim);
+  display: inline-block;
+  min-width: 4.2em;
+  padding: 0 6px;
+  border: 1px solid var(--band);
+  border-radius: 10px;
+  color: var(--band);
+  font-size: calc(12px * var(--font-scale));
+  font-weight: 600;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.band-hf { --band: var(--band-hf); }
+.band-vhf { --band: var(--band-vhf); }
+.band-uhf { --band: var(--band-uhf); }
+.band-personal { --band: var(--band-personal); }
+.band-none { border-color: transparent; }
+
+/* Activity type icons (ActivityTypeIcon.tsx); SKYWARN in the storm color. */
+.activity-type-icon {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-right: 6px;
+  color: var(--text-dim);
+}
+
+.activity-type-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.activity-type-skywarn {
+  color: var(--fc-storm);
+}
+
+/* Starting within the hour: amber, still to do; on now is green. */
+.net-coming-when.net-coming-soon {
+  color: var(--warning, #e8a33d);
+  font-weight: 600;
+}
+
+/* Today's heading in the accent color, to find "now" in the week. */
+.net-day-today .net-day-heading {
+  color: var(--accent);
+  border-bottom-color: var(--accent-dim);
+}
+
+/* The next few nets, above the week (NETL-025). */
+.net-coming-up {
+  padding: 4px 10px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-input);
+}
+
+.net-coming-up .net-coming-row:last-child {
+  border-bottom: none;
+}
+
+.net-coming-when {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.net-coming-now {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .net-choices {
@@ -2323,13 +2459,6 @@ button.online-pill-working-offline:hover {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   font-weight: 600;
-}
-
-@media (max-width: 700px) {
-  .net-row {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
 }
 
 /* The week ahead: one heading per day (NETL-020). */
@@ -2347,20 +2476,6 @@ button.online-pill-working-offline:hover {
   font-size: calc(12px * var(--font-scale));
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-.net-day-empty {
-  margin: 4px 6px;
-}
-
-.net-row-badge {
-  align-self: flex-start;
-  padding: 0 6px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--bg-panel);
-  font-size: calc(11px * var(--font-scale));
-  font-weight: 600;
 }
 
 .net-run-section {
