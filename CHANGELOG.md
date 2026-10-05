@@ -6,6 +6,20 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Changed
+- **Checking in asks for one Location, not four boxes.** Type an address,
+  town, ZIP, cross street, mile marker (*MM 182 turnpike*), grid square, or
+  GPS coordinates — or let the call-sign lookup fill it — and the app sorts it
+  into address, QTH, grid square, and map position when you save. **📍 Map**
+  picks the exact spot before saving, and a line under the box says where the
+  station will land. When you're online, anything the offline data can't place
+  (a cross street, say) is looked up on the map search. Every station on the
+  map gets a grid square, worked out offline. The same one box is used when
+  editing a check-in.
+- **The check-in roster is simpler:** call sign, name, location (with a pin
+  when it's on the map), grid, time, and traffic. Hover over a location for
+  the full address and coordinates; exports still have every field.
+
 ### Added
 - **Edit an operator:** correct a name or call sign with the ✎ button in the
   Operators list. The correction shows everywhere they're named, past nets

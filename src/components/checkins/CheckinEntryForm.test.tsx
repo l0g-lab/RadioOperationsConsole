@@ -6,6 +6,7 @@ import type { QrzLookupResponse } from "../../types";
 vi.mock("../../api", () => ({
   resolveMileMarker: vi.fn(),
   createCheckin: vi.fn(),
+  geocodeLocation: vi.fn(() => Promise.resolve(null)),
   stationHistory: vi.fn(() => Promise.resolve({ count: 0, last: null })),
 }));
 vi.mock("../../locationResolution", () => ({
@@ -99,10 +100,10 @@ describe("CheckinEntryForm type-as-you-go lookup (QRZ-037)", { timeout: 10_000 }
     expect(name).toHaveValue("Pat");
   });
 
-  it("keeps a QTH the operator typed before the lookup filled the name", async () => {
+  it("keeps a location the operator typed before the lookup filled the name", async () => {
     const user = userEvent.setup();
     renderForm();
-    await user.type(screen.getByPlaceholderText(/^QTH location/), "Field Day site");
+    await user.type(screen.getByLabelText("Location"), "Field Day site");
     await user.type(screen.getByLabelText("Call sign"), "KR4H");
     await pause(1000);
     expect(screen.getByLabelText(/^Name/)).toHaveValue("Wrong Person");
@@ -110,7 +111,7 @@ describe("CheckinEntryForm type-as-you-go lookup (QRZ-037)", { timeout: 10_000 }
     await user.type(screen.getByLabelText("Call sign"), "GY");
     await pause(1000);
     expect(screen.getByLabelText(/^Name/)).toHaveValue("Right Person");
-    expect(screen.getByPlaceholderText(/^QTH location/)).toHaveValue("Field Day site");
+    expect(screen.getByLabelText("Location")).toHaveValue("Field Day site");
   });
 });
 

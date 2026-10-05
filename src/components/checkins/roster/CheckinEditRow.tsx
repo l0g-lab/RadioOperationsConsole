@@ -1,7 +1,8 @@
 import { useState } from "react";
 import * as api from "../../../api";
 import type { Activity, Checkin } from "../../../types";
-import { resolveOfflineLocationAsync } from "../../../locationResolution";
+import { resolveCheckinLocation } from "../../../checkinLocation";
+import { isWorkingOffline } from "../../../workOffline";
 import {
   contactTimeError,
   ContactFieldsInputs,
@@ -32,9 +33,9 @@ export function CheckinEditRow({
 }) {
   const [callSign, setCallSign] = useState(checkin.call_sign);
   const [name, setName] = useState(checkin.name);
-  const [qthLocation, setQthLocation] = useState(checkin.qth_location);
-  const [gridSquare, setGridSquare] = useState(checkin.grid_square);
-  const [address, setAddress] = useState(checkin.address);
+  // One Location box, as when checking in (CIMAP-080).
+  const startLocation = checkin.address || checkin.qth_location;
+  const [location, setLocation] = useState(startLocation);
   const [traffic, setTraffic] = useState(checkin.traffic);
   const [contact, setContact] = useState<ContactDraft>(() => draftFromCheckin(checkin));
   const [saveRefused, setSaveRefused] = useState(false);
@@ -46,41 +47,37 @@ export function CheckinEditRow({
       setSaveRefused(true);
       return;
     }
-    const trimmedQth = qthLocation.trim() || null;
-    const trimmedGrid = gridSquare.trim() || null;
-    const trimmedAddress = address.trim() || null;
-
-    // A location placed by hand ("Edit location", typed coordinates) is
-    // never moved by editing the details. An automatic one follows them: it's
-    // worked out again when the QTH, grid, or address changed. If the new
-    // details don't resolve, the old point is kept.
+    let qth: string | null = checkin.qth_location || null;
+    let grid: string | null = checkin.grid_square || null;
+    let address: string | null = checkin.address || null;
     let locationLat = checkin.location_lat;
     let locationLon = checkin.location_lon;
     let locationLabel = checkin.location_label || null;
-    const detailsChanged =
-      trimmedQth !== (checkin.qth_location.trim() || null) ||
-      trimmedGrid !== (checkin.grid_square.trim() || null) ||
-      trimmedAddress !== (checkin.address.trim() || null);
-    if (locationLat == null || locationLon == null || (!checkin.location_manual && detailsChanged)) {
-      const resolved = await resolveOfflineLocationAsync({
-        gridSquare: trimmedGrid,
-        address: trimmedAddress,
-        qthLocation: trimmedQth,
-      });
-      if (resolved) {
-        locationLat = resolved.lat;
-        locationLon = resolved.lon;
-        locationLabel = trimmedQth || trimmedAddress || resolved.sourceText;
+    let pinned: { lat: number; lon: number; label: string | null } | null = null;
+    // A changed location is sorted again, as when checking in. A spot placed by
+    // hand is never moved by it (CIMAP-003); an automatic one follows, or stays
+    // put if the new text can't be placed.
+    if (location.trim() !== startLocation.trim()) {
+      const r = await resolveCheckinLocation(location, { online: navigator.onLine && !isWorkingOffline() });
+      address = r.address;
+      qth = r.qth;
+      if (r.manual && r.lat != null && r.lon != null) {
+        pinned = { lat: r.lat, lon: r.lon, label: r.label };
+      } else if (!checkin.location_manual && r.lat != null && r.lon != null) {
+        locationLat = r.lat;
+        locationLon = r.lon;
+        locationLabel = r.label;
       }
+      grid = r.grid ?? grid;
     }
 
     await api.updateCheckin(
       checkin.id,
       call,
       name.trim() || null,
-      trimmedQth,
-      trimmedGrid,
-      trimmedAddress,
+      qth,
+      grid,
+      address,
       operatorId,
       locationLat,
       locationLon,
@@ -90,6 +87,8 @@ export function CheckinEditRow({
       traffic.trim() || null,
       log ? toContactDetails(contact) : null
     );
+    // Typed coordinates or a mile marker: placed by hand.
+    if (pinned) await api.setCheckinLocationCoords(checkin.id, pinned.lat, pinned.lon, pinned.label);
     onSaved();
   }
 
@@ -117,9 +116,7 @@ export function CheckinEditRow({
         onKeyDown={keys}
       />
       {text(name, setName, "checkin-edit-name", "Name")}
-      {text(qthLocation, setQthLocation, "checkin-edit-qth", "QTH location")}
-      {text(gridSquare, setGridSquare, "checkin-edit-grid", "Grid")}
-      {text(address, setAddress, "checkin-edit-address", "Full address")}
+      {text(location, setLocation, "checkin-edit-location", "Location")}
       {log ? (
         <ContactFieldsInputs
           idPrefix={`checkin-edit-${checkin.id}`}

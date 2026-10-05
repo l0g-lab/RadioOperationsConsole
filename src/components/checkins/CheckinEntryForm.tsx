@@ -8,10 +8,11 @@ import {
   sourceLabels,
   type CallsignSource,
 } from "../../callsignLookup";
-import { resolveOfflineLocationAsync } from "../../locationResolution";
-import { formatCoords, parseCoords } from "../../geo";
+import { resolveCheckinLocation, type CheckinLocation, type LookupLocation } from "../../checkinLocation";
+import { isWorkingOffline } from "../../workOffline";
 import { hintWidth } from "../hintWidth";
-import type { MileMarkerHit } from "../../types";
+import LocationPicker from "../LocationPicker";
+import { MapPin } from "lucide-react";
 import {
   contactTimeError,
   ContactFieldsInputs,
@@ -59,10 +60,7 @@ type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "
 const HINTS = {
   call: "Call sign, then Enter",
   name: "Name (optional, auto-filled by lookup)",
-  qth: "QTH location (optional, auto-filled from QRZ)",
-  grid: "Grid square",
-  address: "Full address (optional, auto-filled from QRZ)",
-  coords: "Coordinates, or e.g. MM 182 turnpike",
+  location: "Location — address, cross street, MM 182 turnpike, or lat, lon",
   traffic: "Traffic — what they have to pass (blank if none)",
 };
 
@@ -87,9 +85,16 @@ export default function CheckinEntryForm({
 }: Props) {
   const [callSign, setCallSign] = useState("");
   const [name, setName] = useState("");
-  const [qthLocation, setQthLocation] = useState("");
-  const [gridSquare, setGridSquare] = useState("");
-  const [address, setAddress] = useState("");
+  // One Location box (CIMAP-080): typed, or filled by the lookup; sorted into
+  // address, QTH, grid square, and map position when saved (checkinLocation.ts).
+  const [location, setLocation] = useState("");
+  // What the call-sign lookup found, kept until saving.
+  const [lookupLoc, setLookupLoc] = useState<LookupLocation | null>(null);
+  // A spot picked on the map, which wins over everything else.
+  const [pin, setPin] = useState<{ lat: number; lon: number; label: string } | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  // Where it will land, shown under the box; offline sources only while typing.
+  const [preview, setPreview] = useState<CheckinLocation | null>(null);
   const [traffic, setTraffic] = useState("");
   const [contact, setContact] = useState<ContactDraft>(EMPTY_CONTACT);
   const [contactSaveRefused, setContactSaveRefused] = useState(false);
@@ -99,23 +104,6 @@ export default function CheckinEntryForm({
   const [saveError, setSaveError] = useState<string | null>(null);
   const rangeMissing = rangeCheck && rangeSaveRefused ? missingRangeFields(range) : [];
   const history = useStationHistory(callSign);
-  // QRZ's exact point for the call sign currently being entered — held here
-  // (not in a visible field) until the check-in is saved.
-  const [qrzExact, setQrzExact] = useState<{ lat: number; lon: number } | null>(null);
-  // Shown as "lat, lon". Auto-populates from whatever the location resolves
-  // to (QRZ's exact point, else ZIP/grid) but can be typed over — once
-  // edited by hand it stops auto-updating and wins at save time.
-  const [coordsText, setCoordsText] = useState("");
-  const coordsEditedRef = useRef(false);
-  // Where the auto-filled point came from, shown under the row so the field
-  // isn't a mystery ("center of ZIP 33157", "QRZ's exact point", ...).
-  const [coordsNote, setCoordsNote] = useState<string | null>(null);
-  // Anything typed in that box that isn't coordinates is tried as a
-  // mile-marker reference ("mm 182 turnpike") against the offline road data,
-  // so a mobile station's "mile marker 182" can be entered as they say it.
-  const [phrase, setPhrase] = useState<
-    { status: "idle" } | { status: "hit"; hit: MileMarkerHit } | { status: "miss" }
-  >({ status: "idle" });
   const [qrzStatus, setQrzStatus] = useState<QrzStatus>("idle");
   const [lookupSource, setLookupSource] = useState<CallsignSource>("qrz");
   const [fileLacksStreet, setFileLacksStreet] = useState(false);
@@ -128,70 +116,21 @@ export default function CheckinEntryForm({
   const autoFilledRef = useRef<{
     call: string;
     name: string | null;
-    qth: string | null;
-    grid: string | null;
-    address: string | null;
+    location: string | null;
   } | null>(null);
 
   useEffect(() => {
-    if (coordsEditedRef.current) return;
-    let cancelled = false;
-    resolveOfflineLocationAsync({
-      qrzLat: qrzExact?.lat,
-      qrzLon: qrzExact?.lon,
-      gridSquare: gridSquare.trim() || null,
-      address: address.trim() || null,
-      qthLocation: qthLocation.trim() || null,
-    }).then((r) => {
-      if (!cancelled && !coordsEditedRef.current) {
-        setCoordsText(r ? formatCoords(r.lat, r.lon) : "");
-        setCoordsNote(
-          !r
-            ? null
-            : r.source === "qrz_exact"
-              ? "QRZ's exact point for this station"
-              : r.source === "zip_centroid"
-                ? `the center of ZIP ${r.sourceText} — approximate, not the street address`
-                : r.source === "grid_square"
-                  ? `the center of grid square ${r.sourceText} — approximate`
-                  : null
-        );
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [qrzExact, gridSquare, address, qthLocation]);
-
-  function resetCoords() {
-    coordsEditedRef.current = false;
-    setCoordsText("");
-    setCoordsNote(null);
-    setPhrase({ status: "idle" });
-  }
-
-  useEffect(() => {
-    const text = coordsText.trim();
-    if (!text || parseCoords(text)) {
-      setPhrase({ status: "idle" });
-      return;
-    }
     let cancelled = false;
     const timer = setTimeout(() => {
-      api
-        .resolveMileMarker(text)
-        .then((hit) => {
-          if (!cancelled) setPhrase(hit ? { status: "hit", hit } : { status: "miss" });
-        })
-        .catch(() => {
-          if (!cancelled) setPhrase({ status: "miss" });
-        });
+      resolveCheckinLocation(location, { lookup: lookupLoc, pin }).then((r) => {
+        if (!cancelled) setPreview(r.note ? r : null);
+      });
     }, 250);
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [coordsText]);
+  }, [location, lookupLoc, pin]);
 
   useEffect(() => {
     if (focusCallSignSignal > 0) callSignRef.current?.focus();
@@ -207,11 +146,9 @@ export default function CheckinEntryForm({
       // Clearing the call sign clears whatever was populated for it too —
       // there's no longer a station this data is attached to.
       setName("");
-      setQthLocation("");
-      setGridSquare("");
-      setAddress("");
-      setQrzExact(null);
-      resetCoords();
+      setLocation("");
+      setLookupLoc(null);
+      setPin(null);
       setQrzStatus("idle");
       qrzRequestedForRef.current = null;
       autoFilledRef.current = null;
@@ -219,7 +156,7 @@ export default function CheckinEntryForm({
     }
     // Values on screen as of this call sign, after dropping any that were
     // filled for a different one.
-    let current = { name, qth: qthLocation, grid: gridSquare, address };
+    let current = { name, location };
     const filled = autoFilledRef.current;
     if (filled && filled.call !== call) {
       autoFilledRef.current = null;
@@ -227,15 +164,11 @@ export default function CheckinEntryForm({
         auto !== null && value === auto ? "" : value;
       current = {
         name: keep(name, filled.name),
-        qth: keep(qthLocation, filled.qth),
-        grid: keep(gridSquare, filled.grid),
-        address: keep(address, filled.address),
+        location: keep(location, filled.location),
       };
       setName(current.name);
-      setQthLocation(current.qth);
-      setGridSquare(current.grid);
-      setAddress(current.address);
-      setQrzExact(null);
+      setLocation(current.location);
+      setLookupLoc(null);
       setQrzStatus("idle");
     }
     if (
@@ -265,21 +198,25 @@ export default function CheckinEntryForm({
           // operator typed is never mistaken for a lookup's and cleared.
           const fill = (value: string, found: string | null) =>
             !value.trim() && found ? found : null;
+          // The box shows the full address, else the town; the rest is kept for saving.
+          const found = result.address || result.qth_location;
           const auto = {
             call,
             name: fill(current.name, result.name),
-            qth: fill(current.qth, result.qth_location),
-            grid: fill(current.grid, result.grid_square),
-            address: fill(current.address, result.address),
+            location: fill(current.location, found),
           };
           autoFilledRef.current = auto;
           if (auto.name !== null) setName(auto.name);
-          if (auto.qth !== null) setQthLocation(auto.qth);
-          if (auto.grid !== null) setGridSquare(auto.grid);
-          if (auto.address !== null) setAddress(auto.address);
-          if (result.exact_lat != null && result.exact_lon != null) {
-            setQrzExact({ lat: result.exact_lat, lon: result.exact_lon });
-          }
+          if (auto.location !== null) setLocation(auto.location);
+          setLookupLoc({
+            text: auto.location ?? current.location,
+            qth: result.qth_location,
+            grid: result.grid_square,
+            exact:
+              result.exact_lat != null && result.exact_lon != null
+                ? { lat: result.exact_lat, lon: result.exact_lon }
+                : null,
+          });
         } else if (outcome.kind === "not_found") {
           setLookupSource(outcome.source);
           setQrzStatus("not_found");
@@ -303,11 +240,9 @@ export default function CheckinEntryForm({
 
   function clearQrzData() {
     setName("");
-    setQthLocation("");
-    setGridSquare("");
-    setAddress("");
-    setQrzExact(null);
-    resetCoords();
+    setLocation("");
+    setLookupLoc(null);
+    setPin(null);
     setQrzStatus("idle");
     qrzRequestedForRef.current = null;
     autoFilledRef.current = null;
@@ -322,60 +257,39 @@ export default function CheckinEntryForm({
       return;
     }
     setContactSaveRefused(false);
-    const trimmedQth = qthLocation.trim() || null;
-    const trimmedGrid = gridSquare.trim() || null;
-    const trimmedAddress = address.trim() || null;
-    // Offline-first (QRZ's exact point, then ZIP centroid, then grid square — locationResolution.ts)
-    // so a check-in gets a real, storable position the moment enough QRZ
-    // directory data is on hand, without waiting on/requiring the network.
-    // Hand-typed (or auto-shown) coordinates win; malformed text is ignored
-    // and the normal resolution order applies.
-    let typed = parseCoords(coordsText);
-    let reportedLabel: string | null = null;
-    if (!typed && coordsText.trim()) {
-      const hit = await api.resolveMileMarker(coordsText.trim()).catch(() => null);
-      if (hit) {
-        typed = { lat: hit.lat, lon: hit.lon };
-        reportedLabel = hit.label;
-      }
-    }
-    const resolved = await resolveOfflineLocationAsync({
-      lat: typed?.lat,
-      lon: typed?.lon,
-      qrzLat: qrzExact?.lat,
-      qrzLon: qrzExact?.lon,
-      gridSquare: trimmedGrid,
-      address: trimmedAddress,
-      qthLocation: trimmedQth,
+    // Sorted into address, QTH, grid square and map position; the online map
+    // search is tried only when connected (CIMAP-080).
+    const loc = await resolveCheckinLocation(location, {
+      lookup: lookupLoc,
+      pin,
+      online: navigator.onLine && !isWorkingOffline(),
     });
     const id = await api.createCheckin(
       activityId,
       call,
       name.trim() || null,
-      trimmedQth,
-      trimmedGrid,
-      trimmedAddress,
+      loc.qth,
+      loc.grid,
+      loc.address,
       operatorId,
-      resolved?.lat ?? null,
-      resolved?.lon ?? null,
-      reportedLabel || trimmedQth || trimmedAddress || resolved?.sourceText || null,
+      loc.lat,
+      loc.lon,
+      loc.label,
       // Anything entered as traffic means the station has traffic.
       traffic.trim() !== "",
       traffic.trim() || null,
       log ? toContactDetails(contact) : null,
-      // Typed over the auto-filled point: coordinates or a mile marker.
-      coordsEditedRef.current && typed != null
+      // Picked on the map, typed coordinates, or a mile marker.
+      loc.manual
     );
     // The station setup carries over to the next contact.
     setContact(nextContact(contact));
     setTraffic("");
     setCallSign("");
     setName("");
-    setQthLocation("");
-    setGridSquare("");
-    setAddress("");
-    setQrzExact(null);
-    resetCoords();
+    setLocation("");
+    setLookupLoc(null);
+    setPin(null);
     setQrzStatus("idle");
     qrzRequestedForRef.current = null;
     onSaved(id);
@@ -484,62 +398,41 @@ export default function CheckinEntryForm({
       {!rangeCheck && (
         <div className="checkin-entry-row checkin-entry-row-secondary">
           <input
-            className="checkin-entry-qth"
-            placeholder={HINTS.qth}
-            style={hintWidth(HINTS.qth)}
-            value={qthLocation}
-            onChange={(e) => setQthLocation(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveCheckin();
-            }}
-          />
-          <input
-            className="checkin-entry-grid"
-            placeholder={HINTS.grid}
-            style={hintWidth(HINTS.grid, { uppercase: true })}
-            value={gridSquare}
-            onChange={(e) => setGridSquare(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveCheckin();
-            }}
-          />
-          <input
-            className="checkin-entry-address"
-            placeholder={HINTS.address}
-            style={hintWidth(HINTS.address)}
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSaveCheckin();
-            }}
-          />
-          <input
-            className="checkin-entry-coords"
-            placeholder={HINTS.coords}
-            style={hintWidth(HINTS.coords)}
-            title="Auto-filled from QRZ / ZIP / grid square — type over it with lat, lon or a mile marker (e.g. 'mile marker 182 on I-95')"
-            aria-invalid={
-              coordsText.trim() !== "" && parseCoords(coordsText) == null && phrase.status === "miss"
-            }
-            value={coordsText}
+            className="checkin-entry-location"
+            aria-label="Location"
+            placeholder={HINTS.location}
+            title="An address, town or ZIP, a cross street, a mile marker (MM 182 turnpike), a grid square, or GPS coordinates. A call-sign lookup fills it in."
+            value={location}
             onChange={(e) => {
-              coordsEditedRef.current = e.target.value.trim() !== "";
-              if (coordsEditedRef.current) setCoordsNote(null);
-              setCoordsText(e.target.value);
+              setLocation(e.target.value);
+              // A typed location replaces a spot picked for the old one.
+              setPin(null);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSaveCheckin();
             }}
           />
+          <button type="button" onClick={() => setShowPicker(true)} title="Pick the exact spot on a map">
+            <MapPin className="button-icon" /> Map
+          </button>
           <button
             type="button"
             className="link-button checkin-entry-clear"
             onClick={clearQrzData}
-            disabled={!name && !qthLocation && !gridSquare && !address && !coordsText}
+            disabled={!name && !location && !pin}
           >
             Clear
           </button>
         </div>
+      )}
+      {!rangeCheck && preview && (
+        <p className={"settings-hint checkin-entry-hint" + (preview.lat == null ? " checkin-location-unplaced" : "")}>
+          Map:{" "}
+          {preview.lat == null && navigator.onLine && !isWorkingOffline()
+            ? "looked up online when you save — or pick it on the map"
+            : preview.note}
+          {preview.grid ? ` · grid ${preview.grid}` : ""}
+        </p>
       )}
       {rangeCheck && (
         <RangeReportFields
@@ -594,21 +487,27 @@ export default function CheckinEntryForm({
           street addresses were included. Update it in Settings → Offline Data.
         </p>
       )}
-      {!rangeCheck && coordsNote && phrase.status === "idle" && (
-        <p className="settings-hint checkin-entry-hint">
-          Map point: {coordsNote}. Type over it to set an exact spot, or a mile marker.
-        </p>
-      )}
-      {!rangeCheck && phrase.status === "hit" && (
-        <p className="settings-hint checkin-entry-hint">
-          ✓ {phrase.hit.label} → {formatCoords(phrase.hit.lat, phrase.hit.lon)} (estimated from road
-          data)
-        </p>
-      )}
-      {!rangeCheck && phrase.status === "miss" && (
-        <p className="settings-hint checkin-entry-hint">
-          Not coordinates or a known mile marker — the check-in will use its address/grid instead.
-        </p>
+      {showPicker && (
+        <LocationPicker
+          title={`Location — ${callSign.trim().toUpperCase() || "new check-in"}`}
+          initialLat={pin?.lat ?? preview?.lat ?? null}
+          initialLon={pin?.lon ?? preview?.lon ?? null}
+          initialLabel={pin?.label ?? location}
+          onSave={(lat, lon, label) => {
+            setPin({ lat, lon, label });
+            if (!location.trim() && label) setLocation(label);
+            setShowPicker(false);
+          }}
+          onClear={
+            pin
+              ? () => {
+                  setPin(null);
+                  setShowPicker(false);
+                }
+              : undefined
+          }
+          onClose={() => setShowPicker(false)}
+        />
       )}
     </div>
   );

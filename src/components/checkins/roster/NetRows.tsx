@@ -1,5 +1,8 @@
 import { Fragment } from "react";
 import { formatCoords } from "../../../geo";
+import { locationText } from "../../../checkinLocation";
+import type { Checkin } from "../../../types";
+import { MapPin } from "lucide-react";
 import { TimeCell, type RowProps } from "./shared";
 
 /** A net's column headings. */
@@ -9,13 +12,25 @@ export function NetColumns() {
       <span>Call Sign</span>
       <span>Name</span>
       <span>Location</span>
-      <span>Grid Square</span>
-      <span>Coordinates</span>
-      <span>Address</span>
+      <span>Grid</span>
       <span className="checkin-row-time">Time</span>
       <span>Traffic</span>
     </div>
   );
+}
+
+/** Everything about where a station is, for the Location cell's tooltip. */
+function locationDetails(c: Checkin): string {
+  return [
+    c.address && `Address: ${c.address}`,
+    c.qth_location && c.qth_location !== c.address && `QTH: ${c.qth_location}`,
+    c.location_lat != null && c.location_lon != null
+      ? `On the map: ${formatCoords(c.location_lat, c.location_lon)}${c.location_manual ? " (placed by hand)" : ""}`
+      : "Not on the map",
+    c.grid_square && `Grid square: ${c.grid_square}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** A net check-in, with its traffic shown on request. */
@@ -38,16 +53,14 @@ export function NetRow({
       <div className={"checkin-row" + (selected ? " selected" : "")} onClick={onSelect}>
         <span className="checkin-row-call">{c.call_sign}</span>
         <span className="checkin-row-name">{c.name || ""}</span>
-        <span className="checkin-row-location">{c.qth_location}</span>
+        {/* The town or address; the rest is in the tooltip (CIMAP-081). */}
+        <span className="checkin-row-location" title={locationDetails(c)}>
+          {c.location_lat != null && c.location_lon != null && (
+            <MapPin className="checkin-row-pin" aria-label="On the map" />
+          )}
+          {locationText(c)}
+        </span>
         <span className="checkin-row-grid">{c.grid_square}</span>
-        <span className="checkin-row-coords" title={c.location_label || undefined}>
-          {c.location_lat != null && c.location_lon != null
-            ? formatCoords(c.location_lat, c.location_lon)
-            : ""}
-        </span>
-        <span className="checkin-row-address" title={c.address || undefined}>
-          {c.address}
-        </span>
         <TimeCell at={c.checked_in_at} />
         <span className="checkin-row-traffic">
           {c.has_traffic && (

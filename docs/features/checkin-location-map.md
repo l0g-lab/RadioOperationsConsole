@@ -89,6 +89,26 @@ fallback for check-ins that have location text but no grid square.
   session MUST be throttled sequentially rather than issued in parallel, to
   respect the geocoding provider's usage policy.
 
+## Entering a location
+
+- **CIMAP-080:** The check-in form and the check-in edit row MUST ask for a
+  station's location in **one Location box**, with a **Map** button to pick
+  the exact spot. A call-sign lookup fills it with the full address, else the
+  QTH. It MUST accept an address, town or ZIP, a cross street, a mile marker,
+  a grid square, or GPS coordinates, and on saving sort it into the check-in's
+  separate fields (`QRZ-027`), best first: a spot picked on the map; typed
+  coordinates; a mile marker; a grid square typed on its own; the lookup's
+  exact point (if the box still holds what the lookup found); the online map
+  search, only when online; a ZIP code's centre; the lookup's grid square.
+  When there's no grid square, it MUST be worked out from the map position.
+  A line under the box MUST say where the station will land, or that it
+  can't be placed and how to place it. A spot picked on the map, typed
+  coordinates, and a mile marker are placed by hand (`CIMAP-003`).
+- **CIMAP-081:** A net's roster MUST show call sign, name, location (the QTH,
+  else the address, marked when it's on the map), grid square, time, and
+  traffic. The full address, coordinates, and how it was placed MUST be shown
+  on hovering over the location. Exports keep every field.
+
 ## Offline and failure behavior
 
 - **CIMAP-020:** The map MUST open and render whatever pins are resolvable

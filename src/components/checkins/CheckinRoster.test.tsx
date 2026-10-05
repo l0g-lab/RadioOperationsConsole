@@ -318,7 +318,7 @@ describe("CheckinRoster as a net", () => {
     const user = userEvent.setup();
     renderNet();
     expect(screen.getByRole("heading", { name: /Check-ins — Tuesday Net/ })).toBeInTheDocument();
-    expect(screen.getByText("Grid Square")).toBeInTheDocument();
+    expect(screen.getByText("Grid")).toBeInTheDocument();
     expect(screen.queryByText("Need a generator")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Show traffic" }));

@@ -104,8 +104,10 @@ login without that subscription will authenticate but fail lookups.
   The full address is a separate field from the shorter QTH location summary
   — both MAY be populated from the same lookup.
 - **QRZ-029:** The operator MUST be able to edit or clear a QRZ-suggested
-  full address before saving, on the same terms as `QRZ-022`. The Check-ins
-  roster SHOULD display the full address as its own column when present.
+  location before saving, on the same terms as `QRZ-022`. The form shows the
+  lookup's address (else QTH) in one Location box and keeps the QTH, grid
+  square, and exact point it found for saving (`CIMAP-080`); the roster shows
+  them as in `CIMAP-081`.
 
 ## Retrying lookup on an already-saved check-in
 
