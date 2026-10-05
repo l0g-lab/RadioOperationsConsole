@@ -1128,7 +1128,8 @@ details > summary {
 
 .report-row {
   display: grid;
-  grid-template-columns: minmax(100px, 0.8fr) 150px 82px 52px 110px minmax(220px, 1.3fr) minmax(130px, 1fr) minmax(90px, 0.8fr) 240px 74px 90px;
+  /* Reporter, hazard, location, grid, time, notes — as the check-in roster. */
+  grid-template-columns: minmax(110px, 0.8fr) minmax(140px, 1fr) minmax(160px, 1.3fr) 70px 180px minmax(200px, 2fr);
   gap: 12px;
   padding: 8px 10px;
   border-radius: 3px;
@@ -1205,6 +1206,8 @@ details > summary {
   overflow-wrap: anywhere;
 }
 
+.report-row.selected .checkin-row-time,
+.report-row.selected .report-row-location,
 .report-row.selected .report-row-date,
 .report-row.selected .report-row-time,
 .report-row.selected .report-row-coords,
@@ -1609,12 +1612,12 @@ details > summary {
 }
 
 /* The mode box's own suggestion list (ModeInput). */
-.mode-input {
+.suggest-input {
   position: relative;
   display: inline-block;
 }
 
-.mode-suggestions {
+.suggest-list {
   position: absolute;
   top: 100%;
   left: 0;
@@ -1629,8 +1632,13 @@ details > summary {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-.mode-suggestions li {
+.suggest-list li {
   padding: 4px 10px;
+  /* Not the look of the field label it may sit in. */
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
   font-size: calc(14px * var(--font-scale));
   cursor: pointer;
   white-space: nowrap;
@@ -1638,10 +1646,30 @@ details > summary {
 
 /* Highlighted: an outline and bold text rather than a filled background,
    so it reads clearly in both themes. */
-.mode-suggestions li.active {
+.suggest-list li.active {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
   font-weight: 600;
+}
+
+/* Call signs a set width, so the names line up. */
+.suggest-call {
+  display: inline-block;
+  min-width: 6.5em;
+}
+
+.suggest-detail {
+  margin-left: 1ch;
+  color: var(--text-dim);
+}
+
+/* In a wide form field the box and its list take the field's width. */
+.activity-field-wide > .suggest-input {
+  display: block;
+}
+
+.activity-field-wide > .suggest-input > input {
+  width: 100%;
 }
 
 .contact-time-error {
@@ -2997,6 +3025,21 @@ button.online-pill-working-offline:hover {
 
 /* A spotter report's notes, on its row (SpotterReportRoster.tsx). */
 .report-row-notes {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A spotter report's hazard: the type, with its magnitude under it. */
+.report-row-hazard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The location's words, cut off with … when they don't fit beside the pin. */
+.checkin-row-location-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

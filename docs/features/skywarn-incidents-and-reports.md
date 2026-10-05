@@ -49,14 +49,18 @@ locations) rather than reproducing that tool's design wholesale.
 - **SPOT-003:** The report source MUST be selected from a fixed set
   (Amateur Radio Spotter, Trained Spotter, Emergency Management, Public,
   Law Enforcement), reflecting how NWS itself weighs report credibility.
-- **SPOT-004:** A report's location MUST support all three entry methods
-  from `CIMAP-073` (free-text search, map click, GPS coordinates) in
-  addition to a plain descriptive text field (e.g. "Main St and 5th Ave"),
-  since a spotter's description and a precise pin are both useful and
-  neither should be required to provide the other.
-- **SPOT-005:** A report's time MUST default to the current time but
-  remain freely editable, since a report may describe an event from
-  earlier in the activation.
+- **SPOT-004:** A report's location MUST be one Location box, like a
+  check-in's (`CIMAP-080`): an intersection, address, landmark, mile marker,
+  grid square, or GPS coordinates, with **📍 Map** to pick the exact spot. A
+  line under the box MUST say where the report will land on the map. On
+  saving, text without a picked spot is placed the same way as a check-in's
+  (online map search only when connected); text that can't be placed is
+  still saved, just off the map. Typing in the box after picking a spot
+  MUST drop the picked spot, so the pin never disagrees with the words.
+- **SPOT-005:** A report's time MUST be a text box that is blank for "now"
+  and accepts `YYYY-MM-DD HH:MM` or `HH:MM` for today, since a report may
+  describe an event from earlier in the activation. A time it can't read
+  MUST stop the save with a message saying what to type.
 - **SPOT-006:** Saving a report MUST associate it with the focused
   activity and the acting operator, on the same terms as a check-in
   (`NETOPS-011`).
@@ -70,28 +74,17 @@ locations) rather than reproducing that tool's design wholesale.
 - **SPOT-009:** The reports list MUST scope to the focused activity only,
   the same way the check-in roster does (`CIMAP-033`'s precedent for
   activity-scoped views).
-- **SPOT-014:** The reports list MUST display exactly these columns, in
-  this order: Date, Time, Type, Magnitude, Coordinates, Grid Square,
-  Intersection, County, Reporter, Source. Type and Magnitude are separate
-  columns, not combined, so a scan down either is consistent. Coordinates
-  and Grid Square are their own columns too, separate from Intersection
-  (the free-text address/cross streets/landmark description) — mirroring
-  the source manual's own separation of descriptive "Location" from
-  "Coordinates" (`SPOT-004`'s three entry methods populate the
-  coordinates; the plain text field populates the intersection). Grid
-  Square is derived offline from the coordinates (`CIMAP-010`'s math run
-  in reverse), not separately entered. Date and Time are shown separately
-  rather than combined, matching the check-in roster's precedent
-  (`NETOPS-016`) of never collapsing time into a single hard-to-scan
-  field.
-- **SPOT-015:** The reports list's visual style MUST otherwise follow the
-  check-in roster's conventions as closely as the extra columns allow:
-  the Type column is the bold, prominent identifier (as the check-in
-  roster's call sign column is); Date/Time are compact, dim, monospace;
-  every other column is dim text that truncates with an ellipsis and
-  exposes the full value on hover rather than overflowing into a
-  neighboring column, exactly as the check-in roster's address column
-  does.
+- **SPOT-014:** The reports list MUST be laid out like the check-in roster
+  (`CIMAP-081`), so the two read the same way: Reporter, Hazard (the type,
+  with its magnitude under it), Location (the intersection and county, marked
+  when it's on the map), Grid Square (worked out offline from the
+  coordinates, `CIMAP-010`), Time (local with UTC under it, `NETOPS-016`),
+  and Notes, shown on the row. The source, the county, and the coordinates
+  MUST be shown on hovering; exports keep every field (`SPOT-051`).
+- **SPOT-015:** The list's style MUST follow the check-in roster's: the hazard
+  type is the bold, prominent identifier (as the call sign is), the time is
+  compact and dim, and text that doesn't fit is cut off with an ellipsis and
+  shown in full on hovering, never overflowing into a neighbouring column.
 
 ## Entering a report: who, what, where
 
@@ -99,9 +92,9 @@ The form is organized in the order a spotter is asked: who is reporting, what
 they saw, and where.
 
 - **SPOT-030:** The report form MUST present its fields in three groups, in
-  this order: **Who** (reporter, optional linked check-in, source), **What**
-  (time, hazard type, magnitude, and free-text details), and **Where**
-  (county, intersection or landmark, and a point chosen with the map picker).
+  this order, laid out like the activity form: **Who** (reporter, source),
+  **What** (time, hazard type, magnitude, and free-text details), and
+  **Where** (the Location box of `SPOT-004`, county, and the map picker).
 - **SPOT-031:** A report MUST NOT be saved unless it has a reporter, a hazard
   type with a magnitude, and at least one of a county, an intersection or
   landmark, or a map point.
@@ -112,10 +105,17 @@ they saw, and where.
 - **SPOT-033:** Pressing Enter in a text field MUST save the report, subject
   to `SPOT-031`.
 - **SPOT-034:** The free-text details (notes) belong with the "What" group.
-  In the reports list they MUST be hidden by default and revealed per report
-  on request, so long notes do not crowd the list.
-- **SPOT-035:** The reports list MUST follow the same order as the form
-  (reporter and source, then time and type, then location).
+  In the reports list they MUST be shown on the row, cut short to fit, and in
+  full on hovering (`SPOT-014`).
+- **SPOT-035:** The reports list MUST read who, what, where, as the form
+  does, with the time and notes after (`SPOT-014`).
+- **SPOT-036:** The Reporter box MUST suggest the activity's checked-in
+  stations as you type, matching the call sign or the name, in a list styled
+  like the rest of the app (the same one as the station log's Mode box). Tab
+  or Enter MUST fill in the highlighted station's call sign; Enter taking a
+  suggestion MUST NOT also save. A call sign that matches a check-in links the
+  report to it, and the form MUST say whose check-in. Any other text is a
+  reporter with no check-in (e.g. a phoned-in public report).
 
 ## The report map
 

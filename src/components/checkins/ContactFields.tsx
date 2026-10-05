@@ -3,6 +3,7 @@ import * as api from "../../api";
 import type { Checkin, ContactDetails, StationHistory } from "../../types";
 import { formatContactTime, formatTimeLines, parseContactTime } from "../../utils";
 import { hintWidth } from "../hintWidth";
+import SuggestInput from "../SuggestInput";
 
 /** A contact's radio details as typed (station logs). Every field is optional. */
 export interface ContactDraft {
@@ -101,100 +102,6 @@ export function modeSuggestions(typed: string): string[] {
   return matches.length === 1 && matches[0].toLowerCase() === t ? [] : matches;
 }
 
-/**
- * The mode box: free text, with common modes suggested as you type. The
- * webview's own suggestion list (a datalist) can't be accepted with Tab, so
- * this is a small one of our own: the first match is highlighted, Tab takes
- * it and moves on as Tab normally does, Enter takes it (a second Enter then
- * saves), arrows move the highlight, Escape closes the list.
- */
-function ModeInput({
-  value,
-  onChange,
-  onEnter,
-  idPrefix,
-}: {
-  value: string;
-  onChange: (mode: string) => void;
-  onEnter: () => void;
-  idPrefix: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
-  const suggestions = open ? modeSuggestions(value) : [];
-  const shown = suggestions.length > 0;
-  const listId = `${idPrefix}-modes`;
-  const optionId = (i: number) => `${listId}-${i}`;
-
-  function take(mode: string) {
-    onChange(mode);
-    setOpen(false);
-  }
-
-  return (
-    <span className="mode-input">
-      <input
-        role="combobox"
-        aria-label="Mode"
-        aria-autocomplete="list"
-        aria-expanded={shown}
-        aria-controls={listId}
-        aria-activedescendant={shown ? optionId(active) : undefined}
-        placeholder="Mode"
-        className="contact-field contact-field-mode"
-        style={hintWidth("Mode", { minChars: 8 })}
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setActive(0);
-          setOpen(true);
-        }}
-        onBlur={() => setOpen(false)}
-        onKeyDown={(e) => {
-          if (shown && e.key === "Tab" && !e.shiftKey) {
-            // Not prevented: focus still moves on to the next field.
-            take(suggestions[active]);
-          } else if (shown && e.key === "Enter") {
-            e.preventDefault();
-            take(suggestions[active]);
-          } else if (shown && e.key === "ArrowDown") {
-            e.preventDefault();
-            setActive((i) => (i + 1) % suggestions.length);
-          } else if (shown && e.key === "ArrowUp") {
-            e.preventDefault();
-            setActive((i) => (i - 1 + suggestions.length) % suggestions.length);
-          } else if (shown && e.key === "Escape") {
-            e.stopPropagation();
-            setOpen(false);
-          } else if (e.key === "Enter") {
-            onEnter();
-          }
-        }}
-      />
-      {shown && (
-        <ul id={listId} role="listbox" aria-label="Modes" className="mode-suggestions">
-          {suggestions.map((m, i) => (
-            <li
-              key={m}
-              id={optionId(i)}
-              role="option"
-              aria-selected={i === active}
-              className={i === active ? "active" : undefined}
-              // Before the input's blur closes the list.
-              onMouseDown={(e) => {
-                e.preventDefault();
-                take(m);
-              }}
-            >
-              {m}
-            </li>
-          ))}
-        </ul>
-      )}
-    </span>
-  );
-}
-
 /** The time box's hint when it isn't showing the running clock; also sizes the box. */
 const TIME_HINT = "YYYY-MM-DD HH:MM:SS";
 
@@ -279,11 +186,18 @@ export function ContactFieldsInputs({
         "Frequency",
         frequencyPlaceholder ? `Frequency (${frequencyPlaceholder})` : "Frequency"
       )}
-      <ModeInput
+      {/* Free text, with common modes suggested as you type. */}
+      <SuggestInput
+        id={`${idPrefix}-mode`}
+        ariaLabel="Mode"
+        listLabel="Modes"
+        placeholder="Mode"
+        className="contact-field contact-field-mode"
+        style={hintWidth("Mode", { minChars: 8 })}
         value={value.mode}
         onChange={(mode) => onChange({ ...value, mode })}
+        suggest={(typed) => modeSuggestions(typed).map((m) => ({ value: m }))}
         onEnter={onEnter}
-        idPrefix={idPrefix}
       />
       {field("rstSent", "RST sent")}
       {field("rstReceived", "RST received")}

@@ -7,10 +7,12 @@ import {
   REPORT_SOURCES,
   WIND_DAMAGE_GUIDE,
 } from "../../types";
-import { formatCoordsWithGrid } from "../../geo";
-import { nowLocalInputValue } from "../../utils";
+import { formatContactTime, parseContactTime } from "../../utils";
+import { resolveCheckinLocation, type CheckinLocation } from "../../checkinLocation";
+import { isWorkingOffline } from "../../workOffline";
 import LocationPicker from "../LocationPicker";
-import { ClipboardPen } from "lucide-react";
+import SuggestInput from "../SuggestInput";
+import { ClipboardPen, MapPin } from "lucide-react";
 
 interface Props {
   activityId: string;
@@ -25,6 +27,39 @@ function checkinLabel(c: Checkin): string {
   return c.name ? `${c.call_sign.toUpperCase()} (${c.name})` : c.call_sign.toUpperCase();
 }
 
+/**
+ * Checked-in stations for what's typed in the Reporter box: call signs
+ * starting with it first, then names with a word starting with it. Each
+ * station once; nothing for an empty box or a call sign already typed in full.
+ */
+export function reporterSuggestions(typed: string, checkins: Checkin[]): Checkin[] {
+  const t = typed.trim().toLowerCase();
+  if (!t) return [];
+  const stations = new Map<string, Checkin>();
+  for (const c of checkins) {
+    const call = c.call_sign.toUpperCase();
+    if (!stations.has(call)) stations.set(call, c);
+  }
+  const all = [...stations.values()];
+  const byCall = all.filter((c) => c.call_sign.toLowerCase().startsWith(t));
+  const byName = all.filter(
+    (c) => !byCall.includes(c) && (c.name ?? "").toLowerCase().split(/\s+/).some((w) => w.startsWith(t))
+  );
+  const matches = [...byCall, ...byName].slice(0, 8);
+  return matches.length === 1 && matches[0].call_sign.toLowerCase() === t ? [] : matches;
+}
+
+/** The check-in a Reporter box names: its call sign, or "CALL (Name)" as earlier reports were saved. */
+export function linkedCheckin(reporter: string, checkins: Checkin[]): Checkin | null {
+  const r = reporter.trim().toUpperCase();
+  if (!r) return null;
+  return (
+    checkins.find((c) => c.call_sign.toUpperCase() === r) ??
+    checkins.find((c) => checkinLabel(c).toUpperCase() === r) ??
+    null
+  );
+}
+
 /** Combined create/edit form for a spotter report — switches to edit mode whenever `editingReport` is set. */
 export default function SpotterReportForm({
   activityId,
@@ -34,7 +69,8 @@ export default function SpotterReportForm({
   onSaved,
   onCancelEdit,
 }: Props) {
-  const [reportedAt, setReportedAt] = useState(nowLocalInputValue());
+  // When it happened, as typed ("YYYY-MM-DD HH:MM", or "HH:MM" for today); blank is now.
+  const [timeText, setTimeText] = useState("");
   const [county, setCounty] = useState("");
   const [locationText, setLocationText] = useState("");
   const [lat, setLat] = useState<number | null>(null);
@@ -49,6 +85,30 @@ export default function SpotterReportForm({
   const [notes, setNotes] = useState("");
   const [checkinId, setCheckinId] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Where the Location box will put it on the map, as for check-ins.
+  const [preview, setPreview] = useState<CheckinLocation | null>(null);
+  const pin = lat != null && lon != null ? { lat, lon, label: locationText } : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      resolveCheckinLocation(locationText, { pin }).then((r) => {
+        if (!cancelled) setPreview(r.note ? r : null);
+      });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationText, lat, lon]);
+
+  /** Reporter typed or picked: picking a checked-in station links the report to it. */
+  function changeReporter(value: string) {
+    setReporter(value);
+    setCheckinId(linkedCheckin(value, checkins)?.id ?? null);
+  }
 
   // Set once Save is attempted, so the list of what's missing only appears
   // then (and updates live as the fields are filled in).
@@ -75,7 +135,8 @@ export default function SpotterReportForm({
 
   function resetForm() {
     setAttempted(false);
-    setReportedAt(nowLocalInputValue());
+    setTimeText("");
+    setError(null);
     setCounty("");
     setLocationText("");
     setLat(null);
@@ -97,7 +158,7 @@ export default function SpotterReportForm({
       resetForm();
       return;
     }
-    setReportedAt(editingReport.reported_at);
+    setTimeText(formatContactTime(editingReport.reported_at));
     setCounty(editingReport.county);
     setLocationText(editingReport.location_text);
     setLat(editingReport.lat);
@@ -133,14 +194,29 @@ export default function SpotterReportForm({
   async function handleSaveReport() {
     setAttempted(true);
     if (missing.length > 0) return;
+    const time = parseContactTime(timeText);
+    if (time.kind === "invalid") {
+      setError(`"${timeText}" isn't a time. Use YYYY-MM-DD HH:MM, or HH:MM for today; blank for now.`);
+      return;
+    }
+    setError(null);
+    const reportedAt = time.kind === "ok" ? time.iso : new Date().toISOString();
+    // A point picked on the map stays; otherwise the Location box is placed
+    // as for a check-in (coordinates, mile marker, online search, ZIP).
+    let where = { lat, lon };
+    if (!pin && locationText.trim()) {
+      const r = await resolveCheckinLocation(locationText, { online: navigator.onLine && !isWorkingOffline() });
+      where = { lat: r.lat, lon: r.lon };
+    }
+    const [lat2, lon2] = [where.lat, where.lon];
     if (editingReport) {
       await api.updateSpotterReport(
         editingReport.id,
         reportedAt,
         county.trim() || null,
         locationText.trim() || null,
-        lat,
-        lon,
+        lat2,
+        lon2,
         reporter.trim() || null,
         hazardType,
         magnitude.trim() || null,
@@ -157,8 +233,8 @@ export default function SpotterReportForm({
         reportedAt,
         county.trim() || null,
         locationText.trim() || null,
-        lat,
-        lon,
+        lat2,
+        lon2,
         reporter.trim() || null,
         hazardType,
         magnitude.trim() || null,
@@ -186,48 +262,35 @@ export default function SpotterReportForm({
       }}
     >
       <h3><ClipboardPen className="heading-icon" />{editingReport ? "Edit Spotter Report" : "New Spotter Report"}</h3>
+      <div className="activity-form report-form">
 
-      <div className={"report-entry-section" + sectionClass("who")}>
-        <span className="report-entry-section-label">Who</span>
-        <div className="inline-form">
-          <input
-            className="report-input-reporter"
-            placeholder="Reporter — name or call sign"
-            value={reporter}
-            onChange={(e) => setReporter(e.target.value)}
-          />
-          <label>
-            Linked check-in (optional):
-            <select
-              value={checkinId ?? ""}
-              onChange={(e) => {
-                const id = e.target.value || null;
-                // Only follow the reporter field along with the dropdown
-                // when it still holds exactly what we auto-filled for
-                // the previously linked check-in (or is empty) — once
-                // the operator edits it by hand, switching the link
-                // must not clobber their edit.
-                const previousCheckin = checkinId ? checkins.find((c) => c.id === checkinId) : null;
-                const reporterIsAutoFilled =
-                  !reporter.trim() ||
-                  (previousCheckin && reporter === checkinLabel(previousCheckin));
-                setCheckinId(id);
-                if (reporterIsAutoFilled) {
-                  const c = id ? checkins.find((c) => c.id === id) : null;
-                  setReporter(c ? checkinLabel(c) : "");
-                }
-              }}
-            >
-              <option value="">&lt;none&gt;</option>
-              {checkins.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {checkinLabel(c)}
-                </option>
-              ))}
-            </select>
+      <div className={"activity-form-section" + sectionClass("who")}>
+        <span className="activity-form-section-title">Who</span>
+        <div className="activity-form-fields">
+          <label className="activity-field activity-field-wide">
+            <span className="activity-field-label">Reporter</span>
+            <SuggestInput
+              id="report-reporter"
+              listLabel="Checked-in stations"
+              autoFocus
+              placeholder="Name or call sign — Tab fills in a station checked in"
+              value={reporter}
+              onChange={changeReporter}
+              suggest={(typed) =>
+                reporterSuggestions(typed, checkins).map((c) => ({
+                  value: c.call_sign.toUpperCase(),
+                  label: (
+                    <>
+                      <span className="suggest-call">{c.call_sign.toUpperCase()}</span>
+                      {c.name && <span className="suggest-detail">{c.name}</span>}
+                    </>
+                  ),
+                }))
+              }
+            />
           </label>
-          <label>
-            Source:
+          <label className="activity-field">
+            <span className="activity-field-label">Source</span>
             <select value={source} onChange={(e) => setSource(e.target.value)}>
               {REPORT_SOURCES.map((s) => (
                 <option key={s} value={s}>
@@ -236,29 +299,32 @@ export default function SpotterReportForm({
               ))}
             </select>
           </label>
+          {checkinId && (
+            <p className="settings-hint activity-form-note">
+              Linked to {(() => {
+                const c = checkins.find((x) => x.id === checkinId);
+                return c ? checkinLabel(c) : "a station";
+              })()}'s check-in.
+            </p>
+          )}
         </div>
-        {checkinId && (
-          <p className="settings-hint">
-            Linked to the check-in from{" "}
-            {checkins.find((c) => c.id === checkinId)?.call_sign.toUpperCase() ?? "this station"} —
-            correlates this report with that roster entry.
-          </p>
-        )}
       </div>
 
-      <div className={"report-entry-section" + sectionClass("what")}>
-        <span className="report-entry-section-label">What</span>
-        <div className="inline-form">
-          <label>
-            Time:
+      <div className={"activity-form-section" + sectionClass("what")}>
+        <span className="activity-form-section-title">What</span>
+        <div className="activity-form-fields">
+          <label className="activity-field">
+            <span className="activity-field-label">Time</span>
             <input
-              type="datetime-local"
-              value={reportedAt}
-              onChange={(e) => setReportedAt(e.target.value)}
+              value={timeText}
+              placeholder="now"
+              title="YYYY-MM-DD HH:MM, or HH:MM for today. Blank for now."
+              aria-invalid={parseContactTime(timeText).kind === "invalid"}
+              onChange={(e) => setTimeText(e.target.value)}
             />
           </label>
-          <label>
-            Hazard type:
+          <label className="activity-field">
+            <span className="activity-field-label">Hazard</span>
             <select value={hazardType} onChange={(e) => handleHazardTypeChange(e.target.value)}>
               {HAZARD_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -271,8 +337,8 @@ export default function SpotterReportForm({
             const options = HAZARD_MAGNITUDE_OPTIONS[hazardType] ?? [];
             if (options.length > 0 && !magnitudeCustom) {
               return (
-                <label>
-                  Magnitude:
+                <label className="activity-field">
+                  <span className="activity-field-label">Magnitude</span>
                   <select
                     value={magnitude}
                     onChange={(e) => {
@@ -296,93 +362,110 @@ export default function SpotterReportForm({
               );
             }
             return (
-              <>
+              <label className="activity-field activity-field-wide">
+                <span className="activity-field-label">
+                  Magnitude{" "}
+                  {options.length > 0 && (
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => {
+                        setMagnitudeCustom(false);
+                        setMagnitude("");
+                      }}
+                    >
+                      use the standard list
+                    </button>
+                  )}
+                </span>
                 <input
-                  placeholder="Magnitude — describe severity"
+                  placeholder="Describe the severity"
                   value={magnitude}
                   onChange={(e) => setMagnitude(e.target.value)}
                 />
-                {options.length > 0 && (
-                  <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => {
-                      setMagnitudeCustom(false);
-                      setMagnitude("");
-                    }}
-                  >
-                    Use standard list
-                  </button>
-                )}
-              </>
+              </label>
             );
           })()}
+          <label className="activity-field activity-field-wide activity-field-row">
+            <span className="activity-field-label">Details (optional)</span>
+            <input
+              className="report-notes-input"
+              placeholder="e.g. two trees down, road blocked"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </label>
+          {hazardType === "Wind Damage" && (
+            <details className="report-wind-guide activity-field-row" open>
+              <summary>Wind speed / damage guide — ask the caller what they saw</summary>
+              <table>
+                <tbody>
+                  {WIND_DAMAGE_GUIDE.map((entry) => (
+                    <tr key={entry.range}>
+                      <td className="report-wind-guide-range">{entry.range}</td>
+                      <td className="report-wind-guide-label">{entry.label}</td>
+                      <td>{entry.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          )}
         </div>
-        <input
-          className="report-notes-input"
-          placeholder="Details — e.g. two trees down, road blocked (optional)"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-        {hazardType === "Wind Damage" && (
-          <details className="report-wind-guide" open>
-            <summary>Wind speed / damage guide — ask the caller what they saw</summary>
-            <table>
-              <tbody>
-                {WIND_DAMAGE_GUIDE.map((entry) => (
-                  <tr key={entry.range}>
-                    <td className="report-wind-guide-range">{entry.range}</td>
-                    <td className="report-wind-guide-label">{entry.label}</td>
-                    <td>{entry.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </details>
-        )}
       </div>
 
-      <div className={"report-entry-section" + sectionClass("where")}>
-        <span className="report-entry-section-label">Where</span>
-        <div className="inline-form">
-          <input
-            className="report-input-county"
-            placeholder="County (optional)"
-            value={county}
-            onChange={(e) => setCounty(e.target.value)}
-          />
-          <input
-            className="report-input-intersection"
-            placeholder="Intersection — address, cross streets, or landmark"
-            value={locationText}
-            onChange={(e) => setLocationText(e.target.value)}
-          />
-          <button onClick={() => setShowPicker(true)}>Pick location on map / GPS</button>
-        </div>
-        {lat != null && lon != null && (
-          <p className="weather-area-status">
-            Coordinates: {formatCoordsWithGrid(lat, lon)}{" "}
-            <button
-              className="link-button"
-              onClick={() => {
+      <div className={"activity-form-section" + sectionClass("where")}>
+        <span className="activity-form-section-title">Where</span>
+        <div className="activity-form-fields">
+          <label className="activity-field activity-field-wide">
+            <span className="activity-field-label">Location</span>
+            <input
+              placeholder="Intersection, address, landmark, MM 182 turnpike, or lat, lon"
+              value={locationText}
+              onChange={(e) => {
+                setLocationText(e.target.value);
+                // A typed location replaces a point picked for the old one.
                 setLat(null);
                 setLon(null);
               }}
-            >
-              Clear
+            />
+          </label>
+          <label className="activity-field">
+            <span className="activity-field-label">County</span>
+            <input placeholder="e.g. Orange" value={county} onChange={(e) => setCounty(e.target.value)} />
+          </label>
+          <div className="activity-field">
+            <span className="activity-field-label">&nbsp;</span>
+            <button type="button" onClick={() => setShowPicker(true)} title="Pick the exact spot on a map">
+              <MapPin className="button-icon" /> Map
             </button>
-          </p>
-        )}
+          </div>
+          {preview && (
+            <p className={"settings-hint activity-form-note" + (preview.lat == null ? " checkin-location-unplaced" : "")}>
+              Map:{" "}
+              {preview.lat == null && navigator.onLine && !isWorkingOffline()
+                ? "looked up online when you save — or pick it on the map"
+                : preview.note}
+              {preview.grid ? ` · grid ${preview.grid}` : ""}
+            </p>
+          )}
+        </div>
       </div>
 
+      </div>
       <div className="report-entry-actions">
-        <button onClick={handleSaveReport}>
+        <button className="primary" onClick={handleSaveReport}>
           {editingReport ? "Update report" : "Save report"}
         </button>
         {editingReport && <button onClick={onCancelEdit}>Cancel</button>}
         {attempted && missing.length > 0 && (
           <span className="weather-area-error" role="alert">
             Can't save yet — still needed: {missing.map((m) => m.text).join("; ")}.
+          </span>
+        )}
+        {error && (
+          <span className="weather-area-error" role="alert">
+            {error}
           </span>
         )}
       </div>

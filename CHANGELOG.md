@@ -21,9 +21,20 @@ top. Each release's section here is also its description on the
   row — amber until it's handled, then plain text with a green *Handled* tick —
   instead of behind a *Show traffic* button. Hover over a location for the
   full address and coordinates; exports still have every field.
-- **Spotter reports show their notes on the row** (in full on hovering) rather
-  than behind a *Show notes* button, and station-log contacts show their
-  location the same way as check-ins.
+- **The spotter report list matches the check-in roster:** reporter, hazard
+  (type with its magnitude), location (with a pin when it's on the map), grid,
+  time, and notes — six columns instead of eleven, so it fits without
+  scrolling sideways. Notes are on the row (in full on hovering) rather than
+  behind a *Show notes* button; the source and coordinates are on hovering,
+  and exports keep every field. Station-log contacts show their location the
+  same way as check-ins.
+- **The spotter report form is simpler**, laid out like the activity form.
+  Start typing a reporter's call sign or name and the stations checked in are
+  suggested; Tab or Enter fills in the call sign and links the report to
+  their check-in. Time is a box — leave it blank for
+  now, or type *HH:MM* for earlier today. Where is one Location box, like
+  check-ins, with **📍 Map** and a line saying where the report will land;
+  if you don't pick a spot, the text is placed on the map when you save.
 - **Headings and their buttons line up** in every panel.
 
 ### Added

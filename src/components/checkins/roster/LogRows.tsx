@@ -66,7 +66,7 @@ export function LogRow({
           {c.location_lat != null && c.location_lon != null && (
             <MapPin className="checkin-row-pin" aria-label="On the map" />
           )}
-          {locationText(c)}
+          <span className="checkin-row-location-text">{locationText(c)}</span>
         </span>
         <DistanceCell checkin={c} from={distanceFrom} />
         <span className="checkin-row-mono">{c.frequency}</span>

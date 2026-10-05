@@ -9,7 +9,8 @@ import IcsFormDialog from "../exports/IcsFormDialog";
 import { ics213FromReport, type GeneralMessage213Input } from "../../icsForms";
 import { useVoidableList } from "../../hooks/useVoidableList";
 import SpotterReportMap from "./SpotterReportMap";
-import { Tornado } from "lucide-react";
+import { MapPin, Tornado } from "lucide-react";
+import { TimeCell } from "../checkins/roster/shared";
 import SortToggle from "../SortToggle";
 import { sortByTime, useSortOrder } from "../../hooks/useSortOrder";
 
@@ -28,15 +29,6 @@ interface Props {
   onSelectReport: (id: string | null) => void;
   onEdit: (id: string) => void;
   onReportsChanged: () => void;
-}
-
-/** Splits the stored "YYYY-MM-DDTHH:mm" value (our own datetime-local format) into separate date/time display strings. */
-function reportDateTimeParts(reportedAt: string): {
-  date: string;
-  time: string;
-} {
-  const [date, time] = reportedAt.split("T");
-  return { date: date ?? reportedAt, time: time ?? "" };
 }
 
 /** For a wind report saved from the standard magnitude list, surfaces its damage-indicator description as hover detail in the roster. */
@@ -114,15 +106,10 @@ export default function SpotterReportRoster({
         {reports.length > 0 && (
           <div className="report-row report-row-columns">
             <span>Reporter</span>
-            <span>Source</span>
-            <span>Date</span>
-            <span>Time</span>
-            <span>Type</span>
-            <span>Magnitude</span>
-            <span>Intersection</span>
-            <span>County</span>
-            <span>Coordinates</span>
-            <span>Grid Square</span>
+            <span>Hazard</span>
+            <span>Location</span>
+            <span>Grid</span>
+            <span className="checkin-row-time">Time</span>
             <span>Notes</span>
           </div>
         )}
@@ -131,44 +118,39 @@ export default function SpotterReportRoster({
             <p className="checkin-empty-state">No spotter reports logged yet.</p>
           )}
           {sortedReports.map((r) => {
-            const { date, time } = reportDateTimeParts(r.reported_at);
+            // Laid out like the check-in roster: who, what, where, grid, when, notes.
+            // The source, county and coordinates are in the tooltips (SPOT-014).
             const hasCoords = r.lat != null && r.lon != null;
-            const coordsDisplay = hasCoords ? formatCoords(r.lat as number, r.lon as number) : "—";
-            const gridDisplay = hasCoords
-              ? latLonToGridSquare(r.lat as number, r.lon as number)
-              : "—";
+            const where = [r.location_text, r.county && `${r.county} County`].filter(Boolean).join(", ");
+            const whereDetails = [
+              r.location_text && `Where: ${r.location_text}`,
+              r.county && `County: ${r.county}`,
+              hasCoords ? `On the map: ${formatCoords(r.lat as number, r.lon as number)}` : "Not on the map",
+            ]
+              .filter(Boolean)
+              .join("\n");
             return (
               <Fragment key={r.id}>
                 <div
                   className={"report-row" + (selectedReportId === r.id ? " selected" : "")}
                   onClick={() => onSelectReport(r.id)}
                 >
-                  <span className="report-row-reporter" title={r.reporter || undefined}>
+                  <span className="report-row-reporter" title={r.source ? `Source: ${r.source}` : undefined}>
                     {r.reporter || "—"}
                     {r.checkin_id && <span className="settings-hint"> (linked)</span>}
                   </span>
-                  <span className="report-row-source" title={r.source || undefined}>
-                    {r.source || "—"}
+                  <span className="report-row-hazard" title={magnitudeTitle(r.hazard_type, r.magnitude)}>
+                    <span className="report-row-type">{r.hazard_type}</span>
+                    {r.magnitude && <span className="report-row-magnitude">{r.magnitude}</span>}
                   </span>
-                  <span className="report-row-date">{date}</span>
-                  <span className="report-row-time">{time}</span>
-                  <span className="report-row-type">{r.hazard_type}</span>
-                  <span
-                    className="report-row-magnitude"
-                    title={magnitudeTitle(r.hazard_type, r.magnitude)}
-                  >
-                    {r.magnitude || "—"}
+                  <span className="checkin-row-location report-row-location" title={whereDetails}>
+                    {hasCoords && <MapPin className="checkin-row-pin" aria-label="On the map" />}
+                    <span className="checkin-row-location-text">{where || "—"}</span>
                   </span>
-                  <span className="report-row-intersection" title={r.location_text || undefined}>
-                    {r.location_text || "—"}
+                  <span className="report-row-grid">
+                    {hasCoords ? latLonToGridSquare(r.lat as number, r.lon as number) : ""}
                   </span>
-                  <span className="report-row-county" title={r.county || undefined}>
-                    {r.county || "—"}
-                  </span>
-                  <span className="report-row-coords" title={hasCoords ? coordsDisplay : undefined}>
-                    {coordsDisplay}
-                  </span>
-                  <span className="report-row-grid">{gridDisplay}</span>
+                  <TimeCell at={r.reported_at} />
                   {/* On the row, like check-in traffic: in full on hovering. */}
                   <span className="report-row-notes" title={r.notes || undefined}>
                     {r.notes}
