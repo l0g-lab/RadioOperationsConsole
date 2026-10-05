@@ -3,6 +3,7 @@ import * as api from "../../api";
 import type { Activity, ActivitySummary } from "../../types";
 import { SummaryView } from "../exports/SummaryView";
 import { summaryFacts } from "../../summaryFacts";
+import { useWeatherRecorded } from "../../netWeather";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 /**
@@ -15,13 +16,18 @@ export default function ActivitySummaryPanel({ activity }: { activity: Activity 
   // summary is in the End net window and in Exports & forms.
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
+  const load = () =>
     api
       .activitySummary(activity.id)
       .then(setSummary)
       .catch(() => setSummary(null));
-    // The activity object changes whenever its state does, which is when the numbers matter most.
+  // The activity object changes whenever its state does, which is when the numbers matter most.
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity]);
+  // The weather comes in a moment after a net starts or ends.
+  useWeatherRecorded(activity.id, load);
 
   if (!summary) return null;
   return (

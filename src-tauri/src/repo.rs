@@ -76,6 +76,8 @@ pub struct ActivitySummary {
     pub held_relay_messages: i64,
     /// Relay messages that couldn't be passed on.
     pub unpassed_relay_messages: i64,
+    /// The weather as it started and ended, or why there's none (start first).
+    pub weather: Vec<crate::weather::ActivityWeather>,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -573,6 +575,7 @@ impl Repository {
             "DELETE FROM relay_messages WHERE activity_id = ?1",
             "DELETE FROM spotter_reports WHERE activity_id = ?1",
             "DELETE FROM checkins WHERE activity_id = ?1",
+            "DELETE FROM activity_weather WHERE activity_id = ?1",
             "DELETE FROM activities WHERE id = ?1",
         ] {
             tx.execute(sql, params![id]).map_err(|e| e.to_string())?;
@@ -1193,7 +1196,61 @@ impl Repository {
             relay_messages: one("SELECT COUNT(*) FROM relay_messages WHERE activity_id = ?1 AND voided_at IS NULL"),
             held_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND NOT {RELAY_HAS_OUTCOME}")),
             unpassed_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND {RELAY_LAST_OUTCOME} = 'not_passed'")),
+            weather: self.list_activity_weather(id).unwrap_or_default(),
         })
+    }
+
+    /// Keeps the weather read as an activity started or ended, replacing an
+    /// earlier one for the same moment (a net ended again after reopening).
+    pub fn save_activity_weather(&self, activity_id: &str, w: &crate::weather::ActivityWeather) -> rusqlite::Result<()> {
+        self.conn.execute(
+            "INSERT OR REPLACE INTO activity_weather(activity_id, moment, place, station_id, station_name, observed_at, \
+                temp_c, conditions, wind_dir_deg, wind_speed_kmh, wind_gust_kmh, alerts, recorded_at, outcome) \
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+            params![
+                activity_id,
+                w.moment,
+                w.place,
+                w.station_id,
+                w.station_name,
+                w.observed_at,
+                w.temp_c,
+                w.conditions,
+                w.wind_dir_deg,
+                w.wind_speed_kmh,
+                w.wind_gust_kmh,
+                w.alerts.join("\n"),
+                Utc::now().to_rfc3339(),
+                w.outcome,
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_activity_weather(&self, activity_id: &str) -> rusqlite::Result<Vec<crate::weather::ActivityWeather>> {
+        let mut st = self.conn.prepare(
+            "SELECT moment, place, station_id, station_name, observed_at, temp_c, conditions, wind_dir_deg, \
+                wind_speed_kmh, wind_gust_kmh, alerts, outcome \
+             FROM activity_weather WHERE activity_id = ?1 ORDER BY moment = 'end'",
+        )?;
+        let rows = st.query_map(params![activity_id], |r| {
+            let alerts: String = r.get(10)?;
+            Ok(crate::weather::ActivityWeather {
+                moment: r.get(0)?,
+                outcome: r.get(11)?,
+                place: r.get(1)?,
+                station_id: r.get(2)?,
+                station_name: r.get(3)?,
+                observed_at: r.get(4)?,
+                temp_c: r.get(5)?,
+                conditions: r.get(6)?,
+                wind_dir_deg: r.get(7)?,
+                wind_speed_kmh: r.get(8)?,
+                wind_gust_kmh: r.get(9)?,
+                alerts: alerts.lines().filter(|l| !l.is_empty()).map(String::from).collect(),
+            })
+        })?;
+        rows.collect()
     }
 
     pub fn create_audit_event(
@@ -1402,6 +1459,39 @@ mod lifecycle_tests {
         assert!(!manual(&r));
         r.mark_checkin_location_manual(&c).unwrap();
         assert!(manual(&r));
+    }
+
+    #[test]
+    fn keeps_the_weather_at_start_and_end_and_deletes_it_with_the_activity() {
+        let r = repo();
+        let id = r.create_activity("Net", "directed_net", None, None).unwrap();
+        assert!(r.activity_summary(&id).unwrap().weather.is_empty());
+
+        let w = |moment: &str, conditions: &str| crate::weather::ActivityWeather {
+            moment: moment.into(),
+            outcome: "ok".into(),
+            place: "repeater".into(),
+            station_id: "KORL".into(),
+            station_name: "Orlando Executive Airport".into(),
+            observed_at: "2026-10-05T23:15:00+00:00".into(),
+            temp_c: Some(26.0),
+            conditions: conditions.into(),
+            wind_dir_deg: Some(180.0),
+            wind_speed_kmh: Some(24.1),
+            wind_gust_kmh: None,
+            alerts: vec!["Severe Thunderstorm Warning".into(), "Flood Watch".into()],
+        };
+        r.save_activity_weather(&id, &crate::weather::without_reading("end", "offline")).unwrap();
+        assert_eq!(r.activity_summary(&id).unwrap().weather[0].outcome, "offline");
+        r.save_activity_weather(&id, &w("start", "Thunderstorms")).unwrap();
+        // Ended again after reopening: the new reading replaces the old.
+        r.save_activity_weather(&id, &w("end", "Cloudy")).unwrap();
+        let got = r.activity_summary(&id).unwrap().weather;
+        assert_eq!(got, vec![w("start", "Thunderstorms"), w("end", "Cloudy")]);
+
+        r.delete_activity_permanently(&id, None).unwrap();
+        let left: i64 = r.conn.query_row("SELECT COUNT(*) FROM activity_weather", [], |x| x.get(0)).unwrap();
+        assert_eq!(left, 0);
     }
 
     #[test]

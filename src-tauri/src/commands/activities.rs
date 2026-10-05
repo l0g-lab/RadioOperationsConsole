@@ -171,9 +171,11 @@ pub fn delete_activity(
         .delete_activity_permanently(&activity_id, operator_id.as_deref())
 }
 
-/// Scheduled -> active: the net has begun.
+/// Scheduled -> active: the net has begun. The weather then is read in the
+/// background (net-weather.md).
 #[tauri::command]
 pub fn start_activity(
+    app: tauri::AppHandle,
     state: State<AppState>,
     activity_id: String,
     operator_id: Option<String>,
@@ -184,12 +186,16 @@ pub fn start_activity(
         None,
         None,
         operator_id.as_deref(),
-    )
+    )?;
+    crate::weather::record_in_background(app, activity_id, "start");
+    Ok(())
 }
 
-/// Active -> closed, keeping the operator's closing notes.
+/// Active -> closed, keeping the operator's closing notes. The weather as it
+/// ended is read in the background (net-weather.md).
 #[tauri::command]
 pub fn close_activity(
+    app: tauri::AppHandle,
     state: State<AppState>,
     activity_id: String,
     conclusion: Option<String>,
@@ -203,7 +209,9 @@ pub fn close_activity(
         conclusion.as_deref(),
         operator_id.as_deref(),
         ended_at.as_deref(),
-    )
+    )?;
+    crate::weather::record_in_background(app, activity_id, "end");
+    Ok(())
 }
 
 /// Corrects when an activity started and ended, without reopening it.

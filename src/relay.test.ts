@@ -110,6 +110,7 @@ describe("relay summaries", () => {
     relay_messages: 5,
     held_relay_messages: 1,
     unpassed_relay_messages: 1,
+    weather: [],
   };
 
   it("a relay station shows its messages, not an empty check-in count", () => {

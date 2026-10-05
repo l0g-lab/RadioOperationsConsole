@@ -5,7 +5,8 @@ import * as api from "./api";
 import type { Activity, ActivitySummary, Checkin, HistoryEvent, RelayMessage, SpotterReport } from "./types";
 import { stationKindLabel } from "./rangeCheck";
 import { formatTimeLines, pad2, splitScheduledAt } from "./utils";
-import { activityTypeLabel } from "./activityTypes";
+import { activityTypeLabel, isLog } from "./activityTypes";
+import { weatherLines } from "./netWeather";
 import { latLonToGridSquare } from "./grid";
 import { formatCoords } from "./geo";
 import { summaryFacts } from "./summaryFacts";
@@ -250,6 +251,13 @@ export function formatDuration(fromIso: string, toIso: string): string {
   return h > 0 ? `${h} h ${m} min` : `${m} min`;
 }
 
+/** The summary's weather: "Weather (start): 79°F, …; Severe Thunderstorm Warning", or why there's none. */
+function weatherTextLines(s: ActivitySummary): string[] {
+  return weatherLines(s.weather).map(
+    (l) => `Weather (${l.label.toLowerCase()}): ${[l.text, ...l.alerts].join("; ")}`
+  );
+}
+
 /** A plain-text net summary, for saving or pasting into a report or email. */
 export function activitySummaryToText(activity: Activity, s: ActivitySummary): string {
   const when = (iso: string) => {
@@ -266,6 +274,7 @@ export function activitySummaryToText(activity: Activity, s: ActivitySummary): s
     s.opened_at ? `Started: ${when(s.opened_at)}` : "Not started",
     s.closed_at ? `Ended:   ${when(s.closed_at)}` : "",
     s.opened_at && s.closed_at ? `Duration: ${formatDuration(s.opened_at, s.closed_at)}` : "",
+    ...(isLog(activity.activity_type) ? [] : weatherTextLines(s)),
     "",
     ...summaryFacts(activity.activity_type, s).map((f) =>
       [f.text, f.detail].filter(Boolean).join(" ")

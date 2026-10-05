@@ -6,6 +6,16 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **Weather in the net summary.** As a net starts and as it ends, the app
+  reads the weather at the repeater (or net control's location): temperature,
+  conditions, wind, and any NWS alerts in effect, such as a Severe
+  Thunderstorm Warning. The summary and its text show both, so you can see
+  later what the night was like — fewer check-ins with storms about, say.
+  It's read only when the net has a repeater or net control location, never
+  from the Settings weather area, and not while working offline; when there's
+  no reading, the summary says why.
+
 ## [2.4.1] - 2026-10-05
 
 ### Changed

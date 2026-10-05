@@ -128,6 +128,14 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0031_events.sql",
         include_str!("../migrations/0031_events.sql"),
     ),
+    (
+        "0032_activity_weather.sql",
+        include_str!("../migrations/0032_activity_weather.sql"),
+    ),
+    (
+        "0033_activity_weather_outcome.sql",
+        include_str!("../migrations/0033_activity_weather_outcome.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't

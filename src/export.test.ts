@@ -101,6 +101,7 @@ function summary(overrides: Partial<ActivitySummary> = {}): ActivitySummary {
     relay_messages: 0,
     held_relay_messages: 0,
     unpassed_relay_messages: 0,
+    weather: [],
     ...overrides,
   };
 }
@@ -275,6 +276,37 @@ describe("activitySummaryToText", () => {
     expect(text).toContain("1 check-in");
     expect(text).toContain("Conclusion:\nGood turnout");
     expect(text.endsWith("\n")).toBe(true);
+  });
+
+  it("gives the weather as it started and ended, or why there's none (net-weather.md)", () => {
+    const w = {
+      outcome: "ok" as const,
+      place: "repeater" as const,
+      station_id: "KORL",
+      station_name: "Orlando Executive Airport",
+      observed_at: "2026-09-21T21:53:00Z",
+      temp_c: 26,
+      wind_dir_deg: 180,
+      wind_speed_kmh: 24.1,
+      wind_gust_kmh: null,
+    };
+    const text = activitySummaryToText(
+      activity(),
+      summary({
+        weather: [
+          { ...w, moment: "start", conditions: "Thunderstorms", alerts: ["Severe Thunderstorm Warning"] },
+          { ...w, moment: "end", conditions: "Light Rain", alerts: [] },
+        ],
+      })
+    );
+    expect(text).toContain("Weather (start): 79°F, Thunderstorms, wind S 15 mph; Severe Thunderstorm Warning");
+    expect(text).toContain("Weather (end): 79°F, Light Rain, wind S 15 mph");
+    const offline = summary({
+      weather: [{ ...w, moment: "start", outcome: "offline", conditions: "", alerts: [] }],
+    });
+    expect(activitySummaryToText(activity(), offline)).toContain("Weather (start): Not recorded — working offline");
+    expect(activitySummaryToText(activity(), summary())).not.toContain("Weather");
+    expect(activitySummaryToText(activity({ activity_type: "station_log" }), offline)).not.toContain("Weather");
   });
 
   it("says 'Not started' when there's no opened_at, and omits Ended/Duration", () => {

@@ -19,6 +19,7 @@ mod repo;
 mod routes;
 mod storage;
 mod updates;
+mod weather;
 
 use commands::AppState;
 use repo::Repository;

@@ -555,6 +555,29 @@ export interface ActivitySummary {
   held_relay_messages: number;
   /** Relay messages that couldn't be passed on. */
   unpassed_relay_messages: number;
+  /** The weather as it started and ended, or why there's none (start first). */
+  weather: ActivityWeather[];
+}
+
+export type WeatherOutcome = "ok" | "offline" | "no_place" | "error" | "no_reading";
+
+/** The weather read as an activity started or ended (net-weather.md). */
+export interface ActivityWeather {
+  moment: "start" | "end";
+  /** "ok" for a reading; otherwise why there's none. */
+  outcome: WeatherOutcome;
+  /** Where it was read for; empty without a reading. */
+  place: "repeater" | "net_control" | "";
+  station_id: string;
+  station_name: string;
+  observed_at: string;
+  temp_c: number | null;
+  conditions: string;
+  wind_dir_deg: number | null;
+  wind_speed_kmh: number | null;
+  wind_gust_kmh: number | null;
+  /** NWS alerts in effect there, e.g. "Severe Thunderstorm Warning". */
+  alerts: string[];
 }
 
 /** One line of an activity's history, with the operator who made it. */

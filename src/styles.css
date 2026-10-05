@@ -3047,3 +3047,8 @@ button.online-pill-working-offline:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The summary's weather: start and end on lines of their own. */
+.summary-weather-line + .summary-weather-line {
+  margin-top: 2px;
+}

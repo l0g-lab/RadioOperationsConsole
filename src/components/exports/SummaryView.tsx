@@ -1,7 +1,8 @@
 import { useEffect, type ReactNode } from "react";
 import type { Activity, ActivitySummary } from "../../types";
 import { formatDuration } from "../../export";
-import { visibleSections } from "../../activityTypes";
+import { isLog, visibleSections } from "../../activityTypes";
+import { weatherLines } from "../../netWeather";
 import { pad2 } from "../../utils";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -35,6 +36,36 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
  * how long it ran, anything left open, and the closing notes. The activity's
  * type, date, and frequency are shown just above it, so aren't repeated.
  */
+/**
+ * The weather as it started and ended, alerts in amber, or why there's none.
+ * Nothing before it starts (or for nets from before weather was recorded).
+ */
+function WeatherRow({ summary }: { summary: ActivitySummary }) {
+  if (summary.weather.length === 0) return null;
+  return (
+    <Row label="Weather">
+      {weatherLines(summary.weather).map((line, i) => {
+        const w = summary.weather[i];
+        return (
+          <div
+            key={w.moment}
+            className="summary-weather-line"
+            title={
+              line.missing
+                ? undefined
+                : `Reported by ${w.station_id}${w.station_name ? ` (${w.station_name})` : ""}, ${when(w.observed_at).local}`
+            }
+          >
+            <span className="summary-detail">{line.label}: </span>
+            {line.missing ? <span className="summary-detail">{line.text}</span> : line.text}
+            {line.alerts.length > 0 && <span className="summary-warning"> · {line.alerts.join(", ")}</span>}
+          </div>
+        );
+      })}
+    </Row>
+  );
+}
+
 export function SummaryView({
   activity,
   summary,
@@ -116,6 +147,7 @@ export function SummaryView({
         </Row>
       )}
       {duration && <Row label={ended ? "Lasted" : "Running for"}>{duration}</Row>}
+      {!isLog(activity.activity_type) && <WeatherRow summary={summary} />}
       <Row label="Notes">{notes || <span className="summary-detail">None recorded</span>}</Row>
     </dl>
   );
