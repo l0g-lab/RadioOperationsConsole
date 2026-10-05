@@ -114,31 +114,34 @@ yet built, so these are documented here as the interim source of truth.
 
 ## Operations tab layout
 
-The Operations tab follows the same division of labor as the Check-ins tab
-(`UX-CI-006`): the sidebar is for browsing and selecting, and the substantive
-work — creating, correcting, and deleting activities, and managing operator
-profiles — happens in the tab's main content, not the sidebar.
+The Operations tab has no sidebar: it uses the full window. An **Activities**
+table at the top is for finding and choosing an activity; below it, the
+selected activity (details, summary, exports and forms) on the left, and
+operators, repeaters, and places on the right. The top bar's Activity list
+(`UX-OPS-003`) stays the quick way to switch from any tab.
 
-- **UX-OPS-001:** The Operations sidebar MUST be limited to a browsable,
-  clickable list of every activity, used to change the focused activity. It
-  MUST NOT contain activity or operator creation, editing, or deletion
-  controls.
-- **UX-OPS-015:** The sidebar MUST group activities by what is happening,
-  not by date, in this order: **Open now** (started, not ended; each with
-  when it opened), **Station logs** (`LOG-005`), **Upcoming** (not started;
-  soonest first, undated last; each with its day and time), and **Closed**
-  (most recently closed first; each with the day it closed). Each group
-  MUST show how many it holds; empty groups are left out.
-- **UX-OPS-016:** Groups MUST be foldable, with Closed folded by default, and
-  which are folded MUST be remembered on this computer.
-- **UX-OPS-017:** The sidebar MUST offer a filter by title. While filtering,
-  every group with a match MUST be shown open, and a filter with no matches
-  MUST say so.
+- **UX-OPS-001:** The Activities table MUST list every activity, and
+  clicking one MUST make it the focused activity. Besides **+ New
+  activity**, it MUST NOT hold editing or deletion controls; those are in
+  the Selected Activity panel.
+- **UX-OPS-015:** Each activity MUST take one line: its type icon and name,
+  its band (`NETL-026`), its type, when it ran or is to run ("Mon 10/5
+  17:46"), its state — *Open* in green, *Not started* in amber once its time
+  has come, *Closed* dimmed — and its event, if any. The focused one MUST be
+  marked.
+- **UX-OPS-016:** The table MUST offer three views, with how many each holds:
+  **Now & coming up** (the default: open, latest first; not started,
+  soonest first, unscheduled last; then station logs, `LOG-005`), **Closed**
+  (most recent first), and **All**. It MUST show 25 rows, with *Show more*
+  for the rest.
+- **UX-OPS-017:** A search MUST look through every activity, whatever the
+  view, by name, event, type, or frequency, and say so when nothing
+  matches.
 - **UX-OPS-003:** The focused activity MUST be chosen from a selector in the
   application header, visible on every tab, listing each activity not yet
   closed, the 10 most recently closed, and the focused one, with its date and
   time so same-titled activities can be told apart; older ones are chosen from
-  the sidebar, which the selector points to. Other tabs MUST NOT carry their
+  the Activities table on the Operations tab, which the selector points to. Other tabs MUST NOT carry their
   own activity selector.
 - **UX-OPS-004:** The header MUST show the focused activity's frequency and
   offer an "Edit" action that goes to the Operations tab with that
@@ -163,8 +166,8 @@ profiles — happens in the tab's main content, not the sidebar.
 
 ## Activity correction and deletion
 
-Finished activities stay listed (under Closed in the sidebar, folded by
-default), so a past net is never out of sight. There is no archiving; an
+Finished activities stay listed (under Closed in the Activities table), so a
+past net is never out of sight. There is no archiving; an
 activity is removed only by permanent deletion, a separate, explicitly
 confirmed action (`AUDIT-007`–`AUDIT-011`).
 

@@ -238,28 +238,6 @@ select {
   min-height: 0;
 }
 
-.sidebar-filter {
-  width: 100%;
-  margin-bottom: 4px;
-}
-
-/* "(14)" after a sidebar group's name. */
-.sidebar-count {
-  color: var(--text-dim);
-  font-weight: normal;
-}
-
-.ops-sidebar {
-  width: 260px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  border-right: 1px solid var(--border);
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .app-content {
   flex: 1;
   min-height: 0;
@@ -383,31 +361,6 @@ select {
 .selectable.selected {
   background: var(--accent-dim);
   color: var(--on-accent);
-}
-
-/* Activities list: the type icon, then the label and its state (open in
-   green). A selected row is green itself, so they take its text color. */
-.sidebar-activity {
-  display: flex;
-  align-items: flex-start;
-}
-
-.sidebar-activity .activity-type-icon {
-  margin-top: 2px;
-}
-
-.sidebar-status-open {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.sidebar-status-closed {
-  color: var(--text-dim);
-}
-
-.selectable.selected .sidebar-status,
-.selectable.selected .activity-type-icon {
-  color: inherit;
 }
 
 .link-button {
@@ -3422,4 +3375,127 @@ button.online-pill-working-offline:hover {
 
 .event-timeline-detail .band-chip {
   margin-right: 5px;
+}
+
+/* ---- Activities table (ActivitiesPanel.tsx, UX-OPS-015) ---- */
+
+.activities-panel {
+  margin-bottom: 10px;
+}
+
+/* Now & coming up · Closed · All, as one segmented control. */
+.activity-views {
+  display: inline-flex;
+}
+
+.activity-view {
+  border-radius: 0;
+  margin-left: -1px;
+  white-space: nowrap;
+}
+
+.activity-view:first-child {
+  border-radius: 3px 0 0 3px;
+  margin-left: 0;
+}
+
+.activity-view:last-child {
+  border-radius: 0 3px 3px 0;
+}
+
+.activity-view-chosen {
+  position: relative;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.activity-view-count {
+  color: var(--text-dim);
+  font-weight: normal;
+}
+
+.activities-search {
+  width: 14em;
+}
+
+/* Each row is a button laid out as a grid of the same fixed and
+   proportional columns, so they line up: name, band, type, when, state,
+   event. */
+.activity-table {
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.activity-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) 4.6em minmax(0, 0.8fr) 10.5em 7em minmax(0, 1.2fr);
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+}
+
+.activity-table-row > span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 5px 8px 5px 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.activity-table-row:hover {
+  background: var(--bg-input);
+  border-color: var(--border);
+}
+
+/* The selected row: shaded, with a green edge, like a net on now. */
+.activity-table-row.selected {
+  background: var(--bg-input);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.activity-table-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.activity-table-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activity-table-type,
+.activity-table-when,
+.activity-table-event {
+  color: var(--text-dim);
+}
+
+.activity-table-event {
+  text-overflow: ellipsis;
+}
+
+/* State in the app's colors: open green, due amber, closed dimmed. */
+.activity-state-open {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.activity-state-due {
+  color: var(--warning, #e8a33d);
+  font-weight: 600;
+}
+
+.activity-state-dim {
+  color: var(--text-dim);
 }

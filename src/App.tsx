@@ -3,7 +3,6 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import * as api from "./api";
 import Header from "./components/Header";
 import TabBar from "./components/TabBar";
-import OperationsSidebar from "./components/OperationsSidebar";
 import OperationsTab from "./components/tabs/OperationsTab";
 import CheckinsTab from "./components/tabs/CheckinsTab";
 import ReportsTab from "./components/tabs/ReportsTab";
@@ -198,13 +197,6 @@ export default function App() {
       <UpgradeBackupBanner />
       <UpdateBanner />
       <div className="app-body">
-        {currentTab === "Operations" && (
-          <OperationsSidebar
-            activities={activities}
-            selectedActivityId={selectedActivityId}
-            onSelectActivity={setSelectedActivityId}
-          />
-        )}
         <main className="app-content">
           <TabBar
             current={currentTab}

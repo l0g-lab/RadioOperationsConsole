@@ -18,9 +18,17 @@ top. Each release's section here is also its description on the
   shows its type (SKYWARN stands out), a net starting within the hour is in
   amber in Coming up, and Today's heading is highlighted.
 - **The same band and type marks elsewhere:** the Repeaters list shows each
-  repeater's band (**2m**, **70cm**, **GMRS**…) before its frequency, and the
-  Activities list and an event's activities show each activity's type icon,
-  with *open* in green and *not started* in amber.
+  repeater's band (**2m**, **70cm**, **GMRS**…) before its frequency, and an
+  event's activities show each activity's type icon and band, with *not
+  started* in amber.
+- **The Operations tab's activity list is now a table across the top**, in
+  place of the narrow sidebar, so the tab has the full window. One line per
+  activity — type icon, name, band, type, when, state (open in green, due
+  but not started in amber, closed dimmed), and event — with views for **Now
+  & coming up**, **Closed**, and **All**, and a search that finds any
+  activity by name, event, type, or frequency. **+ New activity** is beside
+  it. The top bar's Activity list is still the quick way to switch from any
+  tab.
 
 ## [2.4.2] - 2026-10-05
 

@@ -21,8 +21,6 @@ interface Props {
   onEditRequestHandled: () => void;
   /** The repeater directory, to pick from. */
   repeaters: Repeater[];
-  /** Opens the new-activity form. */
-  onNewActivity: () => void;
   /** To choose who runs the activity. */
   operators: Operator[];
   /** The events there are, to move the activity into or out of one. */
@@ -42,7 +40,6 @@ export default function SelectedActivityPanel({
   editRequested,
   onEditRequestHandled,
   repeaters,
-  onNewActivity,
   operators,
   events = [],
 }: Props) {
@@ -177,16 +174,10 @@ export default function SelectedActivityPanel({
 
   return (
     <div className="panel">
-      <div className="panel-header-row">
-        <h3><SquarePen className="heading-icon" />Selected Activity</h3>
-        <button className="primary" onClick={onNewActivity}>
-          + New activity
-        </button>
-      </div>
+      <h3><SquarePen className="heading-icon" />Selected Activity</h3>
       {!focusedActivity && (
         <p className="checkin-empty-state">
-          No activity selected. Pick one in the top bar or the list on the left, or start a new
-          one.
+          No activity selected. Pick one in Activities above, or start a new one.
         </p>
       )}
       {focusedActivity && !editingFocused && (

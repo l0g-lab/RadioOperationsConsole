@@ -26,7 +26,7 @@ real-world need.
   each is started and ended as before (`LIFE-001`–`009`).
 - Holds the ICS 214 ([ics-form-exports.md](ics-form-exports.md), `ICSF-050`–`056`)
   and an event-wide ICS 309.
-- Extends the sidebar (`UX-OPS-015`–`017`) and the tabs
+- Extends the Activities table (`UX-OPS-015`–`017`) and the tabs
   ([06-application-shell-and-navigation.md](../06-application-shell-and-navigation.md)).
 - Not the "event" of [05-event-and-template-model.md](../05-event-and-template-model.md)
   (`EVENT-*`), which means a single activity.
@@ -60,10 +60,10 @@ real-world need.
 - **EVT-020:** The activity form MUST offer an **Event** choice, defaulting to
   none, only when at least one event exists, and never for a station log.
   Moving an activity into or out of an event MUST be recorded in its history.
-- **EVT-021:** The sidebar MUST show each event's activities together as their
-  own group, named after the event, in the order they run; an event with an
-  activity not yet closed first, a finished one after Closed and folded by
-  default. Its activities MUST NOT also appear in the other groups.
+- **EVT-021:** The Activities table MUST show each activity's event, and
+  searching for an event's name MUST find its activities. An event's
+  activities are listed together, in the order they run, on its page on
+  the Events tab, not grouped in the table.
 
 ## What's next
 
@@ -96,7 +96,7 @@ real-world need.
 Scenario: Setting up an exercise
   Given the operator creates the event "ARRL 2026 SET" on the Events tab
   When they add Ham net 09:00, GMRS net 09:30, and HF relays 10:30 from its page
-  Then the event's page and the sidebar list them in that order
+  Then the event's page lists them in that order
 
 Scenario: Running it
   When the operator ends the Ham net at 09:25
