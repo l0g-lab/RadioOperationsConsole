@@ -251,6 +251,19 @@ impl Repository {
         Self { conn }
     }
 
+    /// Corrects an operator's name and call sign. Everything they recorded
+    /// keeps pointing at them, so it shows the corrected name.
+    pub fn update_operator(&self, id: &str, display_name: &str, call_sign: Option<&str>) -> rusqlite::Result<()> {
+        let n = self.conn.execute(
+            "UPDATE operators SET display_name = ?1, call_sign = ?2 WHERE id = ?3",
+            params![display_name, call_sign, id],
+        )?;
+        if n == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows);
+        }
+        Ok(())
+    }
+
     pub fn create_operator(
         &self,
         display_name: &str,
@@ -1276,6 +1289,16 @@ mod lifecycle_tests {
     fn repo() -> Repository {
         let path = std::env::temp_dir().join(format!("roc-life-{}.db", Uuid::new_v4()));
         Repository::new(crate::db::open_db(&path).unwrap())
+    }
+
+    #[test]
+    fn an_operator_can_be_corrected() {
+        let r = repo();
+        let pat = r.create_operator("Pat Jnoes", Some("K4NSC")).unwrap();
+        r.update_operator(&pat, "Pat Jones", Some("K4NCS")).unwrap();
+        let o = r.list_operators().unwrap().into_iter().find(|o| o.id == pat).unwrap();
+        assert_eq!((o.display_name.as_str(), o.call_sign.as_str()), ("Pat Jones", "K4NCS"));
+        assert!(r.update_operator("missing", "X", None).is_err());
     }
 
     #[test]

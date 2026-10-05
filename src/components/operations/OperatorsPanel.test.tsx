@@ -9,6 +9,7 @@ vi.mock("../../api", () => ({
   deleteOperator: vi.fn(),
   retireOperator: vi.fn(),
   restoreOperator: vi.fn(),
+  updateOperator: vi.fn(() => Promise.resolve()),
 }));
 
 import * as api from "../../api";
@@ -88,5 +89,24 @@ describe("OperatorsPanel removal (AUDIT-012, AUDIT-013)", () => {
     expect(screen.getByText("Old Timer")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Restore Old Timer" }));
     expect(api.restoreOperator).toHaveBeenCalledWith("o9", "o2");
+  });
+});
+
+describe("OperatorsPanel editing (AUDIT-015)", () => {
+  beforeEach(() => vi.mocked(api.listRetiredOperators).mockResolvedValue([]));
+
+  it("corrects an operator's name and call sign in place", async () => {
+    const user = userEvent.setup();
+    const onChanged = vi.fn();
+    renderPanel(onChanged);
+    await user.click(screen.getByRole("button", { name: "Edit Typo Person" }));
+    const name = screen.getByRole("textbox", { name: "Display name" });
+    await user.clear(name);
+    await user.type(name, "Pat Jones");
+    const call = screen.getByRole("textbox", { name: "Call sign" });
+    await user.clear(call);
+    await user.type(call, "k4ncs{Enter}");
+    expect(api.updateOperator).toHaveBeenCalledWith("o1", "Pat Jones", "k4ncs", "o2");
+    expect(onChanged).toHaveBeenCalled();
   });
 });

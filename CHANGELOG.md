@@ -6,6 +6,11 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **Edit an operator:** correct a name or call sign with the ✎ button in the
+  Operators list. The correction shows everywhere they're named, past nets
+  included, and is recorded in History.
+
 ## [2.4.0] - 2026-10-05
 
 ### Added

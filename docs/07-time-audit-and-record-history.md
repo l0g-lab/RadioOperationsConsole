@@ -80,6 +80,10 @@ longer needed.
   adding an operator records nothing about them.
 - **AUDIT-014:** Deleting or retiring the default operator MUST make another
   one the default, or none.
+- **AUDIT-015:** An operator's name and call sign MUST be correctable, with
+  the change recorded in the history alongside the earlier values. Records
+  stay linked to the operator, so they show the corrected name; logging under
+  a different call sign is done by adding another operator.
 
 ## Example
 

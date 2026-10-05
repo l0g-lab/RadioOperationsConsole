@@ -4,7 +4,7 @@ import { lookupCallsign } from "../../callsignLookup";
 import type { Operator, OperatorUsage } from "../../types";
 import LocationPicker from "../LocationPicker";
 import { resolveOfflineLocationAsync } from "../../locationResolution";
-import { MapPin, Star, UserMinus, Users } from "lucide-react";
+import { MapPin, Pencil, Star, UserMinus, Users } from "lucide-react";
 
 interface Props {
   operators: Operator[];
@@ -66,6 +66,21 @@ export default function OperatorsPanel({
     hasRecords: boolean;
   } | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  // Correcting a name or call sign, in place in the list.
+  const [editing, setEditing] = useState<{ id: string; name: string; call: string } | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  async function saveEdit() {
+    if (!editing) return;
+    try {
+      await api.updateOperator(editing.id, editing.name, editing.call.trim() || null, selectedOperatorId);
+      setEditing(null);
+      setEditError(null);
+      onOperatorsChanged();
+    } catch (e) {
+      setEditError(String(e));
+    }
+  }
   const [retired, setRetired] = useState<Operator[]>([]);
   const [showRetired, setShowRetired] = useState(false);
 
@@ -204,7 +219,43 @@ export default function OperatorsPanel({
       </div>
       <div className="operator-list">
         {operators.length === 0 && <p className="checkin-empty-state">No operators yet.</p>}
-        {operators.map((o) => (
+        {operators.map((o) =>
+          editing?.id === o.id ? (
+            <div
+              key={o.id}
+              className="operator-row operator-edit"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveEdit();
+                if (e.key === "Escape") setEditing(null);
+              }}
+            >
+              <div className="inline-form">
+                <input
+                  autoFocus
+                  aria-label="Display name"
+                  placeholder="Display name"
+                  value={editing.name}
+                  onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                />
+                <input
+                  aria-label="Call sign"
+                  placeholder="Call sign"
+                  value={editing.call}
+                  onChange={(e) => setEditing({ ...editing, call: e.target.value })}
+                />
+                <button className="primary" onClick={saveEdit}>
+                  Save
+                </button>
+                <button onClick={() => setEditing(null)}>Cancel</button>
+              </div>
+              {editError && <p className="weather-area-error">{editError}</p>}
+              <p className="settings-hint">
+                The correction shows everywhere they're named, including past nets. If they also
+                log under a second call sign (say, GMRS as well as ham), add that as another
+                operator instead.
+              </p>
+            </div>
+          ) : (
           <div key={o.id} className="operator-row">
             <span className="operator-row-name" title={o.location_label ? `Location: ${o.location_label}` : undefined}>
               {o.display_name}
@@ -231,6 +282,17 @@ export default function OperatorsPanel({
               )}
               <button
                 className="icon-button"
+                aria-label={`Edit ${o.display_name}`}
+                title="Edit name or call sign"
+                onClick={() => {
+                  setEditing({ id: o.id, name: o.display_name, call: o.call_sign });
+                  setEditError(null);
+                }}
+              >
+                <Pencil />
+              </button>
+              <button
+                className="icon-button"
                 aria-label={`Edit location of ${o.display_name}`}
                 title={o.location_label ? `Edit location (${o.location_label})` : "Set location"}
                 onClick={() => setLocationEditOperator(o)}
@@ -247,7 +309,8 @@ export default function OperatorsPanel({
               </button>
             </span>
           </div>
-        ))}
+          )
+        )}
       </div>
       {removing && (
         <div className="confirm-row">

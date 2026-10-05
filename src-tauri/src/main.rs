@@ -75,6 +75,7 @@ fn main() {
             commands::delete_event,
             commands::change_activity_operator,
             commands::operator_usage,
+            commands::update_operator,
             commands::list_relay_messages,
             commands::list_removed_relay_messages,
             commands::create_relay_message,

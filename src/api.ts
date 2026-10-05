@@ -65,6 +65,20 @@ export const restoreOperator = (operator_id: string, acting_operator_id: string 
     actingOperatorId: acting_operator_id,
   });
 
+/** Corrects an operator's name and call sign, recorded in the history. */
+export const updateOperator = (
+  operator_id: string,
+  display_name: string,
+  call_sign: string | null,
+  acting_operator_id: string | null
+) =>
+  invoke<void>("update_operator", {
+    operatorId: operator_id,
+    displayName: display_name,
+    callSign: call_sign,
+    actingOperatorId: acting_operator_id,
+  });
+
 export const createOperator = (display_name: string, call_sign: string | null) =>
   invoke<string>("create_operator", { displayName: display_name, callSign: call_sign });
 

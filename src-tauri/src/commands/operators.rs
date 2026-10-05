@@ -76,6 +76,39 @@ pub fn restore_operator(
     Ok(())
 }
 
+/// Corrects an operator's name and call sign (AUDIT-015), recorded in the
+/// history with the earlier values.
+#[tauri::command]
+pub fn update_operator(
+    state: State<AppState>,
+    operator_id: String,
+    display_name: String,
+    call_sign: Option<String>,
+    acting_operator_id: Option<String>,
+) -> Result<(), String> {
+    let name = display_name.trim();
+    if name.is_empty() {
+        return Err("Give the operator a name.".into());
+    }
+    let call = call_sign.map(|c| c.trim().to_uppercase()).filter(|c| !c.is_empty());
+    let repo = state.repo.lock().unwrap();
+    let before = repo
+        .list_operators()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .find(|o| o.id == operator_id)
+        .ok_or("That operator no longer exists.")?;
+    repo.update_operator(&operator_id, name, call.as_deref()).map_err(|e| e.to_string())?;
+    let data = serde_json::json!({
+        "before": { "display_name": before.display_name, "call_sign": before.call_sign },
+        "after": { "display_name": name, "call_sign": call },
+    })
+    .to_string();
+    repo.create_audit_event("operator", &operator_id, "correct", Some(&data), acting_operator_id.as_deref())
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[tauri::command]
 pub fn create_operator(
     state: State<AppState>,

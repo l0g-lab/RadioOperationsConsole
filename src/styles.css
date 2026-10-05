@@ -2930,3 +2930,19 @@ button.online-pill-working-offline:hover {
 .summary-warning {
   color: var(--warning, #e8a33d);
 }
+
+/* Correcting an operator, in place in the list (OperatorsPanel.tsx). */
+.operator-edit {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.operator-edit input {
+  flex: 1 1 8em;
+  min-width: 0;
+}
+
+.operator-edit .settings-hint {
+  margin: 0;
+}
