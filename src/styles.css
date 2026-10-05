@@ -791,7 +791,8 @@ details > summary {
 .checkin-roster-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  /* Centred, not by text baseline: the sort button's icon shifts its baseline. */
+  align-items: center;
   margin-bottom: 8px;
 }
 
@@ -812,7 +813,7 @@ details > summary {
 
 .checkin-roster-header-actions {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 14px;
 }
 

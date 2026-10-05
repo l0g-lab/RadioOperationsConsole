@@ -107,7 +107,7 @@ export default function SpotterReportRoster({
             <span className="checkin-roster-count">{reports.length} logged</span>
             <SortToggle order={order} onToggle={toggleOrder} />
             <button onClick={() => setShowMap(true)} disabled={reports.length === 0}>
-              Show Map
+              Show map
             </button>
             <button
               className="link-button"
