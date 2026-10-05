@@ -106,7 +106,7 @@ fallback for check-ins that have location text but no grid square.
   coordinates, and a mile marker are placed by hand (`CIMAP-003`).
 - **CIMAP-081:** A net's roster MUST show call sign, name, location (the QTH,
   else the address, marked when it's on the map), grid square, time, and
-  traffic. The full address, coordinates, and how it was placed MUST be shown
+  traffic (on the row itself, `NETOPS-053`). The full address, coordinates, and how it was placed MUST be shown
   on hovering over the location. Exports keep every field.
 
 ## Offline and failure behavior

@@ -857,7 +857,7 @@ details > summary {
 .checkin-row {
   display: grid;
   /* A net: call sign, name, location, grid, time, traffic (CIMAP-081). */
-  grid-template-columns: 110px minmax(110px, 1fr) minmax(160px, 1.6fr) 80px 190px 100px;
+  grid-template-columns: 110px minmax(100px, 0.9fr) minmax(150px, 1.2fr) 70px 180px minmax(220px, 2fr);
   gap: 12px;
   padding: 8px 10px;
   border-radius: 3px;
@@ -2959,4 +2959,37 @@ button.online-pill-working-offline:hover {
 
 .operator-edit .settings-hint {
   margin: 0;
+}
+
+/* A check-in's traffic, on its row with Handled beside it (NetRows.tsx). */
+.checkin-row-traffic {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.checkin-row-traffic-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--warning, #e8a33d);
+}
+
+/* Handled: plain, readable text with the tick in green; amber is only for
+   traffic still needing action. */
+.checkin-row-traffic-handled .checkin-row-traffic-text {
+  color: var(--text);
+}
+
+.checkin-row-traffic-handled .traffic-handled {
+  color: var(--accent);
+}
+
+.checkin-row-traffic .traffic-handled {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: calc(12px * var(--font-scale));
 }

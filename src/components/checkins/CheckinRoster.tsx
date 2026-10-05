@@ -72,7 +72,6 @@ export default function CheckinRoster({
   const [openDetails, setOpenDetails] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [order, toggleOrder] = useSortOrder(log ? "contacts" : "checkins", "newest");
-  const [openTraffic, setOpenTraffic] = useState<Set<string>>(new Set());
   const [checkinLookupStatus, setCheckinLookupStatus] = useState<QrzStatus>("idle");
   const [lookupSource, setLookupSource] = useState<CallsignSource>("qrz");
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -97,7 +96,6 @@ export default function CheckinRoster({
 
   useEffect(() => {
     setEditingCheckinId(null);
-    setOpenTraffic(new Set());
     setOpenDetails(new Set());
     setSearch("");
   }, [activity.id]);
@@ -111,13 +109,12 @@ export default function CheckinRoster({
     removal.cancelRemove();
   }
 
-  const toggleIn = (set: typeof setOpenTraffic) => (id: string) =>
+  const toggleIn = (set: typeof setOpenDetails) => (id: string) =>
     set((prev) => {
       const next = new Set(prev);
       if (!next.delete(id)) next.add(id);
       return next;
     });
-  const toggleTraffic = toggleIn(setOpenTraffic);
   const toggleDetails = toggleIn(setOpenDetails);
 
   async function handleTrafficHandled(id: string, handled: boolean) {
@@ -373,8 +370,6 @@ export default function CheckinRoster({
                 <NetRow
                   key={c.id}
                   {...row}
-                  trafficOpen={c.has_traffic && openTraffic.has(c.id)}
-                  onToggleTraffic={() => toggleTraffic(c.id)}
                   readOnly={readOnly}
                   onTrafficHandled={(handled) => handleTrafficHandled(c.id, handled)}
                 />

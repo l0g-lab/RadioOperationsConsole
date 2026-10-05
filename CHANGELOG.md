@@ -17,8 +17,10 @@ top. Each release's section here is also its description on the
   map gets a grid square, worked out offline. The same one box is used when
   editing a check-in.
 - **The check-in roster is simpler:** call sign, name, location (with a pin
-  when it's on the map), grid, time, and traffic. Hover over a location for
-  the full address and coordinates; exports still have every field.
+  when it's on the map), grid, time, and traffic. Traffic shows right on the
+  row — amber until it's handled, then plain text with a green *Handled* tick —
+  instead of behind a *Show traffic* button. Hover over a location for the
+  full address and coordinates; exports still have every field.
 
 ### Added
 - **Edit an operator:** correct a name or call sign with the ✎ button in the

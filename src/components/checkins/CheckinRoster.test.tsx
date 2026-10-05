@@ -314,15 +314,14 @@ describe("CheckinRoster as a net", () => {
     vi.mocked(api.setCheckinTrafficHandled).mockClear();
   });
 
-  it("shows traffic on request and marks it handled", async () => {
+  it("shows traffic on its row and marks it handled", async () => {
     const user = userEvent.setup();
     renderNet();
     expect(screen.getByRole("heading", { name: /Check-ins — Tuesday Net/ })).toBeInTheDocument();
     expect(screen.getByText("Grid")).toBeInTheDocument();
-    expect(screen.queryByText("Need a generator")).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Show traffic" }));
+    // No button to press: the traffic is right there.
     expect(screen.getByText("Need a generator")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Show traffic" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("checkbox", { name: "Handled" }));
     expect(api.setCheckinTrafficHandled).toHaveBeenCalledWith("t1", true, "op1");
   });

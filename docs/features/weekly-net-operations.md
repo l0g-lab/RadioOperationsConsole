@@ -194,12 +194,11 @@ in a separate list.
 - **NETOPS-052:** The check-in correction form (`NETOPS-030`) MUST show the
   same field. Clearing it MUST mark the check-in as having no traffic, which
   clears the handled mark.
-- **NETOPS-053:** The roster MUST show a "Show traffic" action on check-ins
-  that have traffic, and MUST NOT show one on those that do not. It MUST
-  reveal the details beneath that check-in, as spotter-report notes are
-  revealed, and MAY be opened for several check-ins at once.
-- **NETOPS-054:** The revealed traffic MUST offer a "Handled" checkbox, which
-  is recorded with an audit event (`AUDIT-001`).
+- **NETOPS-053:** The roster MUST show each check-in's traffic on its own row,
+  without having to open it: shortened if long, in full on hovering, and
+  marked out until handled.
+- **NETOPS-054:** Beside the traffic MUST be a "Handled" checkbox, which is
+  recorded with an audit event (`AUDIT-001`).
 - **NETOPS-055:** Traffic details and the handled state MUST be included in
   the CSV roster export.
 - **NETOPS-056:** The activity summary and end-of-net step MUST count check-ins
