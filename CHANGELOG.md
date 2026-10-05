@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-10-05
+
 ### Changed
 - **Checking in asks for one Location, not four boxes.** Type an address,
   town, ZIP, cross street, mile marker (*MM 182 turnpike*), grid square, or
@@ -36,8 +38,15 @@ top. Each release's section here is also its description on the
   check-ins, with **📍 Map** and a line saying where the report will land;
   if you don't pick a spot, the text is placed on the map when you save.
 - **Headings and their buttons line up** in every panel.
+- **No more browser autofill** popping up under boxes (offering an event
+  name you typed before in a delete confirmation, say). Where suggestions
+  help, the app has its own list, matching the rest of the app: Tab or Enter
+  fills in the highlighted one.
 
 ### Added
+- **Suggestions as you type** in a relay's From, For, Passed to and Via
+  boxes (the stations and ways already used this session) and a spotter
+  report's County (counties already reported).
 - **Edit an operator:** correct a name or call sign with the ✎ button in the
   Operators list. The correction shows everywhere they're named, past nets
   included, and is recorded in History.
@@ -341,7 +350,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.1...HEAD
+[2.4.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.2.2...v2.3.0

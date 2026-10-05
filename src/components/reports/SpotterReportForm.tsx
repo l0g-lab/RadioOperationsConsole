@@ -11,13 +11,15 @@ import { formatContactTime, parseContactTime } from "../../utils";
 import { resolveCheckinLocation, type CheckinLocation } from "../../checkinLocation";
 import { isWorkingOffline } from "../../workOffline";
 import LocationPicker from "../LocationPicker";
-import SuggestInput from "../SuggestInput";
+import SuggestInput, { earlierEntries } from "../SuggestInput";
 import { ClipboardPen, MapPin } from "lucide-react";
 
 interface Props {
   activityId: string;
   operatorId: string | null;
   checkins: Checkin[];
+  /** Counties named in the activity's reports so far, suggested as you type. */
+  counties?: string[];
   editingReport: SpotterReport | null;
   onSaved: (newId?: string) => void;
   onCancelEdit: () => void;
@@ -65,6 +67,7 @@ export default function SpotterReportForm({
   activityId,
   operatorId,
   checkins,
+  counties = [],
   editingReport,
   onSaved,
   onCancelEdit,
@@ -432,7 +435,14 @@ export default function SpotterReportForm({
           </label>
           <label className="activity-field">
             <span className="activity-field-label">County</span>
-            <input placeholder="e.g. Orange" value={county} onChange={(e) => setCounty(e.target.value)} />
+            <SuggestInput
+              id="report-county"
+              listLabel="Counties"
+              placeholder="e.g. Orange"
+              value={county}
+              onChange={setCounty}
+              suggest={(t) => earlierEntries(t, counties)}
+            />
           </label>
           <div className="activity-field">
             <span className="activity-field-label">&nbsp;</span>

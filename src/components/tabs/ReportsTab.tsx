@@ -73,6 +73,7 @@ export default function ReportsTab({
               activityId={focusedActivity.id}
               operatorId={selectedOperatorId}
               checkins={checkins}
+              counties={reports.map((r) => r.county)}
               editingReport={editingReport}
               onSaved={async (newId) => {
                 await refreshReports();

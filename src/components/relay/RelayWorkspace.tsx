@@ -6,6 +6,7 @@ import { formatContactTime, parseContactTime } from "../../utils";
 import { RemoveConfirmBar, RemovedPanel } from "../RemoveControls";
 import { Send } from "lucide-react";
 import SortToggle from "../SortToggle";
+import SuggestInput, { earlierEntries } from "../SuggestInput";
 import { sortByTime, useSortOrder } from "../../hooks/useSortOrder";
 
 /** Other ways traffic gets passed, offered alongside the frequencies already used. */
@@ -116,6 +117,13 @@ export default function RelayWorkspace({
       ].filter(Boolean)
     )
   );
+  // Everyone named so far, sender, addressee or next hop, to fill in again:
+  // the same few stations and tactical names come up all session.
+  const stationChoices = messages.flatMap((m) => [
+    m.from_station,
+    m.for_station,
+    ...m.steps.map((s) => s.station),
+  ]);
 
   async function saveMessage() {
     const at = timeOrNow(draft.at);
@@ -257,15 +265,24 @@ export default function RelayWorkspace({
             <>
               <label>
                 {step.kind === "passed" ? "Passed to" : "Tried to reach"}
-                <input value={step.station} onChange={(e) => set("station", e.target.value)} autoFocus />
+                <SuggestInput
+                  id="relay-step-station"
+                  listLabel="Stations"
+                  value={step.station}
+                  onChange={(v) => set("station", v)}
+                  suggest={(t) => earlierEntries(t, stationChoices)}
+                  autoFocus
+                />
               </label>
               <label>
                 Via
-                <input
+                <SuggestInput
+                  id="relay-step-via"
+                  listLabel="Ways passed"
                   value={step.via}
-                  list="relay-via-choices"
                   placeholder="Frequency, phone…"
-                  onChange={(e) => set("via", e.target.value)}
+                  onChange={(v) => set("via", v)}
+                  suggest={(t) => earlierEntries(t, viaChoices)}
                 />
               </label>
             </>
@@ -372,12 +389,6 @@ export default function RelayWorkspace({
 
   return (
     <div className="relay-workspace">
-      <datalist id="relay-via-choices">
-        {viaChoices.map((v) => (
-          <option key={v} value={v} />
-        ))}
-      </datalist>
-
       {!readOnly && (
         <div className="checkin-entry relay-entry" onKeyDown={enterSaves(saveMessage)}>
           <h3>
@@ -402,29 +413,37 @@ export default function RelayWorkspace({
             </label>
             <label>
               From
-              <input
-                ref={fromRef}
+              <SuggestInput
+                id="relay-from"
+                listLabel="Stations"
+                inputRef={fromRef}
                 value={draft.from}
                 placeholder="Call sign or tactical, e.g. Shelter 2"
-                onChange={(e) => setDraft({ ...draft, from: e.target.value })}
+                onChange={(v) => setDraft({ ...draft, from: v })}
+                suggest={(t) => earlierEntries(t, stationChoices)}
                 autoFocus
               />
             </label>
             <label>
               For
-              <input
+              <SuggestInput
+                id="relay-for"
+                listLabel="Stations"
                 value={draft.for}
                 placeholder="Who it's going to, e.g. EOC"
-                onChange={(e) => setDraft({ ...draft, for: e.target.value })}
+                onChange={(v) => setDraft({ ...draft, for: v })}
+                suggest={(t) => earlierEntries(t, stationChoices)}
               />
             </label>
             <label>
               Received via
-              <input
+              <SuggestInput
+                id="relay-via"
+                listLabel="Ways received"
                 value={draft.via}
-                list="relay-via-choices"
                 placeholder="Frequency, phone…"
-                onChange={(e) => setDraft({ ...draft, via: e.target.value })}
+                onChange={(v) => setDraft({ ...draft, via: v })}
+                suggest={(t) => earlierEntries(t, viaChoices)}
               />
             </label>
           </div>

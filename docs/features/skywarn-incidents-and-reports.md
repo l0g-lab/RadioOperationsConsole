@@ -115,7 +115,9 @@ they saw, and where.
   or Enter MUST fill in the highlighted station's call sign; Enter taking a
   suggestion MUST NOT also save. A call sign that matches a check-in links the
   report to it, and the form MUST say whose check-in. Any other text is a
-  reporter with no check-in (e.g. a phoned-in public report).
+  reporter with no check-in (e.g. a phoned-in public report). The County box
+  MUST likewise suggest the counties already named in the activity's
+  reports.
 
 ## The report map
 

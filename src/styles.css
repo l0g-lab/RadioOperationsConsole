@@ -1663,13 +1663,14 @@ details > summary {
   color: var(--text-dim);
 }
 
-/* In a wide form field the box and its list take the field's width. */
-.activity-field-wide > .suggest-input {
-  display: block;
+/* The box fills whatever room its field gives it (a set width, as on the
+   Mode box, still wins). */
+.suggest-input > input {
+  width: 100%;
 }
 
-.activity-field-wide > .suggest-input > input {
-  width: 100%;
+.activity-field-wide > .suggest-input {
+  display: block;
 }
 
 .contact-time-error {
@@ -2799,7 +2800,8 @@ button.online-pill-working-offline:hover {
 }
 
 /* Short fields (date, time, started, ended) stay short, so two fit side by side. */
-.activity-field:not(.activity-field-wide) > input {
+.activity-field:not(.activity-field-wide) > input,
+.activity-field:not(.activity-field-wide) > .suggest-input > input {
   width: 17ch;
 }
 

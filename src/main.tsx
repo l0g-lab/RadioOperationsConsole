@@ -13,6 +13,21 @@ import { initWorkOffline } from "./workOffline";
 applyThemeMode(getThemeMode());
 applyTypography();
 
+// No browser autofill: the webview would otherwise offer whatever was typed
+// in a box before (an event name in a delete confirmation, say). Set on
+// focus, before it can suggest, so every box is covered without each one
+// having to say so. Boxes that suggest use our own list (SuggestInput).
+document.addEventListener(
+  "focusin",
+  (e) => {
+    const el = e.target;
+    if ((el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) && !el.hasAttribute("autocomplete")) {
+      el.setAttribute("autocomplete", "off");
+    }
+  },
+  true
+);
+
 // Know whether we're working offline before anything renders, so no map tile
 // or radar image is fetched in the moment before the saved choice is read.
 getSettings()

@@ -1,4 +1,27 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode, type Ref } from "react";
+
+/**
+ * Earlier entries for what's typed, e.g. the stations already named in a
+ * relay: those starting with it first, then those with a later word starting
+ * with it, ignoring case. Each once, at most eight; nothing for an empty box or
+ * one that already holds an entry in full.
+ */
+export function earlierEntries(typed: string, entries: readonly string[]): Suggestion[] {
+  const t = typed.trim().toLowerCase();
+  if (!t) return [];
+  const seen = new Map<string, string>();
+  for (const e of entries) {
+    const v = e.trim();
+    if (v && !seen.has(v.toLowerCase())) seen.set(v.toLowerCase(), v);
+  }
+  if (seen.has(t)) return [];
+  const all = [...seen.values()];
+  const starts = all.filter((v) => v.toLowerCase().startsWith(t));
+  const words = all.filter(
+    (v) => !starts.includes(v) && v.toLowerCase().split(/\s+/).slice(1).some((w) => w.startsWith(t))
+  );
+  return [...starts, ...words].slice(0, 8).map((value) => ({ value }));
+}
 
 export interface Suggestion {
   /** What goes in the box when it's taken. */
@@ -28,6 +51,7 @@ export default function SuggestInput({
   className,
   style,
   autoFocus,
+  inputRef,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -43,6 +67,7 @@ export default function SuggestInput({
   className?: string;
   style?: CSSProperties;
   autoFocus?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -59,8 +84,10 @@ export default function SuggestInput({
   return (
     <span className="suggest-input">
       <input
+        ref={inputRef}
         role="combobox"
         aria-label={ariaLabel}
+        autoComplete="off"
         aria-autocomplete="list"
         aria-expanded={shown}
         aria-controls={listId}

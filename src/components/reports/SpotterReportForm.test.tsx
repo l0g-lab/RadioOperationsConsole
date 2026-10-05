@@ -60,7 +60,7 @@ async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
   await user.selectOptions(screen.getByRole("combobox", { name: "Hazard" }), "Hail");
   const magnitude = screen.getByRole("combobox", { name: "Magnitude" });
   await user.selectOptions(magnitude, (magnitude as HTMLSelectElement).options[1].value);
-  await user.type(screen.getByRole("textbox", { name: "County" }), "Orange");
+  await user.type(screen.getByRole("combobox", { name: "County" }), "Orange");
 }
 
 describe("SpotterReportForm", () => {

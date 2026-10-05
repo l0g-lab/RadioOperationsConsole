@@ -50,6 +50,11 @@ like), so this is a log of messages, not a formal traffic-handling system.
   for, and the message MUST be given.
 - **RELAY-011:** A logged message MUST be correctable and removable (with an
   optional reason) and restorable, each recorded in the history.
+- **RELAY-012:** The from, for, and passed-to boxes MUST suggest, as you
+  type, the stations and tactical names already named in this relay, and the
+  received-via and passed-via boxes the ways already used (the activity's
+  frequency, earlier ones, phone, Winlink, in person, runner). Tab or Enter
+  fills in the highlighted one, in the app's own suggestion list.
 
 ## Passing it on
 
