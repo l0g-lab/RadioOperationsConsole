@@ -385,6 +385,31 @@ select {
   color: var(--on-accent);
 }
 
+/* Activities list: the type icon, then the label and its state (open in
+   green). A selected row is green itself, so they take its text color. */
+.sidebar-activity {
+  display: flex;
+  align-items: flex-start;
+}
+
+.sidebar-activity .activity-type-icon {
+  margin-top: 2px;
+}
+
+.sidebar-status-open {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sidebar-status-closed {
+  color: var(--text-dim);
+}
+
+.selectable.selected .sidebar-status,
+.selectable.selected .activity-type-icon {
+  color: inherit;
+}
+
 .link-button {
   background: none;
   border: none;
@@ -3048,6 +3073,34 @@ button.online-pill-working-offline:hover {
   justify-content: flex-end;
 }
 
+/* Repeaters: the band chip and output frequency share the second column
+   (NETL-026), so it needs a little more room than Places' coordinates. */
+.repeater-list-repeaters {
+  grid-template-columns: fit-content(65%) minmax(7.6em, 1fr) auto;
+}
+
+/* Colored text rather than a chip, to leave the names their room. */
+.repeater-row-freq .band-chip {
+  min-width: 2.9em;
+  padding: 0;
+  border: none;
+  text-align: left;
+}
+
+.repeater-row-freq {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 10px 4px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.repeater-row-freq > .repeater-row-detail {
+  padding: 0;
+  border-bottom: none;
+}
+
 /* A small button showing just an icon; its name is in aria-label and title. */
 .icon-button {
   display: inline-flex;
@@ -3194,6 +3247,11 @@ button.online-pill-working-offline:hover {
 
 .event-state-active {
   color: var(--accent);
+}
+
+/* Not started: amber, still to do — as in the top bar's badge. */
+.event-state-scheduled {
+  color: var(--warning, #e8a33d);
 }
 
 .button-icon {
@@ -3352,4 +3410,16 @@ button.online-pill-working-offline:hover {
 .net-weather-danger {
   color: var(--danger, #e05252);
   font-weight: 600;
+}
+
+/* An event's activities: the type icon before each, and the band chip before
+   its frequency (NETL-026). */
+.event-timeline-title {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.event-timeline-detail .band-chip {
+  margin-right: 5px;
 }

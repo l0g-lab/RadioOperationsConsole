@@ -103,6 +103,11 @@ who attended.
   (HF, VHF, UHF, personal radio services) in colors clear of the app's
   amber, red, and green; and an icon for the net's type before its name
   (SKYWARN in the storm color). Today's heading MUST be in the accent color.
+  The same band and type marks MUST be used elsewhere: the band before each
+  repeater's frequency in the Repeaters list (as colored text, leaving the
+  names room), and the type icon on each activity in the Activities list and
+  an event's activities, with *open* in green and *not started* in amber.
+  The top bar keeps neither, having no room to spare.
 - **NETL-022:** The list MUST be searchable by name, repeater, frequency,
   and who runs it, and MAY be filtered to one repeater. A repeater in the
   directory MUST show how many listings meet on it.

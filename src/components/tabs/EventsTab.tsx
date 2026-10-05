@@ -7,6 +7,9 @@ import { localDate, localTime } from "../../icsForms";
 import Ics214Dialog from "../exports/Ics214Dialog";
 import IcsFormDialog from "../exports/IcsFormDialog";
 import { CalendarRange, ClipboardList, FileText, Pencil, Plus, Trash2, X } from "lucide-react";
+import ActivityTypeIcon from "../ActivityTypeIcon";
+import BandChip from "../BandChip";
+import { mhzFromText } from "../../bands";
 
 interface Props {
   events: EventRecord[];
@@ -253,12 +256,21 @@ export default function EventsTab({
             {acts.map((a) => (
               <div key={a.id} className="event-timeline-row">
                 <span className="relay-time">{when(startMs(a)) || "—"}</span>
-                <button className="link-button" onClick={() => onOpenActivity(a.id)} title="Go to this activity">
-                  {a.title}
-                </button>
-                <span className="settings-hint">
+                <span className="event-timeline-title">
+                  <ActivityTypeIcon type={a.activity_type} />
+                  <button className="link-button" onClick={() => onOpenActivity(a.id)} title="Go to this activity">
+                    {a.title}
+                  </button>
+                </span>
+                <span className="settings-hint event-timeline-detail">
                   {activityTypeLabel(a.activity_type)}
-                  {a.frequency ? ` · ${a.frequency}` : ""}
+                  {a.frequency && (
+                    <>
+                      {" · "}
+                      <BandChip mhz={mhzFromText(a.frequency)} />
+                      {a.frequency}
+                    </>
+                  )}
                 </span>
                 <span className={`event-state event-state-${a.state}`}>
                   {a.state === "active" ? "Open" : a.state === "closed" ? "Closed" : "Not started"}

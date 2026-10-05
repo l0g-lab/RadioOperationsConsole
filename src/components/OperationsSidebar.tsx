@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ActivityTypeIcon from "./ActivityTypeIcon";
 import type { Activity } from "../types";
 import { isLog } from "../activityTypes";
 import { pad2, splitScheduledAt } from "../utils";
@@ -44,8 +45,8 @@ function eventRows(acts: Activity[], now: Date): SidebarRow[] {
     .map((a) => {
       const t = startMs(a);
       const when = t == null ? "" : `${shortDate(new Date(t), now)} ${stampTime(new Date(t).toISOString())}`;
-      const state = a.state === "active" ? " (open)" : a.state === "closed" ? " (closed)" : "";
-      return { activity: a, label: withPrefix(when, a.title) + state };
+      const status = a.state === "active" ? "open" : a.state === "closed" ? "closed" : undefined;
+      return { activity: a, label: withPrefix(when, a.title), status };
     });
 }
 
@@ -53,6 +54,8 @@ export interface SidebarRow {
   activity: Activity;
   /** What the row says, e.g. "Tue 10/6 19:00 — Tuesday Net". */
   label: string;
+  /** Shown after it, colored: "open" in green, "closed" dimmed (where the group doesn't already say). */
+  status?: "open" | "closed";
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -127,7 +130,7 @@ export function groupActivities(
   const nets = shown.filter((a) => !isLog(a.activity_type) && !a.event_id);
 
   for (const a of [...logs].sort((x, y) => x.title.localeCompare(y.title))) {
-    groups.logs.push({ activity: a, label: a.state === "closed" ? `${a.title} (closed)` : a.title });
+    groups.logs.push({ activity: a, label: a.title, status: a.state === "closed" ? "closed" : undefined });
   }
   for (const a of nets.filter((a) => a.state === "active")) {
     const since = stampTime(a.opened_at);
@@ -252,13 +255,17 @@ export default function OperationsSidebar({
             <summary>
               {groupLabel(id, rows)} <span className="sidebar-count">({rows.length})</span>
             </summary>
-            {rows.map(({ activity: a, label }) => (
+            {rows.map(({ activity: a, label, status }) => (
               <div
                 key={a.id}
-                className={"selectable" + (selectedActivityId === a.id ? " selected" : "")}
+                className={"selectable sidebar-activity" + (selectedActivityId === a.id ? " selected" : "")}
                 onClick={() => onSelectActivity(a.id)}
               >
-                {label}
+                <ActivityTypeIcon type={a.activity_type} />
+                <span>
+                  {label}
+                  {status && <span className={`sidebar-status sidebar-status-${status}`}> ({status})</span>}
+                </span>
               </div>
             ))}
           </details>

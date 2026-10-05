@@ -5,6 +5,7 @@ import { formatCoords } from "../../geo";
 import { CTCSS_TONES, DCS_CODES, formatMhz, formatRepeater, inputMhz, repeaterMatches, suggestedOffset, tuningDetails } from "../../repeaters";
 import LocationPicker from "../LocationPicker";
 import { Archive, Info, Pencil, RadioTower } from "lucide-react";
+import BandChip from "../BandChip";
 
 interface Props {
   repeaters: Repeater[];
@@ -407,7 +408,7 @@ export default function RepeatersPanel({
           onChange={(e) => setSearch(e.target.value)}
         />
       )}
-      <div className="operator-list repeater-list">
+      <div className="operator-list repeater-list repeater-list-repeaters">
         {repeaters.length === 0 && editing !== "new" && (
           <p className="checkin-empty-state">
             No repeaters yet. Add the ones your nets use, then pick them when creating an activity.
@@ -430,7 +431,10 @@ export default function RepeatersPanel({
               <div className="operator-row repeater-row">
                 <span className="repeater-row-text" title={formatRepeater(r)}>
                   <strong className="repeater-row-name">{r.name}</strong>
-                  <span className="checkin-row-mono repeater-row-detail">{formatMhz(r.output_mhz)}</span>
+                  <span className="repeater-row-freq">
+                    <BandChip mhz={r.output_mhz} keepSpace />
+                    <span className="checkin-row-mono repeater-row-detail">{formatMhz(r.output_mhz)}</span>
+                  </span>
                 </span>
                 <span className="operator-row-actions repeater-row-actions">
                   <button

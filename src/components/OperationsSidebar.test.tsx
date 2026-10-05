@@ -55,7 +55,8 @@ const ACTIVITIES = [
   activity("l2", "HF Log", "station_log", "closed"),
 ];
 
-const labels = (rows: { label: string }[]) => rows.map((r) => r.label);
+const labels = (rows: { label: string; status?: string }[]) =>
+  rows.map((r) => (r.status ? `${r.label} (${r.status})` : r.label));
 
 describe("groupActivities", () => {
   it("groups by what's happening: open, station logs, upcoming, closed", () => {

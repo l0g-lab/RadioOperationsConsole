@@ -17,7 +17,8 @@ import type { ActivityPrefill } from "../operations/activityPrefill";
 import { shortMiles } from "../checkins/roster/shared";
 import { CalendarClock, Info, Play } from "lucide-react";
 import ActivityTypeIcon from "../ActivityTypeIcon";
-import { bandOf, mhzFromText } from "../../bands";
+import { mhzFromText } from "../../bands";
+import BandChip from "../BandChip";
 
 interface Props {
   operators: Operator[];
@@ -148,16 +149,9 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
   /** The repeater and its frequency on one line ("W4ABC Orlando", "146.940 -0.600 PL 100.0"), or the typed frequency. */
   function tuneLine(l: NetListing) {
     const r = repeaterOf(l);
-    const band = bandOf(r ? r.output_mhz : mhzFromText(l.frequency));
     return (
       <span className="net-row-where">
-        {band ? (
-          <span className={`band-chip band-${band.group}`} title={`${band.label} band`}>
-            {band.label}
-          </span>
-        ) : (
-          <span className="band-chip band-none" aria-hidden />
-        )}
+        <BandChip mhz={r ? r.output_mhz : mhzFromText(l.frequency)} keepSpace />
         {r && <span className="net-row-repeater">{r.name}{r.retired_at ? " (retired)" : ""}</span>}
         <span className="checkin-row-mono">{r ? formatRepeater(r) : l.frequency}</span>
       </span>

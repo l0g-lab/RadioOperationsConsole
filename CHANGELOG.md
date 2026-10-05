@@ -17,6 +17,10 @@ top. Each release's section here is also its description on the
   **70cm**, **10m**, **GMRS**…) shows which radio each net needs, an icon
   shows its type (SKYWARN stands out), a net starting within the hour is in
   amber in Coming up, and Today's heading is highlighted.
+- **The same band and type marks elsewhere:** the Repeaters list shows each
+  repeater's band (**2m**, **70cm**, **GMRS**…) before its frequency, and the
+  Activities list and an event's activities show each activity's type icon,
+  with *open* in green and *not started* in amber.
 
 ## [2.4.2] - 2026-10-05
 
