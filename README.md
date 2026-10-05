@@ -107,7 +107,7 @@ Install whichever suits you, or just run the plain binary from `src-tauri/target
 | Operations | Creating, editing, and deleting activities, and each activity's exports and forms (CSV, text, net summary, ICS 213 and 309); operators (and which is the default), the repeater directory, saved places |
 | Check-ins | Taking check-ins (with any traffic they have), the roster, the check-in map. Called **Contacts** for a station log and **Messages** for a relay station |
 | Spotter Reports | Hazard reports and the report map |
-| Weather | NWS alerts, forecast, radar |
+| Weather | Current conditions, forecast, NWS alerts and radar for your area |
 | APRS | Live APRS-IS feed for an area |
 | History | The audit trail of everything that changed |
 | Nets | Nets you can join, day by day for the coming week — when, how to tune in, how far the repeater is, how to check in; start an activity from one |

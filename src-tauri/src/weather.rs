@@ -39,6 +39,35 @@ pub struct ActivityWeather {
     pub alerts: Vec<String>,
 }
 
+/// What it's doing now at a place: the nearest station's latest reading
+/// (the Weather tab's Now, and a SKYWARN net's weather line).
+#[derive(Serialize, Debug, Clone, PartialEq)]
+pub struct CurrentWeather {
+    pub station_id: String,
+    pub station_name: String,
+    pub observed_at: String,
+    pub temp_c: Option<f64>,
+    pub conditions: String,
+    pub wind_dir_deg: Option<f64>,
+    pub wind_speed_kmh: Option<f64>,
+    pub wind_gust_kmh: Option<f64>,
+}
+
+/// The latest reading near a point, from the last 90 minutes; None if no
+/// nearby station has reported.
+pub async fn fetch_current(lat: f64, lon: f64) -> Result<Option<CurrentWeather>, Box<dyn Error>> {
+    Ok(fetch_observation_near(lat, lon, Utc::now()).await?.map(|(station_id, station_name, o)| CurrentWeather {
+        station_id,
+        station_name,
+        observed_at: o.observed_at.to_rfc3339(),
+        temp_c: o.temp_c,
+        conditions: o.conditions,
+        wind_dir_deg: o.wind_dir_deg,
+        wind_speed_kmh: o.wind_speed_kmh,
+        wind_gust_kmh: o.wind_gust_kmh,
+    }))
+}
+
 /// A station's reading, before it's tied to an activity.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Observation {

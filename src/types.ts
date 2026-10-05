@@ -559,6 +559,22 @@ export interface ActivitySummary {
   weather: ActivityWeather[];
 }
 
+/** A weather station's reading: temperature, conditions, wind (km/h, as NWS gives it). */
+export interface WeatherReading {
+  temp_c: number | null;
+  conditions: string;
+  wind_dir_deg: number | null;
+  wind_speed_kmh: number | null;
+  wind_gust_kmh: number | null;
+}
+
+/** What it's doing now at a place: the nearest station's latest reading. */
+export interface CurrentWeather extends WeatherReading {
+  station_id: string;
+  station_name: string;
+  observed_at: string;
+}
+
 export type WeatherOutcome = "ok" | "offline" | "no_place" | "error" | "no_reading";
 
 /** The weather read as an activity started or ended (net-weather.md). */

@@ -46,8 +46,9 @@ regardless of which of those they type.
   resolution time) MUST persist across application restarts as an
   application setting.
 - **NWSA-005:** The operator MUST be able to change or clear the configured
-  area at any time. Clearing it MUST revert to fetching all active alerts
-  nationwide (the prior, pre-feature behavior) rather than an error state.
+  area at any time, from a **Change area** link beside the tab's heading
+  ("Weather — Orlando, FL"). With no area set, the tab MUST ask for one and
+  fetch nothing: nationwide alerts (often hundreds) are no use to a net.
 - **NWSA-006:** A failed or no-match resolution MUST be reported clearly at
   the point of entry, and MUST NOT silently leave a stale or incorrect area
   configured.
@@ -60,15 +61,26 @@ regardless of which of those they type.
 - **NWSA-011:** Fetching alerts MUST continue to work when no NWS API key is
   configured (`VISION-005`) — the key is optional and improves the
   connector but never gates it.
-- **NWSA-012:** A failed alert fetch (offline, NWS outage) MUST be reported
-  on the Weather tab. Unlike QRZ's ambient auto-lookup (`QRZ-030`), fetching
-  alerts is an explicit, on-demand operator action, so surfacing the failure
-  is correct here rather than staying silent.
-- **NWSA-013:** Opening the alerts section is the operator's request to
-  fetch: it MUST fetch at once, with no second click. Once open, the section
-  MUST offer a Refresh that fetches again and MUST say when alerts were last
-  fetched. Hiding and reopening fetches again. Nothing fetches while the
-  section is closed or in the background.
+- **NWSA-012:** A failed fetch (NWS outage, no connection) MUST be reported
+  where its section would be, as "the weather service couldn't be reached",
+  without NWS's own error text (on hovering only).
+- **NWSA-013:** Opening the Weather tab is the operator's request: it MUST
+  fetch the current conditions, forecast, and alerts at once, with no further
+  click. One Refresh beside the heading fetches all three again, and the
+  heading MUST say when they were last updated. Nothing fetches while
+  working offline (the tab says so), on any other tab, or in the background.
+- **NWSA-014:** The tab MUST lay its sections out in two columns, like the
+  Operations tab: **Now** and **Forecast** on the left; **Alerts** and
+  **Radar** on the right.
+- **NWSA-015:** **Now** MUST show the nearest NWS station's latest reading
+  (within 90 minutes): temperature in °F, conditions, wind in mph with gusts,
+  and which station reported and when (`WX-003`'s lookup).
+- **NWSA-016:** Each alert MUST take one line: its event (red for a warning or
+  emergency, amber for a watch, advisory, or statement, as the app marks what
+  needs acting on now), the counties it covers, and when it ends in local
+  time ("until 16:00", "until Tue 08:00"). Warnings come first, then by
+  severity, then the soonest to end. Clicking an alert MUST show NWS's text,
+  keeping its paragraphs; the heading MUST give the count.
 
 ## Current forecast
 
@@ -84,10 +96,11 @@ the coverage area is as relevant as active warnings.
   fallback — it is inherently tied to a point. When no area of interest is
   set, the Weather tab MUST say so plainly rather than offering a forecast
   fetch that cannot succeed.
-- **NWSA-022:** Fetching the forecast MUST be an explicit, on-demand
-  operator action (mirrors `NWSA-012`'s treatment of alerts), not automatic
-  or backgrounded. Opening the forecast section is that action, with the same
-  fetch-on-open, Refresh, and last-fetched behavior as alerts (`NWSA-013`).
+- **NWSA-022:** The forecast is fetched with the rest (`NWSA-013`). Each
+  period MUST take one line — icon, name, temperature, chance of rain, wind,
+  and the short forecast, colored by its conditions — with an ⓘ button that
+  opens NWS's full wording under it. The first four periods (today and tomorrow) MUST show, with
+  **Show all 7 days** for the rest.
 - **NWSA-023:** A failed forecast fetch (offline, NWS outage, no area set)
   MUST be reported clearly on the Weather tab rather than failing silently.
 
@@ -95,8 +108,9 @@ the coverage area is as relevant as active warnings.
 
 - Multiple simultaneous coverage areas (e.g. a club's multi-county
   territory) — deferred; this slice supports one configured area at a time.
-- Automatic or background periodic re-fetching of alerts — fetching remains
-  an explicit operator action.
+- Automatic or background periodic re-fetching of alerts — fetching happens
+  on opening the tab and on Refresh only.
+- Hourly forecasts, other data sources, and alert sounds or pop-ups.
 - Displaying the configured area on a map — the check-in location map
   (`CIMAP`) is a separate, unrelated view and this slice does not connect to
   it.

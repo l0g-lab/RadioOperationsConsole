@@ -532,34 +532,167 @@ details > summary {
    Weather tab — alerts, forecast, radar
    ============================================================ */
 
-.alert-list {
+/* The tab: a header with the area and Refresh, then two columns like
+   Operations — now and the forecast; alerts and radar. */
+.weather-tab {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-height: 320px;
-  overflow-y: auto;
+  gap: 10px;
 }
 
-.alert-card {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 8px;
+.weather-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+  align-items: start;
+  gap: 16px;
 }
 
-.alert-card h4 {
-  margin: 4px 0;
+.weather-area-editor {
+  margin-top: 6px;
+}
+
+.weather-now {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.weather-now-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: calc(18px * var(--font-scale));
+  font-weight: 600;
+}
+
+.weather-now-temp {
+  font-size: calc(28px * var(--font-scale));
+}
+
+/* Alerts: one line each, red for a warning and amber otherwise; click for
+   the full text. */
+.weather-alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weather-alert {
+  --al: var(--warning, #e8a33d);
+  border-left: 4px solid var(--al);
+  padding: 2px 0 4px 8px;
+}
+
+.weather-alert-danger {
+  --al: var(--danger, #e05252);
+}
+
+.weather-alert-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--text);
-  text-transform: none;
-  letter-spacing: normal;
+  text-align: left;
+  cursor: pointer;
+}
+
+.weather-alert-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.weather-alert-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--al);
+  flex-shrink: 0;
+}
+
+.weather-alert-event {
+  font-weight: 600;
+  color: var(--al);
+}
+
+.weather-alert-until {
+  margin-left: auto;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.weather-alert-area {
+  margin-left: 42px;
+  color: var(--text-dim);
+  font-size: calc(13px * var(--font-scale));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weather-alert-text {
+  margin: 4px 0 0 42px;
+  font-size: calc(13px * var(--font-scale));
+}
+
+.weather-alert-text p {
+  margin: 0 0 6px 0;
+}
+
+.weather-alert-headline {
+  font-weight: 600;
+}
+
+.weather-alert-instruction {
+  color: var(--al);
+}
+
+/* The forecast: one period a line. */
+.forecast-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.forecast-row {
+  --fc: var(--fc-cloudy);
+  display: grid;
+  grid-template-columns: 20px 9.5em auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0 3px 8px;
+  border-left: 4px solid var(--fc);
+}
+
+.forecast-detail {
+  grid-column: 2 / -1;
+  margin: 0 0 2px 0;
+  color: var(--text);
+  font-size: calc(13px * var(--font-scale));
+}
+
+.forecast-row .icon-button.active {
+  color: var(--accent);
+}
+
+.forecast-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.forecast-chips {
+  display: flex;
+  gap: 4px;
 }
 
 /* Forecast periods: a stripe and icon in the conditions' color, and chips
    for temperature, chance of rain, and wind (forecastStyle.ts). */
-.forecast-card {
-  --fc: var(--fc-cloudy);
-  border-left: 4px solid var(--fc);
-}
-
 .forecast-storm { --fc: var(--fc-storm); }
 .forecast-winter { --fc: var(--fc-winter); }
 .forecast-rain { --fc: var(--fc-rain); }
@@ -571,13 +704,6 @@ details > summary {
 .forecast-night.forecast-partly,
 .forecast-night.forecast-clear { --fc: var(--fc-night); }
 
-.forecast-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-}
-
 .forecast-icon {
   width: 20px;
   height: 20px;
@@ -586,9 +712,11 @@ details > summary {
 }
 
 .forecast-short {
-  margin: 6px 0 2px 0;
   color: var(--fc);
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .forecast-chip {
@@ -3051,4 +3179,30 @@ button.online-pill-working-offline:hover {
 /* The summary's weather: start and end on lines of their own. */
 .summary-weather-line + .summary-weather-line {
   margin-top: 2px;
+}
+
+/* A SKYWARN net's weather now, one line above its reports (WX-010). */
+.net-weather-now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+}
+
+.net-weather-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.net-weather-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.net-weather-danger {
+  color: var(--danger, #e05252);
+  font-weight: 600;
 }

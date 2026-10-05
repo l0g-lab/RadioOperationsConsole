@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  CurrentWeather,
   Activity,
   EventRecord,
   OperatorUsage,
@@ -463,9 +464,15 @@ export const setWeatherArea = (query: string) =>
 export const setWeatherAreaCoords = (lat: number, lon: number, label: string | null) =>
   invoke<AppSettings>("set_weather_area_coords", { lat, lon, label });
 
-export const fetchNwsAlerts = () => invoke<unknown>("fetch_nws_alerts");
+/** Active alerts at a point, or the weather area of interest without one. */
+export const fetchNwsAlerts = (point?: { lat: number; lon: number }) =>
+  invoke<unknown>("fetch_nws_alerts", { lat: point?.lat ?? null, lon: point?.lon ?? null });
 
 export const fetchNwsForecast = () => invoke<unknown>("fetch_nws_forecast");
+
+/** The nearest station's latest reading at a point, or null if none has reported. */
+export const fetchCurrentWeather = (lat: number, lon: number) =>
+  invoke<CurrentWeather | null>("fetch_current_weather", { lat, lon });
 
 // Live APRS-IS area feed (no API key — see aprs_is.rs). Packets arrive as
 // "aprs-is-packet" events, not as this call's return value.

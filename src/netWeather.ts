@@ -5,7 +5,7 @@
  */
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
-import type { ActivityWeather, WeatherOutcome } from "./types";
+import type { ActivityWeather, WeatherOutcome, WeatherReading } from "./types";
 
 const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 
@@ -16,22 +16,24 @@ export function compassPoint(deg: number): string {
 
 const mph = (kmh: number) => Math.round(kmh / 1.609344);
 
+/** 26 -> "79°F". */
+export function fahrenheit(c: number): string {
+  return `${Math.round((c * 9) / 5 + 32)}°F`;
+}
+
+/** "wind S 15 mph gusting 25", "calm", or "" when the station gave no wind. */
+export function windText(w: WeatherReading): string {
+  if (w.wind_speed_kmh == null) return "";
+  const speed = mph(w.wind_speed_kmh);
+  if (speed === 0) return "calm";
+  const from = w.wind_dir_deg != null ? `${compassPoint(w.wind_dir_deg)} ` : "";
+  const gust = w.wind_gust_kmh != null && mph(w.wind_gust_kmh) > speed ? ` gusting ${mph(w.wind_gust_kmh)}` : "";
+  return `wind ${from}${speed} mph${gust}`;
+}
+
 /** "79°F, Thunderstorms, wind S 15 mph gusting 25" — what the station reported. */
-export function weatherText(w: ActivityWeather): string {
-  const parts: string[] = [];
-  if (w.temp_c != null) parts.push(`${Math.round((w.temp_c * 9) / 5 + 32)}°F`);
-  if (w.conditions) parts.push(w.conditions);
-  if (w.wind_speed_kmh != null) {
-    const speed = mph(w.wind_speed_kmh);
-    if (speed === 0) {
-      parts.push("calm");
-    } else {
-      const from = w.wind_dir_deg != null ? `${compassPoint(w.wind_dir_deg)} ` : "";
-      const gust = w.wind_gust_kmh != null && mph(w.wind_gust_kmh) > speed ? ` gusting ${mph(w.wind_gust_kmh)}` : "";
-      parts.push(`wind ${from}${speed} mph${gust}`);
-    }
-  }
-  return parts.join(", ");
+export function weatherText(w: WeatherReading): string {
+  return [w.temp_c != null ? fahrenheit(w.temp_c) : "", w.conditions, windText(w)].filter(Boolean).join(", ");
 }
 
 /** Why there's no reading (WX-006); the service's own error isn't shown. */

@@ -3,6 +3,7 @@ import * as api from "../../api";
 import type { Activity, Checkin, Operator, SpotterReport } from "../../types";
 import SpotterReportForm from "../reports/SpotterReportForm";
 import SpotterReportRoster from "../reports/SpotterReportRoster";
+import NetWeatherNow from "../reports/NetWeatherNow";
 import ClosedBanner from "../lifecycle/ClosedBanner";
 
 interface Props {
@@ -66,6 +67,9 @@ export default function ReportsTab({
 
       {focusedActivity && (
         <>
+          {focusedActivity.activity_type === "skywarn" && focusedActivity.state === "active" && (
+            <NetWeatherNow activity={focusedActivity} />
+          )}
           {focusedActivity.state === "closed" ? (
             <ClosedBanner title={focusedActivity.title} />
           ) : (

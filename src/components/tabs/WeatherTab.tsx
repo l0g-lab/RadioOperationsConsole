@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
-import type { AppSettings } from "../../types";
+import type { AppSettings, CurrentWeather } from "../../types";
 import { ERR_OFFLINE } from "../../types";
-import { offlineMessage } from "../../workOffline";
+import { offlineMessage, useWorkOffline } from "../../workOffline";
 import { pad2 } from "../../utils";
 import RadarPanel from "../RadarPanel";
 import LocationPicker from "../LocationPicker";
 import {
+  ChevronDown,
+  ChevronRight,
   Cloud,
   CloudFog,
   CloudLightning,
@@ -14,10 +16,12 @@ import {
   CloudRain,
   CloudSnow,
   CloudSun,
-  Crosshair,
   Droplets,
+  Info,
+  MapPin,
   Moon,
   Radar,
+  RefreshCw,
   Sun,
   Thermometer,
   TriangleAlert,
@@ -25,17 +29,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { conditionOf, precipLevel, tempBand, windLevel, type Condition } from "../../forecastStyle";
-
-interface NwsFeature {
-  properties?: {
-    event?: string;
-    severity?: string;
-    areaDesc?: string;
-    headline?: string;
-    description?: string;
-    effective?: string;
-  };
-}
+import { fahrenheit, windText } from "../../netWeather";
+import { alertLevel, areaText, paragraphs, sortAlerts, untilText, type NwsAlert } from "../../nwsAlerts";
 
 interface NwsForecastPeriod {
   name?: string;
@@ -60,27 +55,28 @@ const CONDITION_ICONS: Record<Condition, { day: LucideIcon; night: LucideIcon; l
   other: { day: Cloud, night: Cloud, label: "" },
 };
 
+/** Periods shown before "Show all 7 days": today and tomorrow, day and night. */
+const FORECAST_SHOWN = 4;
+
+const hm = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
 /**
- * One forecast period, colored by its conditions, temperature, chance of
- * rain, and wind (forecastStyle.ts). The words are always there too, so
- * nothing depends on color alone.
+ * One forecast period on a line, colored by its conditions, temperature,
+ * chance of rain, and wind (forecastStyle.ts); the ⓘ button opens NWS's full
+ * wording under it. The words are always there too, so nothing depends on color.
  */
-function ForecastPeriod({ p }: { p: NwsForecastPeriod }) {
+function ForecastRow({ p }: { p: NwsForecastPeriod }) {
+  const [open, setOpen] = useState(false);
   const condition = conditionOf(p.shortForecast);
   const night = p.isDaytime === false;
   const { day, night: nightIcon, label } = CONDITION_ICONS[condition];
   const Icon = night ? nightIcon : day;
   const precip = p.probabilityOfPrecipitation?.value;
   return (
-    <div className={`alert-card forecast-card forecast-${condition}${night ? " forecast-night" : ""}`}>
-      <div className="forecast-head">
-        <Icon
-          className="forecast-icon"
-          role={label ? "img" : undefined}
-          aria-label={label || undefined}
-          aria-hidden={!label}
-        />
-        <strong>{p.name}</strong>
+    <div className={`forecast-row forecast-${condition}${night ? " forecast-night" : ""}`}>
+      <Icon className="forecast-icon" role={label ? "img" : undefined} aria-label={label || undefined} aria-hidden={!label} />
+      <strong className="forecast-name">{p.name}</strong>
+      <span className="forecast-chips">
         {p.temperature != null && (
           <span className={`forecast-chip temp-${tempBand(p.temperature, p.temperatureUnit)}`}>
             <Thermometer aria-hidden />
@@ -99,318 +95,370 @@ function ForecastPeriod({ p }: { p: NwsForecastPeriod }) {
             {p.windDirection} {p.windSpeed}
           </span>
         )}
-      </div>
-      {p.shortForecast && <p className="forecast-short">{p.shortForecast}</p>}
-      {p.detailedForecast && <p className="settings-hint">{p.detailedForecast}</p>}
+      </span>
+      <span className="forecast-short">{p.shortForecast}</span>
+      {p.detailedForecast ? (
+        <button
+          className={"icon-button" + (open ? " active" : "")}
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={`${open ? "Hide" : "Show"} the full forecast for ${p.name}`}
+          title={open ? "Hide details" : "Details"}
+        >
+          <Info />
+        </button>
+      ) : (
+        <span />
+      )}
+      {open && <p className="forecast-detail">{p.detailedForecast}</p>}
     </div>
   );
 }
 
-function severityColor(severity: string): string {
-  switch (severity.toLowerCase()) {
-    case "extreme":
-      return "#8B0000";
-    case "severe":
-      return "#FF4500";
-    case "moderate":
-      return "#FFA500";
-    case "minor":
-      return "#9ACD32";
-    default:
-      return "#808080";
-  }
-}
-
-/** "Fetched 19:04" (local time), so it's clear how fresh what's shown is. */
-function FetchedAt({ at }: { at: Date | null }) {
-  if (!at) return null;
+/** One alert on a line (red for a warning, amber otherwise); click for NWS's full text. */
+function AlertRow({ a }: { a: NwsAlert }) {
+  const [open, setOpen] = useState(false);
+  const level = alertLevel(a.event);
+  const until = untilText(a);
+  const area = areaText(a.areaDesc);
   return (
-    <span className="settings-hint">
-      Fetched {pad2(at.getHours())}:{pad2(at.getMinutes())}
-    </span>
+    <div className={`weather-alert weather-alert-${level}`}>
+      <button className="weather-alert-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {open ? <ChevronDown className="weather-alert-chevron" /> : <ChevronRight className="weather-alert-chevron" />}
+        <TriangleAlert className="weather-alert-icon" aria-hidden />
+        <span className="weather-alert-event">{a.event ?? "Alert"}</span>
+        {until && <span className="weather-alert-until">{until}</span>}
+      </button>
+      {area && (
+        <div className="weather-alert-area" title={a.areaDesc}>
+          {area}
+        </div>
+      )}
+      {open && (
+        <div className="weather-alert-text">
+          {a.headline && <p className="weather-alert-headline">{a.headline}</p>}
+          {paragraphs(a.description).map((t, i) => (
+            <p key={i}>{t}</p>
+          ))}
+          {paragraphs(a.instruction).map((t, i) => (
+            <p key={`i${i}`} className="weather-alert-instruction">
+              {t}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
+/** Setting the area: a place to look up online, or a spot on the map (works offline). */
+function AreaEditor({
+  settings,
+  onSaved,
+  onCancel,
+}: {
+  settings: AppSettings;
+  onSaved: (s: AppSettings) => void;
+  onCancel?: () => void;
+}) {
+  const [query, setQuery] = useState(settings.weather_area_query);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
+  const isSet = settings.weather_area_lat != null;
+
+  async function run(f: () => Promise<AppSettings>, failText: (e: unknown) => string) {
+    setBusy(true);
+    setError(null);
+    try {
+      onSaved(await f());
+      setPicking(false);
+    } catch (e) {
+      setError(failText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const setByName = () =>
+    run(
+      () => api.setWeatherArea(query),
+      (e) =>
+        e === ERR_OFFLINE
+          ? offlineMessage("Can't look that place up without an internet connection — pick it on the map instead.")
+          : String(e)
+    );
+
+  return (
+    <div className="weather-area-editor">
+      <p className="settings-hint">
+        A ZIP code, town, address, or landmark — or pick the spot on the map, which works offline.
+      </p>
+      <div className="inline-form">
+        <input
+          aria-label="Weather area"
+          placeholder="e.g. 32801, or Orlando, FL"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && query.trim()) setByName();
+          }}
+          autoFocus
+        />
+        <button className="primary" onClick={setByName} disabled={busy || !query.trim()}>
+          {busy ? "Looking up…" : "Set area"}
+        </button>
+        <button onClick={() => setPicking(true)} disabled={busy}>
+          <MapPin className="button-icon" /> Map
+        </button>
+        {isSet && (
+          <button onClick={() => run(() => api.setWeatherArea(""), String)} disabled={busy}>
+            Clear
+          </button>
+        )}
+        {onCancel && <button onClick={onCancel}>Cancel</button>}
+      </div>
+      {error && <p className="weather-area-error">{error}</p>}
+      {picking && (
+        <LocationPicker
+          title="Weather area"
+          initialLat={settings.weather_area_lat ?? null}
+          initialLon={settings.weather_area_lon ?? null}
+          initialLabel={settings.weather_area_label ?? ""}
+          onSave={(lat, lon, label) => run(() => api.setWeatherAreaCoords(lat, lon, label || null), String)}
+          onClose={() => setPicking(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/** One fetch's state: what came back, or that it failed (NWS's own message on hovering). */
+type Fetched<T> = { data: T } | { error: string } | null;
+
+function failed<T>(f: Fetched<T>): f is { error: string } {
+  return f != null && "error" in f;
+}
+
+/**
+ * The Weather tab: what it's doing now, the forecast, alerts, and radar for
+ * the weather area. Opening the tab fetches them (NWSA-013); Refresh fetches
+ * again. Radar loads only when asked for, being a large image that reloads.
+ */
 export default function WeatherTab() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [nwsLoading, setNwsLoading] = useState(false);
-  const [features, setFeatures] = useState<NwsFeature[] | null>(null);
-  const [nwsError, setNwsError] = useState<string | null>(null);
+  const [editingArea, setEditingArea] = useState(false);
+  const offline = useWorkOffline();
 
-  const [forecastLoading, setForecastLoading] = useState(false);
-  const [forecastPeriods, setForecastPeriods] = useState<NwsForecastPeriod[] | null>(null);
-  const [forecastError, setForecastError] = useState<string | null>(null);
-
-  const [areaQuery, setAreaQuery] = useState("");
-  const [areaResolving, setAreaResolving] = useState(false);
-  const [areaError, setAreaError] = useState<string | null>(null);
-  const [showAreaPicker, setShowAreaPicker] = useState(false);
-
+  const [now, setNow] = useState<Fetched<CurrentWeather | null>>(null);
+  const [forecast, setForecast] = useState<Fetched<NwsForecastPeriod[]>>(null);
+  const [alerts, setAlerts] = useState<Fetched<NwsAlert[]>>(null);
+  const [loading, setLoading] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [showAllForecast, setShowAllForecast] = useState(false);
   const [showRadar, setShowRadar] = useState(false);
-  const [showForecast, setShowForecast] = useState(false);
-  const [showAlerts, setShowAlerts] = useState(false);
-  // When each was last fetched, shown beside its Refresh (NWSA-013).
-  const [alertsFetchedAt, setAlertsFetchedAt] = useState<Date | null>(null);
-  const [forecastFetchedAt, setForecastFetchedAt] = useState<Date | null>(null);
 
-  const areaSet = settings?.weather_area_lat != null;
-
-  // Opening a section is the request to fetch it, so it fetches at once
-  // (NWSA-013, NWSA-022); nothing fetches while a section is closed.
-  function toggleAlerts() {
-    const next = !showAlerts;
-    setShowAlerts(next);
-    if (next) handleFetchNws();
-  }
-
-  function toggleForecast() {
-    const next = !showForecast;
-    setShowForecast(next);
-    if (next && areaSet) handleFetchForecast();
-  }
+  const lat = settings?.weather_area_lat ?? null;
+  const lon = settings?.weather_area_lon ?? null;
+  const areaSet = lat != null && lon != null;
+  const areaName = settings ? settings.weather_area_query.trim() || settings.weather_area_label : "";
 
   useEffect(() => {
     api
       .getSettings()
-      .then((s) => {
-        setSettings(s);
-        setAreaQuery(s.weather_area_query);
-      })
+      .then(setSettings)
       .catch(() => setSettings(null));
   }, []);
 
-  async function handleFetchNws() {
-    setNwsLoading(true);
-    setNwsError(null);
-    try {
-      const v = (await api.fetchNwsAlerts()) as { features?: NwsFeature[] };
-      setFeatures(Array.isArray(v.features) ? v.features : []);
-      setAlertsFetchedAt(new Date());
-    } catch (e) {
-      setNwsError(String(e));
-    } finally {
-      setNwsLoading(false);
-    }
+  async function refresh() {
+    if (lat == null || lon == null) return;
+    setLoading(true);
+    const wrap = <T,>(p: Promise<T>): Promise<Fetched<T>> =>
+      p.then((data) => ({ data })).catch((e) => ({ error: String(e) }));
+    const [n, f, a] = await Promise.all([
+      wrap(api.fetchCurrentWeather(lat, lon)),
+      wrap(
+        api
+          .fetchNwsForecast()
+          .then((v) => (v as { properties?: { periods?: NwsForecastPeriod[] } }).properties?.periods ?? [])
+      ),
+      wrap(
+        api.fetchNwsAlerts().then((v) =>
+          sortAlerts(
+            ((v as { features?: { properties?: NwsAlert }[] }).features ?? []).map((x) => x.properties ?? {})
+          )
+        )
+      ),
+    ]);
+    setNow(n);
+    setForecast(f);
+    setAlerts(a);
+    setUpdatedAt(new Date());
+    setLoading(false);
   }
 
-  async function handleFetchForecast() {
-    setForecastLoading(true);
-    setForecastError(null);
-    try {
-      const v = (await api.fetchNwsForecast()) as { properties?: { periods?: NwsForecastPeriod[] } };
-      setForecastPeriods(v.properties?.periods ?? []);
-      setForecastFetchedAt(new Date());
-    } catch (e) {
-      setForecastError(String(e));
-    } finally {
-      setForecastLoading(false);
-    }
+  // Opening the tab, setting the area, or going back online fetches it all.
+  useEffect(() => {
+    if (areaSet && !offline) refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat, lon, offline]);
+
+  if (!settings) return null;
+
+  if (!areaSet) {
+    return (
+      <div className="panel">
+        <h3>
+          <CloudSun className="heading-icon" />
+          Weather
+        </h3>
+        <p>Set your area to see the current conditions, forecast, alerts, and radar there.</p>
+        <AreaEditor settings={settings} onSaved={setSettings} />
+      </div>
+    );
   }
 
-  async function handleSetArea() {
-    setAreaResolving(true);
-    setAreaError(null);
-    try {
-      const updated = await api.setWeatherArea(areaQuery);
-      setSettings(updated);
-      setAreaQuery(updated.weather_area_query);
-    } catch (e) {
-      setAreaError(
-        e === ERR_OFFLINE
-          ? offlineMessage(
-              "Can't resolve that location without an internet connection. Try again when online."
-            )
-          : String(e)
-      );
-    } finally {
-      setAreaResolving(false);
-    }
-  }
-
-  async function handleSaveAreaPin(lat: number, lon: number, label: string) {
-    setAreaResolving(true);
-    setAreaError(null);
-    try {
-      const updated = await api.setWeatherAreaCoords(lat, lon, label || null);
-      setSettings(updated);
-      setAreaQuery(updated.weather_area_query);
-      setShowAreaPicker(false);
-    } catch (e) {
-      setAreaError(String(e));
-    } finally {
-      setAreaResolving(false);
-    }
-  }
-
-  async function handleClearArea() {
-    setAreaResolving(true);
-    setAreaError(null);
-    try {
-      const updated = await api.setWeatherArea("");
-      setSettings(updated);
-      setAreaQuery("");
-    } catch (e) {
-      setAreaError(String(e));
-    } finally {
-      setAreaResolving(false);
-    }
-  }
+  const shownForecast = failed(forecast) || !forecast ? [] : forecast.data;
+  const alertList = alerts && !failed(alerts) ? alerts.data : null;
+  const unreachable = "The weather service couldn't be reached — try Refresh.";
 
   return (
-    <>
+    <div className="weather-tab">
       <div className="panel">
-        <h3><Crosshair className="heading-icon" />Area of Interest</h3>
-        <p className="settings-hint">
-          Enter a zip code, city/state, address, or landmark — or pick a point on a map or type
-          coordinates, which works without an internet connection. Alerts and radar below will be
-          scoped and centered on that location instead of the whole country. Leave it unset to
-          fetch all active alerts and show the national radar view.
-        </p>
-        <div className="inline-form">
-          <input
-            placeholder="e.g. 79936, or El Paso, TX"
-            value={areaQuery}
-            onChange={(e) => setAreaQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSetArea();
-            }}
-          />
-          <button onClick={handleSetArea} disabled={areaResolving || !areaQuery.trim()}>
-            {areaResolving ? "Resolving…" : "Set area"}
-          </button>
-          <button onClick={() => setShowAreaPicker(true)} disabled={areaResolving}>
-            Pick on map
-          </button>
-          {settings?.weather_area_lat != null && (
-            <button onClick={handleClearArea} disabled={areaResolving}>
-              Clear
+        <div className="panel-header-row">
+          <h3>
+            <CloudSun className="heading-icon" />
+            Weather — {areaName}
+          </h3>
+          <div className="checkin-roster-header-actions">
+            {updatedAt && !offline && <span className="settings-hint">Updated {hm(updatedAt)}</span>}
+            <button onClick={refresh} disabled={loading || offline}>
+              <RefreshCw className="button-icon" /> {loading ? "Updating…" : "Refresh"}
             </button>
-          )}
+            {!editingArea && (
+              <button className="link-button" onClick={() => setEditingArea(true)}>
+                Change area
+              </button>
+            )}
+          </div>
         </div>
-        {areaError && <p className="weather-area-error">{areaError}</p>}
-        {settings?.weather_area_lat != null && settings.weather_area_lon != null ? (
-          <p className="weather-area-status">
-            Scoped to: <strong>{settings.weather_area_label}</strong> (
-            {settings.weather_area_lat.toFixed(3)}, {settings.weather_area_lon.toFixed(3)})
-          </p>
-        ) : (
-          <p className="weather-area-status">
-            No area set — alerts and radar are unscoped (nationwide).
+        {editingArea && (
+          <AreaEditor
+            settings={settings}
+            onSaved={(s) => {
+              setSettings(s);
+              setEditingArea(false);
+            }}
+            onCancel={() => setEditingArea(false)}
+          />
+        )}
+        {offline && (
+          <p className="settings-hint">
+            {offlineMessage("")} The weather needs the internet.
           </p>
         )}
       </div>
 
-      <div className="panel">
-        <div className="panel-header-row">
-          <h3><CloudSun className="heading-icon" />Current Forecast (NWS)</h3>
-          <button className="link-button" onClick={toggleForecast}>
-            {showForecast ? "Hide forecast" : "Show forecast"}
-          </button>
-        </div>
-        {showForecast &&
-          (!areaSet ? (
-            <p className="checkin-empty-state">
-              Set an area of interest above to fetch its forecast — a forecast is always for a
-              specific place, unlike alerts.
-            </p>
-          ) : (
-            <>
-              <div className="inline-form">
-                <button
-                  onClick={handleFetchForecast}
-                  disabled={forecastLoading}
-                  aria-label="Refresh forecast"
-                >
-                  {forecastLoading ? "Fetching…" : "Refresh"}
-                </button>
-                <FetchedAt at={forecastFetchedAt} />
-              </div>
-              {forecastError && (
-                <p className="weather-area-error">Couldn't fetch forecast: {forecastError}</p>
+      {!offline && (
+        <div className="weather-workspace">
+          <div className="operations-column">
+            <div className="panel">
+              <h3>
+                <Thermometer className="heading-icon" />
+                Now
+              </h3>
+              {failed(now) ? (
+                <p className="weather-area-error" title={now.error}>
+                  {unreachable}
+                </p>
+              ) : now?.data ? (
+                <div className="weather-now">
+                  <div className="weather-now-main">
+                    {now.data.temp_c != null && <span className="weather-now-temp">{fahrenheit(now.data.temp_c)}</span>}
+                    <span>{now.data.conditions}</span>
+                  </div>
+                  {windText(now.data) && <div>{windText(now.data)}</div>}
+                  <div className="settings-hint">
+                    {now.data.station_id}
+                    {now.data.station_name && ` ${now.data.station_name}`} · reported{" "}
+                    {hm(new Date(now.data.observed_at))}
+                  </div>
+                </div>
+              ) : now ? (
+                <p className="settings-hint">No nearby weather station has reported in the last 90 minutes.</p>
+              ) : (
+                <p className="settings-hint">Loading…</p>
               )}
-              {forecastPeriods && forecastPeriods.length === 0 && (
-                <p className="checkin-empty-state">No forecast periods returned.</p>
+            </div>
+
+            <div className="panel">
+              <h3>
+                <CloudSun className="heading-icon" />
+                Forecast
+              </h3>
+              {failed(forecast) ? (
+                <p className="weather-area-error" title={forecast.error}>
+                  {unreachable}
+                </p>
+              ) : !forecast ? (
+                <p className="settings-hint">Loading…</p>
+              ) : shownForecast.length === 0 ? (
+                <p className="settings-hint">No forecast given for this area.</p>
+              ) : (
+                <>
+                  <div className="forecast-list">
+                    {(showAllForecast ? shownForecast : shownForecast.slice(0, FORECAST_SHOWN)).map((p, i) => (
+                      <ForecastRow p={p} key={i} />
+                    ))}
+                  </div>
+                  {shownForecast.length > FORECAST_SHOWN && (
+                    <button className="link-button" onClick={() => setShowAllForecast((v) => !v)}>
+                      {showAllForecast ? "Show fewer" : "Show all 7 days"}
+                    </button>
+                  )}
+                </>
               )}
-              {forecastPeriods && forecastPeriods.length > 0 && (
-                <div className="alert-list">
-                  {forecastPeriods.map((p, idx) => (
-                    <ForecastPeriod p={p} key={idx} />
+            </div>
+          </div>
+
+          <div className="operations-column">
+            <div className="panel">
+              <h3>
+                <TriangleAlert className="heading-icon heading-icon-warning" />
+                Alerts{alertList && alertList.length > 0 ? ` (${alertList.length})` : ""}
+              </h3>
+              {failed(alerts) ? (
+                <p className="weather-area-error" title={alerts.error}>
+                  {unreachable}
+                </p>
+              ) : !alertList ? (
+                <p className="settings-hint">Loading…</p>
+              ) : alertList.length === 0 ? (
+                <p className="settings-hint">No alerts in effect.</p>
+              ) : (
+                <div className="weather-alert-list">
+                  {alertList.map((a, i) => (
+                    <AlertRow a={a} key={`${a.event}-${i}`} />
                   ))}
                 </div>
               )}
-            </>
-          ))}
-      </div>
-
-      <div className="panel">
-        <div className="panel-header-row">
-          <h3><TriangleAlert className="heading-icon heading-icon-warning" />Active Alerts (NWS)</h3>
-          <button className="link-button" onClick={toggleAlerts}>
-            {showAlerts ? "Hide alerts" : "Show alerts"}
-          </button>
-        </div>
-        {showAlerts && (
-          <>
-            <div className="inline-form">
-              <button onClick={handleFetchNws} disabled={nwsLoading} aria-label="Refresh alerts">
-                {nwsLoading ? "Fetching…" : "Refresh"}
-              </button>
-              <FetchedAt at={alertsFetchedAt} />
             </div>
-            {nwsError && <p className="weather-area-error">Couldn't fetch alerts: {nwsError}</p>}
-            {features && features.length === 0 && (
-              <p className="checkin-empty-state">No active alerts found.</p>
-            )}
-            {features && features.length > 0 && (
-              <div className="alert-list">
-                {features.map((feat, idx) => {
-                  const p = feat.properties ?? {};
-                  const severity = p.severity ?? "Unknown";
-                  return (
-                    <div className="alert-card" key={idx}>
-                      <div>
-                        <span style={{ color: severityColor(severity) }}>{severity}</span>
-                        {p.event && <span> — {p.event}</span>}
-                        {p.areaDesc && <span> — {p.areaDesc}</span>}
-                      </div>
-                      {p.headline && <h4>{p.headline}</h4>}
-                      {p.description && <p>{p.description}</p>}
-                      {p.effective && <p>Effective: {p.effective}</p>}
-                    </div>
-                  );
-                })}
+
+            <div className="panel">
+              <div className="panel-header-row">
+                <h3>
+                  <Radar className="heading-icon" />
+                  Radar
+                </h3>
+                <button className="link-button" onClick={() => setShowRadar((v) => !v)}>
+                  {showRadar ? "Hide radar" : "Show radar"}
+                </button>
               </div>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="panel">
-        <div className="panel-header-row">
-          <h3><Radar className="heading-icon" />Radar</h3>
-          <button className="link-button" onClick={() => setShowRadar((v) => !v)}>
-            {showRadar ? "Hide radar" : "Show radar"}
-          </button>
+              {showRadar && <RadarPanel centerLat={lat} centerLon={lon} />}
+            </div>
+          </div>
         </div>
-        {showRadar && (
-          <RadarPanel
-            centerLat={settings?.weather_area_lat ?? null}
-            centerLon={settings?.weather_area_lon ?? null}
-          />
-        )}
-      </div>
-
-      {showAreaPicker && (
-        <LocationPicker
-          title="Weather area of interest"
-          initialLat={settings?.weather_area_lat ?? null}
-          initialLon={settings?.weather_area_lon ?? null}
-          initialLabel={settings?.weather_area_label ?? ""}
-          onSave={handleSaveAreaPin}
-          onClear={settings?.weather_area_lat != null ? handleClearArea : undefined}
-          onClose={() => setShowAreaPicker(false)}
-        />
       )}
-    </>
+    </div>
   );
 }

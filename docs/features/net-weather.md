@@ -49,6 +49,15 @@ in the summary.
   before weather was recorded show no Weather line.
 - **WX-007:** Working offline, nothing MUST be fetched.
 
+## A SKYWARN net's weather now
+
+- **WX-010:** While a SKYWARN net is open, the Spotter Reports tab MUST show
+  one line above the report form: the weather now at the repeater (else net
+  control) — temperature, conditions, wind — and the alerts in effect there,
+  warnings in red and others in amber. It is fetched when the tab is shown
+  and on its Refresh, and says why when there is none (no location, working
+  offline, or the weather service couldn't be reached), as `WX-006` does.
+
 ## Not included
 
 - Filling in a missed reading later (NWS keeps about a week of reports).

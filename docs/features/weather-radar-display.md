@@ -80,8 +80,8 @@ unreliable in practice inside this application's webview.
   the image MUST be NWS's per-station loop for the NEXRAD station nearest
   the resolved coordinates, using the existing offline station table (no
   network lookup required to pick the station).
-- **RADAR-005:** When no weather area of interest is configured, the image
-  MUST be NWS's national (`CONUS`) loop.
+- **RADAR-005:** Radar is shown only once a weather area of interest is
+  configured (`NWSA-005`); until then the tab asks for one.
 - **RADAR-006:** The operator MUST be able to dismiss the radar view and
   return to the rest of the Weather tab without side effects on any other
   application state.

@@ -73,27 +73,48 @@ pub fn set_weather_area_coords(
     Ok(settings)
 }
 
+/// Active NWS alerts at a point: the one given (a net's repeater, say), or
+/// else the weather area of interest. Never nationwide: with neither, it
+/// errs, as the forecast does (NWSA-021).
 #[tauri::command]
-pub async fn fetch_nws_alerts(state: State<'_, AppState>) -> Result<Value, String> {
+pub async fn fetch_nws_alerts(
+    state: State<'_, AppState>,
+    lat: Option<f64>,
+    lon: Option<f64>,
+) -> Result<Value, String> {
     if crate::net::working_offline() {
         return Err(crate::net::WORKING_OFFLINE_MESSAGE.to_string());
     }
-    let (key, point) = {
+    let (key, area) = {
         let settings = state.settings.lock().unwrap();
         let key = if settings.nws_api_key.is_empty() {
             None
         } else {
             Some(settings.nws_api_key.clone())
         };
-        let point = match (settings.weather_area_lat, settings.weather_area_lon) {
+        let area = match (settings.weather_area_lat, settings.weather_area_lon) {
             (Some(lat), Some(lon)) => Some((lat, lon)),
             _ => None,
         };
-        (key, point)
+        (key, area)
     };
-    connectors::fetch_nws_alerts(key.as_deref(), point)
+    let point = match (lat, lon) {
+        (Some(lat), Some(lon)) => (lat, lon),
+        _ => area.ok_or_else(|| "No area of interest set.".to_string())?,
+    };
+    connectors::fetch_nws_alerts(key.as_deref(), Some(point))
         .await
         .map_err(|e| e.to_string())
+}
+
+/// What it's doing now at a point: the nearest NWS station's latest reading,
+/// or None when none nearby has reported in the last 90 minutes.
+#[tauri::command]
+pub async fn fetch_current_weather(lat: f64, lon: f64) -> Result<Option<crate::weather::CurrentWeather>, String> {
+    if crate::net::working_offline() {
+        return Err(crate::net::WORKING_OFFLINE_MESSAGE.to_string());
+    }
+    crate::weather::fetch_current(lat, lon).await.map_err(|e| e.to_string())
 }
 
 /// Fetches the current forecast for the configured weather area of

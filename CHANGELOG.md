@@ -6,7 +6,19 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Changed
+- **The Weather tab is simpler.** Opening it shows everything at once — no
+  more Show buttons: **Now** (what the nearest weather station is reporting),
+  the **Forecast** one line per period (today and tomorrow, with *Show all 7
+  days*; ⓘ opens a period's full wording), and **Alerts** one line each — warnings in red, watches and
+  advisories in amber, most serious first, with when each ends; click one for
+  the full text. One **Refresh** updates it all. Your area is in the heading
+  with a *Change area* link, and with no area set the tab asks for one rather
+  than listing alerts for the whole country. Radar is still one click away.
+
 ### Added
+- **Weather now on a SKYWARN net's Spotter Reports tab:** one line with the
+  conditions at the repeater and any alerts in effect there, with Refresh.
 - **Weather in the net summary.** As a net starts and as it ends, the app
   reads the weather at the repeater (or net control's location): temperature,
   conditions, wind, and any NWS alerts in effect, such as a Severe
