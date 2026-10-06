@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-10-05
+
 ### Changed
 - **Settings fits on one screen,** in two columns: Appearance and Online
   services on the left, Offline data and Backup on the right, with one heading
@@ -17,9 +19,6 @@ top. Each release's section here is also its description on the
   copies on one row with its status, size, and buttons, and the total. "Last
   backed up" is amber if you never have, or not for a month.
 
-### Fixed
-- **Changing your QRZ username or password** now takes effect at once; the
-  old login's session was being kept until it expired.
 - **The APRS tab shows stations, not a wall of packets.** The heading says
   the area and radius ("APRS — Orlando, FL · 45 mi") with a green **Live**
   and counts while connected. Beside a map fitted to the radius, each
@@ -30,6 +29,11 @@ top. Each release's section here is also its description on the
   map each station is one marker, labeled and colored by kind, with a trail
   if it's moving; click a station to find it. Radius choices are in miles,
   and the raw packets are a click away.
+
+### Fixed
+- **Changing your QRZ username or password** now takes effect at once; the
+  old login's session was being kept until it expired.
+
 
 ## [2.5.0] - 2026-10-05
 
@@ -445,7 +449,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.1...HEAD
+[2.5.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.2...v2.5.0
 [2.4.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.0...v2.4.1
