@@ -1,6 +1,6 @@
 # Radio Operations Console
 
-An offline-first desktop app for running amateur-radio nets, emergency communications activities, exercises, and SKYWARN activations. It runs on **Linux and Windows**.
+An offline-first desktop app for running amateur-radio nets, emergency communications activities, exercises, and SKYWARN activations. It runs on **Linux, Windows, and macOS**.
 
 It's an operations logger first, not a contest logbook: one app that handles a relaxed weekly net and a full severe-weather activation, so nobody has to juggle spreadsheets, paper, and a browser full of tabs. Everything core works with **no internet** — online services (QRZ, weather, APRS, map tiles) are add-ons that make it better when you have a connection, never requirements.
 
@@ -28,7 +28,7 @@ Coordinates can be shown as decimal degrees, degrees & decimal minutes, or degre
 
 ## Get it running
 
-**Just want to use the app?** Grab the installer for your platform from the [Releases page](../../releases) — `.msi` or `.exe` for Windows, `.deb`/`.rpm`/`.AppImage` for Linux — and skip to [Using it](#using-it). Windows installers aren't code-signed, so Windows may warn that the publisher is unknown before it lets you run one; that's expected for an unsigned open-source build.
+**Just want to use the app?** Grab the installer for your platform from the [Releases page](../../releases) — `.msi` or `.exe` for Windows, `.deb`/`.rpm`/`.AppImage` for Linux, `.dmg` for macOS (one universal build, works on Apple Silicon and Intel) — and skip to [Using it](#using-it). Windows installers aren't code-signed, so Windows may warn that the publisher is unknown before it lets you run one; macOS isn't notarized either, so it'll warn that the developer can't be verified (right-click the app and choose Open to run it anyway). Neither is a sign of tampering, just expected for an unsigned open-source build.
 
 **Building from source** takes a few minutes the first time (Rust compiles a lot), and the same steps work on both platforms. Build on the OS you want to run on — Tauri doesn't cross-compile.
 
@@ -72,6 +72,19 @@ winget install OpenJS.NodeJS.LTS
 Open a **new** terminal afterwards so the tools are on your PATH.
 </details>
 
+<details>
+<summary><strong>macOS</strong></summary>
+
+1. **Xcode Command Line Tools** — `xcode-select --install`.
+2. **Rust** — install from [rustup.rs](https://rustup.rs):
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+3. **Node.js** — install the LTS version from [nodejs.org](https://nodejs.org), or via [Homebrew](https://brew.sh): `brew install node`.
+
+Open a **new** terminal afterwards so the tools are on your PATH.
+</details>
+
 ### 2. Get the code and start it
 
 ```bash
@@ -95,8 +108,9 @@ The results land in `src-tauri/target/release/bundle/`:
 | --- | --- |
 | Linux | `.deb`, `.rpm`, and `.AppImage` |
 | Windows | `.msi` and `.exe` (NSIS) installers |
+| macOS | `.app` and `.dmg` (add `--target universal-apple-darwin` to `npm run tauri build` for a build that covers both Apple Silicon and Intel in one bundle; without it you get a binary for whichever chip you built on) |
 
-Install whichever suits you, or just run the plain binary from `src-tauri/target/release/`. Windows and Linux builds come from the same source; day-to-day development has been done on Linux, so if something is off on Windows, please open an issue.
+Install whichever suits you, or just run the plain binary from `src-tauri/target/release/`. All three platforms build from the same source; day-to-day development has been done on Linux, so if something is off on Windows or macOS, please open an issue.
 
 ## Using it
 

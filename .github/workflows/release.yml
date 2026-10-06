@@ -1,7 +1,7 @@
 name: Release
 
-# Builds installers for Linux and Windows and publishes them to the GitHub
-# Releases page.
+# Builds installers for Linux, Windows, and macOS and publishes them to the
+# GitHub Releases page.
 #
 # Trigger: push a tag like "v1.4.0" after `npm run version:set -- 1.4.0` and
 # giving the release its section in CHANGELOG.md (see CONTRIBUTING.md). The
@@ -48,6 +48,10 @@ jobs:
           # distributions too, not just whatever the runner happens to ship.
           - platform: ubuntu-22.04
           - platform: windows-latest
+          # Universal binary (Apple Silicon + Intel) in one bundle, same as
+          # a user downloading one .dmg regardless of which Mac they have.
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -66,6 +70,8 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
@@ -102,6 +108,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Radio Operations Console ${{ github.ref_name }}"
+          args: ${{ matrix.args }}
           releaseBody: |
             ${{ steps.notes.outputs.body }}
 
@@ -111,9 +118,12 @@ jobs:
 
             - **Linux:** `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), or `.AppImage` (runs on most distributions)
             - **Windows:** `.msi` or the `.exe` (NSIS) installer
+            - **macOS:** `.dmg` (one universal build, works on Apple Silicon and Intel)
 
-            Windows and Linux builds come from the same source. Windows installers are not code-signed, so
-            Windows may warn ("Unknown publisher" / SmartScreen) before you can run one — this is expected
-            for an unsigned open-source build, not a sign of tampering.
+            Windows, Linux, and macOS builds come from the same source. Windows installers are not code-signed,
+            so Windows may warn ("Unknown publisher" / SmartScreen) before you can run one; macOS is not
+            notarized, so it may warn that the developer can't be verified (right-click the app and choose
+            Open to run it anyway). Neither is a sign of tampering, just the cost of an unsigned open-source
+            build.
           releaseDraft: true
           prerelease: false
