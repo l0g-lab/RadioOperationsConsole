@@ -17,30 +17,49 @@ const STORED: AppSettings = {
 vi.mock("../../api", () => ({
   getSettings: vi.fn(() => Promise.resolve(STORED)),
   saveSettings: vi.fn(() => Promise.resolve()),
+  checkQrzLogin: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("../settings/BackupPanel", () => ({ default: () => null }));
 vi.mock("../settings/OfflineDataPanel", () => ({ default: () => null }));
-vi.mock("../settings/StoragePanel", () => ({ default: () => null }));
 
 import * as api from "../../api";
 import SettingsTab from "./SettingsTab";
 
-describe("SettingsTab save control", () => {
-  beforeEach(() => vi.mocked(api.saveSettings).mockClear());
+describe("SettingsTab (SET-020)", () => {
+  beforeEach(() => {
+    vi.mocked(api.saveSettings).mockClear();
+    vi.mocked(api.checkQrzLogin).mockReset();
+    vi.mocked(api.checkQrzLogin).mockResolvedValue();
+  });
 
-  it("flags unsaved changes after an edit and clears the flag on save", async () => {
+  it("saves a box as you leave it, only if it changed, and says so", async () => {
     const user = userEvent.setup();
     render(<SettingsTab />);
-    expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
+    const username = await screen.findByLabelText("QRZ username");
+    await user.click(username);
+    await user.tab();
+    expect(api.saveSettings).not.toHaveBeenCalled();
 
-    await user.type(screen.getByLabelText("QRZ username"), "N0CALL");
-    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Save settings" }));
-    expect(api.saveSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ qrz_username: "N0CALL" })
-    );
-    expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
+    await user.type(username, "N0CALL");
+    await user.tab();
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ qrz_username: "N0CALL" }));
     expect(screen.getByText("Saved")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Save settings|Reset to defaults/ })).not.toBeInTheDocument();
+  });
+
+  it("checks the QRZ login, saving it first, and says how it went", async () => {
+    const user = userEvent.setup();
+    render(<SettingsTab />);
+    const check = await screen.findByRole("button", { name: "Check login" });
+    expect(check).toBeDisabled();
+    await user.type(screen.getByLabelText("QRZ username"), "W0LAB");
+    await user.type(screen.getByLabelText("QRZ password"), "secret");
+    await user.click(check);
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ qrz_username: "W0LAB", qrz_password: "secret" }));
+    expect(await screen.findByText("✓ QRZ accepted the login for W0LAB")).toBeInTheDocument();
+
+    vi.mocked(api.checkQrzLogin).mockRejectedValue("Username/password incorrect");
+    await user.click(screen.getByRole("button", { name: "Check login" }));
+    expect(await screen.findByText("Username/password incorrect")).toBeInTheDocument();
   });
 });

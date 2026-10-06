@@ -147,6 +147,7 @@ fn main() {
             commands::clear_storage,
             commands::tile_cache_location,
             commands::lookup_qrz_callsign,
+            commands::check_qrz_login,
             commands::geocode_location,
         ])
         .run(tauri::generate_context!())

@@ -494,6 +494,9 @@ export const stopAprsIsStream = () => invoke<void>("stop_aprs_is_stream");
 export const lookupQrzCallsign = (call_sign: string) =>
   invoke<QrzLookupResponse | null>("lookup_qrz_callsign", { callSign: call_sign });
 
+/** Tries the saved QRZ username and password; rejects with QRZ's reason (or "offline"). */
+export const checkQrzLogin = () => invoke<void>("check_qrz_login");
+
 export const geocodeLocation = (query: string) =>
   invoke<GeocodeResult | null>("geocode_location", { query });
 

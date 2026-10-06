@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "../../api";
 import { clearTileCache, tileCacheUsage } from "../../offlineTileLayer";
 import type { StorageItem, StorageItemId } from "../../types";
+import { ArchiveRestore, BookUser, Download, Map as MapIcon, Milestone, type LucideIcon } from "lucide-react";
 
 type RowId = StorageItemId | "map-tiles";
 
@@ -13,11 +14,13 @@ interface RowDef {
   about: string;
   /** What clearing means for offline use, shown before confirming (STORE-003). */
   consequence: string;
+  icon: LucideIcon;
 }
 
 const ROWS: RowDef[] = [
   {
     id: "map-tiles",
+    icon: MapIcon,
     label: "Map tiles",
     unit: ["tile", "tiles"],
     about: "Saved as you view maps, so those areas work offline.",
@@ -25,6 +28,7 @@ const ROWS: RowDef[] = [
   },
   {
     id: "callsigns-amateur",
+    icon: BookUser,
     label: "Amateur call-sign file",
     unit: ["file", "files"],
     about: "The FCC amateur licenses, for lookups when QRZ isn't available.",
@@ -32,6 +36,7 @@ const ROWS: RowDef[] = [
   },
   {
     id: "callsigns-gmrs",
+    icon: BookUser,
     label: "GMRS call-sign file",
     unit: ["file", "files"],
     about: "The FCC GMRS licenses, for GMRS call-sign lookups.",
@@ -39,13 +44,15 @@ const ROWS: RowDef[] = [
   },
   {
     id: "road-data",
-    label: "Updated mile-marker road data",
+    icon: Milestone,
+    label: "Road updates",
     unit: ["road", "roads"],
-    about: "Roads you've updated from the Florida DOT.",
+    about: "Mile-marker roads you've updated from the Florida DOT.",
     consequence: "Mile-marker lookup goes back to the copy built into the app, which may be older.",
   },
   {
     id: "partial-downloads",
+    icon: Download,
     label: "Unfinished downloads",
     unit: ["file", "files"],
     about: "Kept so an interrupted call-sign download can resume.",
@@ -53,7 +60,8 @@ const ROWS: RowDef[] = [
   },
   {
     id: "restore-copies",
-    label: "Safety copies from restores and updates",
+    icon: ArchiveRestore,
+    label: "Safety copies",
     unit: ["copy", "copies"],
     about:
       "Your data as it was just before each restore or app update, in case something went wrong.",
@@ -69,11 +77,21 @@ function formatSize(bytes: number): string {
 type Usage = { files: number; bytes: number };
 
 /**
- * Everything the application keeps on this computer besides its records, with
- * sizes and a way to clear each (STORE-001–STORE-003). Map tiles live in the
+ * What the application keeps on this computer besides its records, with sizes
+ * and a way to clear each (STORE-001–STORE-003), as rows of the Offline data
+ * panel; the call-sign files have their own rows there. Map tiles live in the
  * webview's cache and are measured here; the rest comes from the backend.
+ * Rows with nothing stored are left out, except map tiles. The footer gives
+ * the total of everything, call-sign files included.
  */
-export default function StoragePanel({ onCleared }: { onCleared: () => void }) {
+export default function StoragePanel({
+  onCleared,
+  only,
+}: {
+  onCleared: () => void;
+  /** The rows to show; all of them if not given. */
+  only?: RowId[];
+}) {
   const [usage, setUsage] = useState<Partial<Record<RowId, Usage | null>>>({});
   /** The folder each item is kept in, so people can find it on disk. */
   const [locations, setLocations] = useState<Partial<Record<RowId, string>>>({});
@@ -140,22 +158,18 @@ export default function StoragePanel({ onCleared }: { onCleared: () => void }) {
 
   const total = Object.values(usage).reduce((sum, u) => sum + (u?.bytes ?? 0), 0);
 
+  const rows = ROWS.filter((r) => !only || only.includes(r.id));
+
   return (
-    <div className="panel">
-      <div className="panel-header-row">
-        <span className="settings-hint">
-          {loading ? "Measuring…" : `Total: ${formatSize(total)}`}
-        </span>
-        <button className="link-button" onClick={measure} disabled={loading}>
-          Refresh
-        </button>
-      </div>
-      {ROWS.map((row) => {
+    <>
+      {rows.map((row) => {
         const u = usage[row.id];
         const empty = !u || u.files === 0;
+        if (empty && row.id !== "map-tiles" && u !== undefined) return null;
         return (
           <div key={row.id} className="offline-pack-row" role="group" aria-label={row.label}>
             <div className="offline-pack-info">
+              <row.icon className="offline-row-icon" aria-hidden />
               <strong>{row.label}</strong>{" "}
               <span className="settings-hint">
                 {u === undefined
@@ -166,13 +180,9 @@ export default function StoragePanel({ onCleared }: { onCleared: () => void }) {
                       ? "Nothing stored"
                       : `${u.files.toLocaleString()} ${u.files === 1 ? row.unit[0] : row.unit[1]} · ${formatSize(u.bytes)}`}
               </span>
-              <div className="settings-hint">{row.about}</div>
-              {locations[row.id] && (
-                <div className="settings-hint storage-location">
-                  {row.id === "map-tiles" ? "Kept by the map view in: " : "Folder: "}
-                  <code>{locations[row.id]}</code>
-                </div>
-              )}
+              <div className="settings-hint" title={locations[row.id] ? `Kept in ${locations[row.id]}` : undefined}>
+                {row.about}
+              </div>
               {confirming === row.id && (
                 <div className="confirm-row">
                   <p>
@@ -202,6 +212,12 @@ export default function StoragePanel({ onCleared }: { onCleared: () => void }) {
         );
       })}
       {error && <p className="weather-area-error">{error}</p>}
-    </div>
+      <p className="settings-hint storage-total">
+        {loading ? "Measuring…" : `All offline data on this computer: ${formatSize(total)}`}{" "}
+        <button className="link-button" onClick={measure} disabled={loading}>
+          Refresh
+        </button>
+      </p>
+    </>
   );
 }

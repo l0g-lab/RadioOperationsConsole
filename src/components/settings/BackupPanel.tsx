@@ -31,6 +31,13 @@ function formatWhen(iso: string): string {
   return Number.isNaN(d.getTime()) ? "unknown" : d.toLocaleString();
 }
 
+/** A backup is due if there's never been one, or the last was over 30 days ago (SET-040). */
+export function backupDue(lastIso: string | null, now = new Date()): boolean {
+  if (!lastIso) return true;
+  const t = Date.parse(lastIso);
+  return Number.isNaN(t) || now.getTime() - t > 30 * 86_400_000;
+}
+
 function describe(s: BackupSummary): string {
   const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
   return [
@@ -127,10 +134,10 @@ export default function BackupPanel() {
       </h3>
       <div className="offline-pack-row">
         <div className="offline-pack-info">
-          <strong>Database</strong>{" "}
-          <span className="updated-badge">
-            Last backed up: <strong>{lastBackup ? formatWhen(lastBackup) : "never"}</strong>
-          </span>
+          <strong>Everything you've entered</strong>
+          <div className={backupDue(lastBackup) ? "backup-due" : "settings-hint"}>
+            Last backed up: {lastBackup ? formatWhen(lastBackup) : "never"}
+          </div>
         </div>
         <div className="inline-form">
           <button onClick={backUp} disabled={busy}>

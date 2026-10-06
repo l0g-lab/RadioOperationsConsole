@@ -22,7 +22,7 @@ export const CALLSIGN_DIRECTORIES: CallsignDirectoryDef[] = [
   {
     service: "amateur",
     packId: "callsigns-us",
-    title: "Amateur Call Signs (U.S., FCC)",
+    title: "Amateur call signs (FCC)",
     infoLabel: "the FCC amateur call-sign file",
     info: (
       <>
@@ -39,7 +39,7 @@ export const CALLSIGN_DIRECTORIES: CallsignDirectoryDef[] = [
   {
     service: "gmrs",
     packId: "callsigns-us-gmrs",
-    title: "GMRS Call Signs (U.S., FCC)",
+    title: "GMRS call signs (FCC)",
     infoLabel: "the FCC GMRS call-sign file",
     info: (
       <>
@@ -156,22 +156,16 @@ export default function CallsignDirectoryRow({
   }
 
   return (
-    <div className="offline-pack-row offline-calls-row">
+    <div className="offline-pack-row offline-calls-row" role="group" aria-label={def.title}>
       <div className="offline-pack-info">
-        <h3>
-          <BookUser className="heading-icon" />
-          {def.title}
-          <InfoToggle label={def.infoLabel}>{def.info}</InfoToggle>
-        </h3>
+        <BookUser className="offline-row-icon" aria-hidden />
+        <strong>{def.title}</strong>
+        <InfoToggle label={def.infoLabel}>{def.info}</InfoToggle>{" "}
         {status?.installed ? (
-          <>
-            <span className="updated-badge">
-              Last updated: <strong>{formatUpdated(status.generated_at)}</strong>
-            </span>
-            <div className="settings-hint">
-              {status.record_count.toLocaleString()} licensees · {formatMB(status.size_bytes)}
-            </div>
-          </>
+          <span className="settings-hint">
+            Updated {formatUpdated(status.generated_at)} · {status.record_count.toLocaleString()} licensees ·{" "}
+            {formatMB(status.size_bytes)}
+          </span>
         ) : (
           <span className="settings-hint">Not downloaded</span>
         )}
@@ -195,7 +189,7 @@ export default function CallsignDirectoryRow({
             This copy was downloaded before street addresses were included — Update to add them.
           </p>
         )}
-        {!progress && <p className="settings-hint">{def.sizeWarning}</p>}
+        {!progress && !status?.installed && <p className="settings-hint">{def.sizeWarning}</p>}
         {otherBusy && !progress && (
           <p className="settings-hint">Waiting for the other call-sign download to finish.</p>
         )}

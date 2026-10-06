@@ -18,7 +18,12 @@ fn for_save(current: &AppSettings, incoming: AppSettings) -> AppSettings {
 
 #[tauri::command]
 pub fn save_settings(state: State<AppState>, settings: AppSettings) -> Result<(), String> {
-    let merged = for_save(&state.settings.lock().unwrap(), settings);
+    let current = state.settings.lock().unwrap().clone();
+    let merged = for_save(&current, settings);
+    // New QRZ credentials: the session from the old ones mustn't be reused.
+    if merged.qrz_username != current.qrz_username || merged.qrz_password != current.qrz_password {
+        *state.qrz_session.lock().unwrap() = None;
+    }
     persist_settings(&state, &merged)
 }
 

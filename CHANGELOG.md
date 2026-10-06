@@ -7,6 +7,19 @@ top. Each release's section here is also its description on the
 ## [Unreleased]
 
 ### Changed
+- **Settings fits on one screen,** in two columns: Appearance and Online
+  services on the left, Offline data and Backup on the right, with one heading
+  per panel. Everything saves as you change it — the QRZ and NWS boxes as you
+  leave them, with a brief "Saved" — so the Save and Reset buttons are gone.
+  **Check login** tries your QRZ login there and then and says whether it
+  worked. Offline data and Storage are now one list: each call-sign file,
+  the mile-marker roads (each road under *Show roads*), map tiles, and safety
+  copies on one row with its status, size, and buttons, and the total. "Last
+  backed up" is amber if you never have, or not for a month.
+
+### Fixed
+- **Changing your QRZ username or password** now takes effect at once; the
+  old login's session was being kept until it expired.
 - **The APRS tab shows stations, not a wall of packets.** The heading says
   the area and radius ("APRS — Orlando, FL · 45 mi") with a green **Live**
   and counts while connected. Beside a map fitted to the radius, each

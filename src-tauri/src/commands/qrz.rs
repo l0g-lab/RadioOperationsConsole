@@ -19,6 +19,29 @@ pub struct QrzLookupResponse {
 /// simply isn't configured (QRZ-003), rather than showing a spurious error.
 pub const QRZ_ERR_NOT_CONFIGURED: &str = "not_configured";
 
+/// Tries logging in to QRZ with the saved username and password, for the
+/// Settings tab's Check button (QRZ-040): Ok when QRZ accepts them, else why
+/// not (QRZ's own reason, or offline). A good login's session is kept for
+/// lookups.
+#[tauri::command]
+pub async fn check_qrz_login(state: State<'_, AppState>) -> Result<(), String> {
+    let (username, password) = {
+        let settings = state.settings.lock().unwrap();
+        (settings.qrz_username.clone(), settings.qrz_password.clone())
+    };
+    if username.is_empty() || password.is_empty() {
+        return Err("Enter your QRZ username and password first.".to_string());
+    }
+    match connectors::qrz_login(&username, &password).await {
+        connectors::QrzLoginOutcome::Ok(key) => {
+            *state.qrz_session.lock().unwrap() = Some(key);
+            Ok(())
+        }
+        connectors::QrzLoginOutcome::Offline => Err(ERR_OFFLINE.to_string()),
+        connectors::QrzLoginOutcome::Error(e) => Err(e),
+    }
+}
+
 #[tauri::command]
 pub async fn lookup_qrz_callsign(
     state: State<'_, AppState>,

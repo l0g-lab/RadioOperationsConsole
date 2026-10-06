@@ -23,13 +23,14 @@ handing the computer to someone else.
 
 ## Requirements
 
-- **STORE-001:** Settings MUST have a section listing what the application
-  keeps on this computer beyond its records: cached map tiles, the amateur and
-  GMRS call-sign files, updated mile-marker road data, unfinished downloads,
-  and "before restore" safety copies.
+- **STORE-001:** Settings MUST list what the application keeps on this computer
+  beyond its records — cached map tiles, the amateur and GMRS call-sign files,
+  updated mile-marker road data, unfinished downloads, and "before restore"
+  safety copies — in the one Offline data list (`SET-030`), each once.
 - **STORE-002:** Each item MUST show its size and how many files or tiles it
-  holds, and the section MUST show the total. An item with nothing stored MUST
-  say so rather than be hidden.
+  holds, and the list MUST show the total of everything. An item with nothing
+  stored is left out, except map tiles (which say "Nothing stored"); the
+  call-sign files always have their row, saying "Not downloaded".
 - **STORE-003:** Each item MUST be clearable on its own, after a confirmation
   that says what clearing it means for offline use (for example, that map areas
   will be blank offline until visited again online). There is no single

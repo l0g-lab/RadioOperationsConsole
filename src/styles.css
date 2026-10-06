@@ -1543,23 +1543,6 @@ details > summary {
   max-width: 70ch;
 }
 
-.settings-section-heading {
-  margin: 18px 0 6px 0;
-}
-
-.settings-section-heading h2 {
-  font-size: calc(16px * var(--font-scale));
-  margin: 0;
-}
-
-.updated-badge {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 10px;
-  border: 1px solid var(--border, #888);
-  font-size: calc(12px * var(--font-scale));
-}
-
 .spotter-map-icon {
   background: none;
   border: none;
@@ -3783,4 +3766,80 @@ path.aprs-area {
   max-height: 240px;
   overflow-y: auto;
   font-size: calc(12px * var(--font-scale));
+}
+
+/* ---- Settings tab (SettingsTab.tsx) ---- */
+
+/* Two columns, like Operations: your preferences on the left, this
+   computer's data on the right. */
+.settings-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* An online service: its name, its fields lined up, and how it went. */
+.settings-service {
+  padding: 6px 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-service:last-of-type {
+  border-bottom: none;
+}
+
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 18em);
+  align-items: center;
+  gap: 6px 10px;
+  margin: 6px 0;
+}
+
+.settings-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--accent);
+  font-size: calc(12px * var(--font-scale));
+}
+
+.settings-saved svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Offline data: one list, each item with its status, size, and buttons. */
+.offline-row-icon {
+  width: 15px;
+  height: 15px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  color: var(--text-dim);
+}
+
+.offline-roads {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.offline-road {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0 2px 21px;
+}
+
+.storage-total {
+  margin: 6px 0 0;
+  text-align: right;
+}
+
+/* Never backed up, or not for a month: amber, still to do. */
+.backup-due {
+  color: var(--warning, #e8a33d);
+  font-weight: 600;
 }

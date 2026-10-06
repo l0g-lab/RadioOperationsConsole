@@ -18,8 +18,9 @@ import { COORD_FORMAT_LABELS, getCoordFormat, setCoordFormat, type CoordFormat }
 import InfoToggle from "../settings/InfoToggle";
 import BackupPanel from "../settings/BackupPanel";
 import OfflineDataPanel from "../settings/OfflineDataPanel";
-import StoragePanel from "../settings/StoragePanel";
-import { CloudAlert, CloudDownload, Globe, HardDrive, Package, Palette, Search } from "lucide-react";
+import { ERR_OFFLINE } from "../../types";
+import { offlineMessage } from "../../workOffline";
+import { Check, Globe, Palette } from "lucide-react";
 
 const DEFAULT_SETTINGS: AppSettings = {
   nws_api_key: "",
@@ -44,21 +45,25 @@ export default function SettingsTab({
   onFocusHandled?: () => void;
 } = {}) {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-  const [saved, setSaved] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  // What's saved, to tell whether leaving a box changed anything.
+  const [stored, setStored] = useState<AppSettings>(DEFAULT_SETTINGS);
+  // Which group was just saved ("qrz", "nws"), for its "Saved" note.
+  const [savedNote, setSavedNote] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [qrzCheck, setQrzCheck] = useState<{ kind: "checking" } | { kind: "ok" } | { kind: "error"; text: string } | null>(
+    null
+  );
   const [coordFormat, setCoordFormatState] = useState<CoordFormat>(getCoordFormat);
   const [themeMode, setThemeModeState] = useState<ThemeMode>(getThemeMode);
   const [font, setFontState] = useState<FontChoice>(getFontChoice);
   const [textSize, setTextSizeState] = useState<TextSize>(getTextSize);
-  // Downloading in Offline data changes what Storage measures, and clearing in
-  // Storage changes what Offline data shows: each remounts the other.
-  const [offlineKey, setOfflineKey] = useState(0);
-  const [storageKey, setStorageKey] = useState(0);
-
   useEffect(() => {
     api
       .getSettings()
-      .then(setSettings)
+      .then((s) => {
+        setSettings(s);
+        setStored(s);
+      })
       .catch(() => setSettings(DEFAULT_SETTINGS));
   }, []);
 
@@ -78,227 +83,237 @@ export default function SettingsTab({
 
   function updateField<K extends keyof AppSettings>(field: K, value: AppSettings[K]) {
     setSettings((s) => ({ ...s, [field]: value }));
-    setSaved(false);
-    setDirty(true);
+    setSavedNote(null);
+    if (field === "qrz_username" || field === "qrz_password") setQrzCheck(null);
   }
 
-  async function handleSave() {
-    await api.saveSettings(settings);
-    setSaved(true);
-    setDirty(false);
+  /** Saves on leaving a box, if anything changed (SET-020): no Save button to forget. */
+  async function saveIfChanged(group: string): Promise<boolean> {
+    if (JSON.stringify(settings) === JSON.stringify(stored)) return true;
+    try {
+      await api.saveSettings(settings);
+      setStored(settings);
+      setSavedNote(group);
+      setSaveError(null);
+      return true;
+    } catch (e) {
+      setSaveError(String(e));
+      return false;
+    }
   }
+
+  async function checkQrz() {
+    if (!(await saveIfChanged("qrz"))) return;
+    setQrzCheck({ kind: "checking" });
+    try {
+      await api.checkQrzLogin();
+      setQrzCheck({ kind: "ok" });
+    } catch (e) {
+      setQrzCheck({
+        kind: "error",
+        text: e === ERR_OFFLINE ? offlineMessage("Can't reach QRZ — check the internet connection.") : String(e),
+      });
+    }
+  }
+
+  const savedTag = (group: string) =>
+    savedNote === group && (
+      <span className="settings-saved">
+        <Check aria-hidden /> Saved
+      </span>
+    );
 
   return (
     <>
-      <div className="settings-section-heading">
-        <h2>
-          <Palette className="heading-icon" />
-          Appearance
-          <InfoToggle label="appearance">
-            Theme (light, dark or system), font, text size, and how coordinates are shown. Changes
-            apply right away and are remembered on this computer.
-          </InfoToggle>
-        </h2>
-      </div>
-      {/* One setting per row: labels in one column, dropdowns lined up and the
-          same width in the next, explanations after. */}
-      <div className="panel settings-grid">
-        <label htmlFor="pref-theme">Theme:</label>
-        <select
-          id="pref-theme"
-          value={themeMode}
-          onChange={(e) => {
-            const mode = e.target.value as ThemeMode;
-            setThemeModeState(mode);
-            setThemeMode(mode);
-          }}
-        >
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-        <span />
+      <div className="settings-columns">
+        <div className="operations-column">
+          <div className="panel">
+            <h3>
+              <Palette className="heading-icon" />
+              Appearance
+              <InfoToggle label="appearance">
+                Theme (light, dark or system), font, text size, and how coordinates are shown. Changes
+                apply right away and are remembered on this computer.
+              </InfoToggle>
+            </h3>
+            {/* One setting per row: labels in one column, dropdowns lined up and the
+                same width in the next, explanations after. */}
+            <div className="settings-grid">
+              <label htmlFor="pref-theme">Theme:</label>
+              <select
+                id="pref-theme"
+                value={themeMode}
+                onChange={(e) => {
+                  const mode = e.target.value as ThemeMode;
+                  setThemeModeState(mode);
+                  setThemeMode(mode);
+                }}
+              >
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+              <span />
 
-        <label htmlFor="pref-font">Font:</label>
-        <select
-          id="pref-font"
-          value={font}
-          onChange={(e) => {
-            const f = e.target.value as FontChoice;
-            setFontState(f);
-            setFontChoice(f);
-          }}
-        >
-          {(Object.keys(FONT_CHOICES) as FontChoice[]).map((f) => (
-            <option key={f} value={f}>
-              {FONT_CHOICES[f].label}
-            </option>
-          ))}
-        </select>
-        <div>
-          <InfoToggle label="font">
-            Atkinson Hyperlegible was designed by the Braille Institute so letters that look alike
-            (I, l and 1; O and 0) are easy to tell apart — handy for call signs. It comes with the
-            app. Wide uses Verdana on Windows and DejaVu Sans on Linux.
-          </InfoToggle>
+              <label htmlFor="pref-font">Font:</label>
+              <select
+                id="pref-font"
+                value={font}
+                onChange={(e) => {
+                  const f = e.target.value as FontChoice;
+                  setFontState(f);
+                  setFontChoice(f);
+                }}
+              >
+                {(Object.keys(FONT_CHOICES) as FontChoice[]).map((f) => (
+                  <option key={f} value={f}>
+                    {FONT_CHOICES[f].label}
+                  </option>
+                ))}
+              </select>
+              <div>
+                <InfoToggle label="font">
+                  Atkinson Hyperlegible was designed by the Braille Institute so letters that look alike
+                  (I, l and 1; O and 0) are easy to tell apart — handy for call signs. It comes with the
+                  app. Wide uses Verdana on Windows and DejaVu Sans on Linux.
+                </InfoToggle>
+              </div>
+
+              <label htmlFor="pref-text-size">Text size:</label>
+              <select
+                id="pref-text-size"
+                value={textSize}
+                onChange={(e) => {
+                  const size = e.target.value as TextSize;
+                  setTextSizeState(size);
+                  setTextSize(size);
+                }}
+              >
+                {(Object.keys(TEXT_SIZES) as TextSize[]).map((size) => (
+                  <option key={size} value={size}>
+                    {TEXT_SIZES[size].label}
+                  </option>
+                ))}
+              </select>
+              <div>
+                <InfoToggle label="text size">
+                  Changes the size of the text only. To make everything bigger or smaller, zoom with
+                  Ctrl+Shift and + / − (0 resets).
+                </InfoToggle>
+              </div>
+
+              <label htmlFor="pref-coords">Coordinates:</label>
+              <select
+                id="pref-coords"
+                value={coordFormat}
+                onChange={(e) => {
+                  const fmt = e.target.value as CoordFormat;
+                  setCoordFormatState(fmt);
+                  setCoordFormat(fmt);
+                }}
+              >
+                {(Object.keys(COORD_FORMAT_LABELS) as CoordFormat[]).map((f) => (
+                  <option key={f} value={f}>
+                    {COORD_FORMAT_LABELS[f]}
+                  </option>
+                ))}
+              </select>
+              <div>
+                <InfoToggle label="coordinate format">
+                  How coordinates are shown on the check-in, location and map screens. You can type
+                  coordinates in any of the three formats regardless of this choice.
+                </InfoToggle>
+              </div>
+            </div>
+          </div>
+
+          <div className="panel" id="settings-qrz">
+            <h3>
+              <Globe className="heading-icon" />
+              Online services
+              <InfoToggle label="online services">
+                Optional accounts and keys that add online features; the app works fully without them.
+                Each is saved as you leave its box.
+              </InfoToggle>
+            </h3>
+            <div className="settings-service">
+              <strong>
+                QRZ.com call-sign lookup
+                <InfoToggle label="QRZ.com lookup">
+                  Auto-fills name, QTH location, grid square, and address when a call sign is entered on
+                  the Check-ins tab, and seeds a new operator's default location from their call sign.
+                  Requires a QRZ.com subscription with XML/callbook data access. Leave blank to disable —
+                  the application works fully without it.
+                </InfoToggle>
+              </strong>
+              <div className="settings-form-grid">
+                <label htmlFor="qrz-username">Username</label>
+                <input
+                  id="qrz-username"
+                  aria-label="QRZ username"
+                  value={settings.qrz_username}
+                  onChange={(e) => updateField("qrz_username", e.target.value)}
+                  onBlur={() => saveIfChanged("qrz")}
+                />
+                <label htmlFor="qrz-password">Password</label>
+                <input
+                  id="qrz-password"
+                  type="password"
+                  aria-label="QRZ password"
+                  value={settings.qrz_password}
+                  onChange={(e) => updateField("qrz_password", e.target.value)}
+                  onBlur={() => saveIfChanged("qrz")}
+                />
+              </div>
+              <div className="inline-form">
+                <button
+                  onClick={checkQrz}
+                  disabled={!settings.qrz_username.trim() || !settings.qrz_password || qrzCheck?.kind === "checking"}
+                >
+                  {qrzCheck?.kind === "checking" ? "Checking…" : "Check login"}
+                </button>
+                {qrzCheck?.kind === "ok" && (
+                  <span className="qrz-status qrz-status-found" role="status">
+                    ✓ QRZ accepted the login for {settings.qrz_username.trim()}
+                  </span>
+                )}
+                {qrzCheck?.kind === "error" && (
+                  <span className="weather-area-error" role="status">
+                    {qrzCheck.text}
+                  </span>
+                )}
+                {qrzCheck == null && savedTag("qrz")}
+              </div>
+            </div>
+            <div className="settings-service">
+              <strong>
+                NWS weather API key
+                <InfoToggle label="weather alerts">
+                  The National Weather Service API is free and works with no key. Only set one if you
+                  have a specific reason to (e.g. a higher rate limit).
+                </InfoToggle>
+              </strong>
+              <div className="settings-form-grid">
+                <label htmlFor="nws-key">Key (optional)</label>
+                <input
+                  id="nws-key"
+                  aria-label="NWS API key"
+                  value={settings.nws_api_key}
+                  onChange={(e) => updateField("nws_api_key", e.target.value)}
+                  onBlur={() => saveIfChanged("nws")}
+                />
+              </div>
+              {savedTag("nws")}
+            </div>
+            {saveError && <p className="weather-area-error">Couldn't save: {saveError}</p>}
+          </div>
         </div>
 
-        <label htmlFor="pref-text-size">Text size:</label>
-        <select
-          id="pref-text-size"
-          value={textSize}
-          onChange={(e) => {
-            const size = e.target.value as TextSize;
-            setTextSizeState(size);
-            setTextSize(size);
-          }}
-        >
-          {(Object.keys(TEXT_SIZES) as TextSize[]).map((size) => (
-            <option key={size} value={size}>
-              {TEXT_SIZES[size].label}
-            </option>
-          ))}
-        </select>
-        <div>
-          <InfoToggle label="text size">
-            Changes the size of the text only. To make everything bigger or smaller, zoom with
-            Ctrl+Shift and + / − (0 resets).
-          </InfoToggle>
-        </div>
-
-        <label htmlFor="pref-coords">Coordinates:</label>
-        <select
-          id="pref-coords"
-          value={coordFormat}
-          onChange={(e) => {
-            const fmt = e.target.value as CoordFormat;
-            setCoordFormatState(fmt);
-            setCoordFormat(fmt);
-          }}
-        >
-          {(Object.keys(COORD_FORMAT_LABELS) as CoordFormat[]).map((f) => (
-            <option key={f} value={f}>
-              {COORD_FORMAT_LABELS[f]}
-            </option>
-          ))}
-        </select>
-        <div>
-          <InfoToggle label="coordinate format">
-            How coordinates are shown on the check-in, location and map screens. You can type
-            coordinates in any of the three formats regardless of this choice.
-          </InfoToggle>
+        <div className="operations-column">
+          <OfflineDataPanel />
+          <BackupPanel />
         </div>
       </div>
-
-      <div className="settings-section-heading">
-        <h2>
-          <Globe className="heading-icon" />
-          Online services
-          <InfoToggle label="online services">
-            Optional accounts and keys that add online features. The app works fully without them.
-            Changes here are saved with the Save button below.
-          </InfoToggle>
-        </h2>
-      </div>
-      <div className="panel" id="settings-qrz">
-        <h3>
-          <Search className="heading-icon" />
-          QRZ.com Call Sign Lookup
-          <InfoToggle label="QRZ.com lookup">
-            Auto-fills name, QTH location, grid square, and address when a call sign is entered on
-            the Check-ins tab, and seeds a new operator's default location from their call sign.
-            Requires a QRZ.com subscription with XML/callbook data access. Leave blank to disable —
-            the application works fully without it.
-          </InfoToggle>
-        </h3>
-        <div className="inline-form">
-          <label>Username:</label>
-          <input
-            aria-label="QRZ username"
-            value={settings.qrz_username}
-            onChange={(e) => updateField("qrz_username", e.target.value)}
-          />
-        </div>
-        <div className="inline-form">
-          <label>Password:</label>
-          <input
-            type="password"
-            aria-label="QRZ password"
-            value={settings.qrz_password}
-            onChange={(e) => updateField("qrz_password", e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="panel">
-        <h3>
-          <CloudAlert className="heading-icon" />
-          Weather Alerts (NWS)
-          <InfoToggle label="weather alerts">
-            The National Weather Service alerts API is free and works with no key. Only set one if
-            you have a specific reason to (e.g. a higher rate limit).
-          </InfoToggle>
-        </h3>
-        <div className="inline-form">
-          <label>API key (optional):</label>
-          <input
-            aria-label="NWS API key"
-            value={settings.nws_api_key}
-            onChange={(e) => updateField("nws_api_key", e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="panel">
-        <div className="inline-form">
-          <button className="primary" onClick={handleSave}>
-            Save settings
-          </button>
-          <button
-            onClick={() => {
-              setSettings(DEFAULT_SETTINGS);
-              setSaved(false);
-              setDirty(true);
-            }}
-          >
-            Reset to defaults
-          </button>
-          {dirty && <span className="unsaved-status">Unsaved changes</span>}
-          {saved && <span className="qrz-status qrz-status-found">Saved</span>}
-        </div>
-      </div>
-
-      <div className="settings-section-heading">
-        <h2>
-          <CloudDownload className="heading-icon" />
-          Offline data
-          <InfoToggle label="offline data">
-            Files kept on this computer so the app works with no internet. Update downloads the
-            latest from the public source while you're online, so you can take it to offline
-            locations.
-          </InfoToggle>
-        </h2>
-        <p className="settings-hint">These buttons take effect immediately — no need to save.</p>
-      </div>
-      <OfflineDataPanel key={offlineKey} onChanged={() => setStorageKey((k) => k + 1)} />
-
-      <div className="settings-section-heading">
-        <h2>
-          <HardDrive className="heading-icon" />
-          Storage on this computer
-          <InfoToggle label="storage on this computer">
-            Downloaded files and cached map tiles the app keeps so it works offline, with how much
-            space each takes. Clearing one frees the space; you can download or cache it again later
-            while online. Your activities and records aren't listed here and aren't affected.
-          </InfoToggle>
-        </h2>
-      </div>
-      <StoragePanel key={storageKey} onCleared={() => setOfflineKey((k) => k + 1)} />
-
-      <div className="settings-section-heading">
-        <h2><Package className="heading-icon" />Your data</h2>
-      </div>
-      <BackupPanel />
 
       <AppVersion />
     </>
@@ -326,20 +341,16 @@ function AppVersion() {
             ? update.message
             : null;
   return (
-    <div className="app-version">
-      <p className="settings-hint">
-        Radio Operations Console {version} · GPL-3.0-or-later · github.com/l0g-lab/RadioOperationsConsole
-      </p>
-      <p className="settings-hint">
-        <button
-          className="link-button"
-          onClick={() => checkForUpdate(true)}
-          disabled={update.kind === "checking" || update.kind === "downloading"}
-        >
-          Check for updates
-        </button>
-        {status && <span role="status"> {status}</span>}
-      </p>
-    </div>
+    <p className="app-version settings-hint">
+      Radio Operations Console {version} · GPL-3.0-or-later · github.com/l0g-lab/RadioOperationsConsole ·{" "}
+      <button
+        className="link-button"
+        onClick={() => checkForUpdate(true)}
+        disabled={update.kind === "checking" || update.kind === "downloading"}
+      >
+        Check for updates
+      </button>
+      {status && <span role="status"> {status}</span>}
+    </p>
   );
 }

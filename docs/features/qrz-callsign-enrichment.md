@@ -164,6 +164,12 @@ feel broken.
   timeout so that a lack of connectivity fails fast rather than hanging the
   lookup (and, transitively, the session state) indefinitely.
 
+- **QRZ-040:** Settings MUST offer **Check login**, which saves the username
+  and password and tries them with QRZ, saying "✓ QRZ accepted the login" in
+  green or QRZ's own reason in red, so a wrong login is found there rather
+  than at the next check-in. Changing the username or password MUST drop any
+  session from the old ones.
+
 ## Explicit non-goals for this slice
 
 - A persistent local call sign/directory cache. `STORAGE-010`-style

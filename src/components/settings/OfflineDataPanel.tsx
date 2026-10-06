@@ -5,7 +5,8 @@ import { ERR_OFFLINE } from "../../types";
 import { offlineMessage } from "../../workOffline";
 import InfoToggle from "./InfoToggle";
 import CallsignDirectoryRow, { CALLSIGN_DIRECTORIES } from "./CallsignDirectoryRow";
-import { Milestone } from "lucide-react";
+import StoragePanel from "./StoragePanel";
+import { CloudDownload, Milestone } from "lucide-react";
 
 // The backend gives up on its own within a minute; this is only a backstop
 // so the button can never sit on "Updating…" if something stalls.
@@ -21,28 +22,23 @@ function coverage(p: DataPackInfo): string {
   return `MM ${p.first_mile}–${p.last_mile}`;
 }
 
-/** Prominent "last updated" date, so it's obvious at a glance how fresh the data is. */
-function UpdatedBadge({ label, iso }: { label: string; iso: string }) {
-  return (
-    <span className="updated-badge">
-      {label}: <strong>{formatUpdated(iso)}</strong>
-    </span>
-  );
-}
-
 function formatUpdated(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "unknown" : d.toLocaleDateString();
 }
 
 /**
- * Offline data the app carries with it: mile-marker road data and the FCC
- * call-sign directories (amateur and GMRS).
- * Everything works from what's already on this machine; "Update" is the
- * online add-on that downloads the latest data from the public source and
- * rebuilds the local copy, so it can be taken to places with no internet.
+ * Everything kept on this computer so the app works offline, in one list
+ * (SET-030): the FCC call-sign directories (amateur and GMRS), the mile-marker
+ * road data, map tiles, unfinished downloads, and safety copies — each with
+ * its status and size, and Download, Update, or Clear. Everything works from
+ * what's already here; Update downloads the latest from the public source.
  */
-export default function OfflineDataPanel({ onChanged }: { onChanged?: () => void }) {
+export default function OfflineDataPanel() {
+  // Downloading or clearing changes what's measured: the storage rows remeasure.
+  const [storageKey, setStorageKey] = useState(0);
+  const onChanged = () => setStorageKey((k) => k + 1);
+  const [showRoads, setShowRoads] = useState(false);
   const [packs, setPacks] = useState<DataPackInfo[]>([]);
   const [status, setStatus] = useState<Record<string, Status>>({});
   const [updatingAll, setUpdatingAll] = useState(false);
@@ -97,70 +93,32 @@ export default function OfflineDataPanel({ onChanged }: { onChanged?: () => void
 
   const anyWorking = Object.values(status).some((s) => s.kind === "working");
 
+  const downloaded = packs.filter((p) => p.origin === "downloaded");
+  const newest = downloaded.map((p) => p.generated_at).sort().pop();
+  const roadsStatus =
+    packs.length === 0
+      ? "None found"
+      : `${packs.length} road${packs.length === 1 ? "" : "s"} · ${
+          downloaded.length === 0
+            ? `built-in copy from ${formatUpdated(packs.map((p) => p.generated_at).sort()[0])}`
+            : `updated ${formatUpdated(newest as string)}${downloaded.length < packs.length ? ` (${downloaded.length} of ${packs.length})` : ""}`
+        }`;
+  const roadErrors = packs.filter((p) => status[p.id]?.kind === "error").length;
+
   return (
-    <>
-      <div className="panel" id="settings-roads">
-        <div className="panel-header-row">
-          <h3>
-            <Milestone className="heading-icon" />
-            Mile-Marker Road Data
-            <InfoToggle label="mile-marker road data">
-              Turns "mile marker 182 on the turnpike" into a map point, with no
-              internet needed. Each road is one small file kept on this
-              computer. Update while online to download the latest mile-marker
-              locations from the Florida Department of Transportation, then take
-              it with you to offline locations. Positions are the marker signs'
-              recorded locations — nudge the pin if you know better.
-            </InfoToggle>
-          </h3>
-          <button
-            onClick={updateAll}
-            disabled={updatingAll || anyWorking || packs.length === 0}
-          >
-            {updatingAll ? "Updating…" : "Update all roads (needs internet)"}
-          </button>
-        </div>
-        {packs.length === 0 && (
-          <p className="checkin-empty-state">No data packs found.</p>
-        )}
-        {packs.map((p) => {
-          const st = status[p.id];
-          return (
-            <div key={p.id} className="offline-pack-row">
-              <div className="offline-pack-info">
-                <strong>{p.name}</strong>{" "}
-                <UpdatedBadge
-                  label={
-                    p.origin === "downloaded"
-                      ? "Last updated"
-                      : "Built-in copy from"
-                  }
-                  iso={p.generated_at}
-                />
-                <div className="settings-hint">
-                  {p.description} · {coverage(p)} · {p.anchor_count} markers
-                </div>
-                {st?.kind === "ok" && (
-                  <span className="qrz-status qrz-status-found">
-                    {" "}
-                    {st.text}
-                  </span>
-                )}
-                {st?.kind === "error" && (
-                  <span className="weather-area-error"> {st.text}</span>
-                )}
-              </div>
-              <button
-                onClick={() => updateOne(p.id)}
-                disabled={updatingAll || st?.kind === "working"}
-              >
-                {st?.kind === "working" ? "Updating…" : "Update"}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-      <div className="panel" id="settings-callsigns">
+    <div className="panel offline-data-panel">
+      <h3>
+        <CloudDownload className="heading-icon" />
+        Offline data
+        <InfoToggle label="offline data">
+          Files kept on this computer so the app works with no internet, with how much space each
+          takes. Download and Update fetch the latest from the public source while you're online, so
+          you can take it to places with none. Clearing frees the space; you can get it again later.
+          Your activities and records aren't here and aren't affected. Changes here take effect at
+          once.
+        </InfoToggle>
+      </h3>
+      <div id="settings-callsigns">
         {CALLSIGN_DIRECTORIES.map((def) => (
           <CallsignDirectoryRow
             key={def.service}
@@ -171,6 +129,66 @@ export default function OfflineDataPanel({ onChanged }: { onChanged?: () => void
           />
         ))}
       </div>
-    </>
+      <div className="offline-pack-row" id="settings-roads" role="group" aria-label="Mile-marker roads">
+        <div className="offline-pack-info">
+          <Milestone className="offline-row-icon" aria-hidden />
+          <strong>Mile-marker roads</strong>
+          <InfoToggle label="mile-marker road data">
+            Turns "mile marker 182 on the turnpike" into a map point, with no internet needed. Each road
+            is one small file kept on this computer. Update while online to download the latest
+            mile-marker locations from the Florida Department of Transportation, then take it with you
+            to offline locations. Positions are the marker signs' recorded locations — nudge the pin if
+            you know better.
+          </InfoToggle>{" "}
+          <span className="settings-hint">{roadsStatus}</span>
+          {roadErrors > 0 && !showRoads && (
+            <span className="weather-area-error"> {roadErrors} couldn't update — Show roads for why.</span>
+          )}
+          <div>
+            <button className="link-button" onClick={() => setShowRoads((v) => !v)} aria-expanded={showRoads}>
+              {showRoads ? "Hide roads" : "Show roads"}
+            </button>
+          </div>
+          {showRoads && (
+            <ul className="offline-roads">
+              {packs.map((p) => {
+                const st = status[p.id];
+                return (
+                  <li key={p.id} className="offline-road">
+                    <span>
+                      {p.name}{" "}
+                      <span className="settings-hint">
+                        {p.origin === "downloaded" ? "updated" : "built-in"} {formatUpdated(p.generated_at)}
+                        {coverage(p) ? ` · ${coverage(p)}` : ""} · {p.anchor_count} markers
+                      </span>
+                      {st?.kind === "ok" && <span className="qrz-status qrz-status-found"> {st.text}</span>}
+                      {st?.kind === "error" && <span className="weather-area-error"> {st.text}</span>}
+                    </span>
+                    <button
+                      className="link-button"
+                      onClick={() => updateOne(p.id)}
+                      disabled={updatingAll || st?.kind === "working"}
+                    >
+                      {st?.kind === "working" ? "Updating…" : "Update"}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+        <button onClick={updateAll} disabled={updatingAll || anyWorking || packs.length === 0}>
+          {updatingAll ? "Updating…" : "Update all"}
+        </button>
+      </div>
+      <StoragePanel
+        key={storageKey}
+        only={["road-data", "map-tiles", "partial-downloads", "restore-copies"]}
+        onCleared={() => {
+          // Clearing road updates goes back to the built-in copies.
+          api.listDataPacks().then(setPacks).catch(() => {});
+        }}
+      />
+    </div>
   );
 }
