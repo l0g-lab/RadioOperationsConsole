@@ -10,6 +10,7 @@ import WeatherTab from "./components/tabs/WeatherTab";
 import MapAprsTab from "./components/tabs/MapAprsTab";
 import EventsTab from "./components/tabs/EventsTab";
 import HistoryTab from "./components/tabs/HistoryTab";
+import ActivitiesPanel from "./components/operations/ActivitiesPanel";
 import SettingsTab, { type SettingsSection } from "./components/tabs/SettingsTab";
 import NetsTab from "./components/tabs/NetsTab";
 import type { ActivityPrefill } from "./components/operations/activityPrefill";
@@ -197,6 +198,17 @@ export default function App() {
       <UpgradeBackupBanner />
       <UpdateBanner />
       <div className="app-body">
+        {currentTab === "Operations" && (
+          // Beside the tab, scrolling on its own, so the selected activity stays at the top (UX-OPS-015).
+          <aside className="ops-sidebar" aria-label="Activities">
+            <ActivitiesPanel
+              activities={activities}
+              selectedActivityId={selectedActivityId}
+              onSelectActivity={setSelectedActivityId}
+              onNewActivity={requestNewActivity}
+            />
+          </aside>
+        )}
         <main className="app-content">
           <TabBar
             current={currentTab}

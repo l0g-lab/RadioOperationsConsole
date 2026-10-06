@@ -32,17 +32,19 @@ top. Each release's section here is also its description on the
   repeater's band (**2m**, **70cm**, **GMRS**…) before its frequency, and an
   event's activities show each activity's type icon and band, with *not
   started* in amber.
-- **The Operations tab's activity list now runs across the top** in place of
-  the narrow sidebar, so the tab has the full window. It keeps the same
-  sections, in the order things happen — **Open now**, each event as its own
-  block in running order (with its day and "1 open · 2 to go · 1 done"),
-  **Coming up**, **Station logs**, and **Earlier** (folded) — with one line
-  per activity: type icon, name, band, when, how many check-ins (or messages,
-  or contacts), and state (open in green, due but not started in amber,
-  closed dimmed). A net whose day passed without being started shows at the
-  end of Coming up as "Not started · 3 wk ago". The search finds any activity
-  by name, event, type, or frequency, and **+ New activity** is beside it.
-  The top bar's Activity list is still the quick way to switch from any tab.
+- **The Operations tab's activity list is easier to read,** in a wider pane
+  beside the tab that scrolls on its own, so the selected activity always
+  stays at the top of the tab, however many activities and events there are.
+  Sections run in the order things happen — **Open now**, each event as its
+  own block in running order (with its day and "1 open · 2 to go · 1 done"),
+  **Coming up**, **Station logs**, and **Closed** (folded) — under light
+  headings. Each activity takes two short lines: type icon, name, and state
+  (open in green, due but not started in amber, closed dimmed), then its
+  band, time, and how many check-ins (or messages, or contacts). A net whose
+  day passed without being started shows "3 wk ago" in amber at the end of
+  Coming up. The search finds any activity by name, event, type, or
+  frequency, and **+ New** is at the top. The top bar's Activity list is
+  still the quick way to switch from any tab.
 
 ## [2.4.2] - 2026-10-05
 

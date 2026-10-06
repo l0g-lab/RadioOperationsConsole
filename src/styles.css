@@ -3377,32 +3377,42 @@ button.online-pill-working-offline:hover {
   margin-right: 5px;
 }
 
-/* ---- Activities table (ActivitiesPanel.tsx, UX-OPS-015) ---- */
+/* ---- Activities pane (ActivitiesPanel.tsx, UX-OPS-015) ---- */
+
+/* Beside the Operations tab, scrolling on its own so the selected activity
+   stays at the top of the tab however many activities and events there are. */
+.ops-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 10px;
+}
 
 .activities-panel {
-  margin-bottom: 10px;
+  margin: 0;
+}
+
+.activities-new {
+  padding: 2px 10px;
 }
 
 .activities-search {
-  width: 14em;
+  width: 100%;
+  margin: 2px 0 4px;
 }
 
-/* Each row is a button laid out as a grid of the same fixed and
-   proportional columns, so they line up: name, band, type, when, state,
-   event. */
-/* Sections in the order things happen: a heading each (an event's with its
-   day and progress, green while under way), Earlier and finished events
-   folded. */
+/* Sections: light headings, small caps text with no heavy rules; an event's
+   with its day and progress under its name, green while under way. */
 .activity-section {
   margin-top: 8px;
 }
 
 .activity-section-heading {
   margin: 0;
-  padding: 3px 0 4px;
-  border-bottom: 2px solid var(--border);
+  padding: 2px 0;
   color: var(--text-dim);
-  font-size: calc(12px * var(--font-scale));
+  font-size: calc(11px * var(--font-scale));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -3415,96 +3425,104 @@ button.online-pill-working-offline:hover {
   letter-spacing: normal;
 }
 
+.activity-section-summary-line {
+  display: block;
+  margin-left: 14px;
+}
+
 .activity-section-live {
   color: var(--accent);
-  border-bottom-color: var(--accent-dim);
 }
 
-/* An event's block: its activities set in a little under the heading. */
-.activity-section-event .activity-table {
-  padding-left: 14px;
-}
-
-/* Search results add the event column. */
-.activity-table-row.activity-table-row-event {
-  grid-template-columns: minmax(12em, 22em) 4.6em 10.5em 8em 14em minmax(0, 1fr);
-}
-
-/* The page scrolls; long lists use Show more rather than a scroll box of
-   their own. */
-.activity-table {
-  display: flex;
-  flex-direction: column;
+.activity-list {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.activity-table-row {
-  display: grid;
-  /* The name is capped, so the details follow it closely; spare room is
-     left at the end rather than between them. */
-  grid-template-columns: minmax(12em, 22em) 4.6em 10.5em 8em 14em minmax(0, 1fr);
-  align-items: center;
+.activity-section-event .activity-list {
+  padding-left: 8px;
+}
+
+/* One activity in two short lines: icon, name, state; then, small and dim,
+   band, when, how many, and how long ago a missed one was due. */
+.activity-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 1px;
   width: 100%;
-  padding: 0;
+  padding: 4px 6px;
   border: none;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
+  border-radius: 3px;
   background: none;
   color: var(--text);
   text-align: left;
   font: inherit;
 }
 
-.activity-table-row > span {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  padding: 5px 8px 5px 4px;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.activity-table-row:hover {
+.activity-row:hover {
   background: var(--bg-input);
-  border-color: var(--border);
 }
 
-/* The selected row: shaded, with a green edge, like a net on now. */
-.activity-table-row.selected {
+/* The selected one: shaded, with a green edge, like a net on now. */
+.activity-row.selected {
   background: var(--bg-input);
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-.activity-table-row:focus-visible {
+.activity-row:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
-.activity-table-title {
-  font-weight: 600;
+.activity-row-line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  min-width: 0;
+}
+
+.activity-row-title {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
 }
 
-.activity-table-when,
-.activity-table-event {
-  color: var(--text-dim);
+.activity-row-state {
+  margin-left: 8px;
+  white-space: nowrap;
+  font-size: calc(12px * var(--font-scale));
 }
 
-/* A count of none is dimmed: often a test run, worth a look before deleting. */
-.activity-table-none {
+.activity-row-detail {
+  display: block;
+  text-align: left;
+  padding-left: 21px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-dim);
+  font-size: calc(12px * var(--font-scale));
+}
+
+/* The band as colored text, not a chip, in this narrow pane. */
+.activity-row-detail .band-chip {
+  min-width: 0;
+  margin-right: 6px;
+  padding: 0;
+  border: none;
+  font-size: inherit;
 }
 
 .activity-table-selected {
   margin: 6px 0 0;
   color: var(--text-dim);
-}
-
-.activity-table-event {
-  text-overflow: ellipsis;
 }
 
 /* State in the app's colors: open green, due amber, closed dimmed. */

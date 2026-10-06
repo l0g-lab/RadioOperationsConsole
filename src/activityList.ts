@@ -1,7 +1,7 @@
 /**
- * The Activities panel on the Operations tab (UX-OPS-015): every activity,
- * one line each, in sections in the order things happen — open now, each
- * event, coming up, station logs, earlier — or found by searching.
+ * The Activities pane beside the Operations tab (UX-OPS-015): every
+ * activity, in sections in the order things happen — open now, each event,
+ * coming up, station logs, closed — or found by searching.
  */
 import type { Activity } from "./types";
 import { activityTypeLabel, isLog, isRelay } from "./activityTypes";
@@ -16,6 +16,8 @@ export interface ActivityRow {
   when: string;
   state: string;
   tone: StateTone;
+  /** For a net whose day passed without starting: how long ago ("3 wk ago"), in amber. */
+  ago?: string;
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -91,7 +93,7 @@ export function activityRow(a: Activity, now: Date): ActivityRow {
   }
   const due = scheduledDate(a);
   if (due && isStale(a, now)) {
-    return { activity: a, when: scheduledText(a, now), state: `Not started · ${agoText(due, now)}`, tone: "due" };
+    return { activity: a, when: scheduledText(a, now), state: "Not started", tone: "due", ago: agoText(due, now) };
   }
   return {
     activity: a,
@@ -137,14 +139,14 @@ function startMs(a: Activity): number | null {
 }
 
 export interface ActivitySection {
-  /** "open", "upcoming", "logs", "earlier", or "event:<id>". */
+  /** "open", "upcoming", "logs", "closed", or "event:<id>". */
   id: string;
   title: string;
   /** For an event: its day and how it's going ("Mon 10/5 · 1 open · 2 to go · 1 done"). */
   summary: string;
   /** Something in it is open (an event under way), so its heading is green. */
   live: boolean;
-  /** Earlier, and events that are over, start folded. */
+  /** Closed, and events that are over, start folded. */
   folded: boolean;
   rows: ActivityRow[];
 }
@@ -164,10 +166,10 @@ function eventSummary(acts: Activity[], now: Date): string {
 }
 
 /**
- * The Activities panel's sections, in the order things happen (UX-OPS-015):
+ * The Activities pane's sections, in the order things happen (UX-OPS-015):
  * Open now; each event still going, as its own block in running order (one
  * under way first); Coming up (soonest first, unscheduled, then nets whose
- * day passed without starting); Station logs; Earlier (closed, most recent
+ * day passed without starting); Station logs; Closed (most recent
  * first, folded); and events that are over (latest first, folded). An
  * event's activities are only in its block. Empty sections are left out.
  */
@@ -215,7 +217,7 @@ export function activitySections(acts: Activity[], now: Date): ActivitySection[]
     ...going.map((e) => e.section),
     section("upcoming", "Coming up", now_.filter((a) => a.state === "scheduled" && !isLog(a.activity_type))),
     section("logs", "Station logs", now_.filter((a) => isLog(a.activity_type))),
-    section("earlier", "Earlier", closed(loose), true),
+    section("closed", "Closed", closed(loose), true),
     ...over.map((e) => e.section),
   ].filter((s) => s.rows.length > 0);
 }

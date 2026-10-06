@@ -24,7 +24,7 @@ interface HeaderProps {
 /** The Activity list's last entry, which starts a new one rather than choosing one. */
 const NEW_ACTIVITY = "__new_activity__";
 
-/** How many closed nets the top bar lists; the rest are in the Operations tab's Activities panel. */
+/** How many closed nets the top bar lists; the rest are in the Operations tab's Activities pane. */
 const RECENT_CLOSED = 10;
 
 /**

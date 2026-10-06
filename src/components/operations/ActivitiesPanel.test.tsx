@@ -43,8 +43,9 @@ describe("ActivitiesPanel (UX-OPS-015)", () => {
     const onSelect = vi.fn();
     render(<ActivitiesPanel activities={ACTS} selectedActivityId={null} onSelectActivity={onSelect} onNewActivity={() => {}} />);
     const row = screen.getByRole("button", { name: /Storm Net/ });
-    expect(within(row).getByText("14 check-ins")).toBeInTheDocument();
+    expect(row).toHaveTextContent("14 check-ins");
     expect(within(row).getByText("2m")).toBeInTheDocument();
+    expect(within(row).getByText("Open")).toHaveClass("activity-state-open");
     await userEvent.click(row);
     expect(onSelect).toHaveBeenCalledWith("open");
   });
@@ -53,20 +54,21 @@ describe("ActivitiesPanel (UX-OPS-015)", () => {
     render(<ActivitiesPanel activities={WITH_EVENT} selectedActivityId={null} onSelectActivity={() => {}} onNewActivity={() => {}} />);
     const headings = [...document.querySelectorAll("summary")].map((s) => s.textContent);
     expect(headings[0]).toBe("Open now (1)");
-    expect(headings[1]).toMatch(/^ARRL SET · .* · 1 open · 1 to go$/);
-    expect(headings[2]).toBe("Earlier (1)");
+    // The event's name, with its day and progress under it.
+    expect(headings[1]).toMatch(/^ARRL SET.* · 1 open · 1 to go$/);
+    expect(headings[2]).toBe("Closed (1)");
     const event = document.querySelector(".activity-section-event") as HTMLElement;
-    expect(within(event).getAllByRole("button").map((b) => b.querySelector(".activity-table-title")?.textContent)).toEqual([
+    expect(within(event).getAllByRole("button").map((b) => b.querySelector(".activity-row-title")?.textContent)).toEqual([
       "GMRS net",
       "HF relays",
     ]);
   });
 
-  it("folds Earlier, but opens it when it holds the selected activity", () => {
+  it("folds Closed, but opens it when it holds the selected activity", () => {
     const { rerender } = render(
       <ActivitiesPanel activities={ACTS} selectedActivityId={null} onSelectActivity={() => {}} onNewActivity={() => {}} />
     );
-    const earlier = () => [...document.querySelectorAll("details")].find((d) => d.textContent?.startsWith("Earlier"))!;
+    const earlier = () => [...document.querySelectorAll("details")].find((d) => d.textContent?.startsWith("Closed"))!;
     expect(earlier().open).toBe(false);
     rerender(<ActivitiesPanel activities={ACTS} selectedActivityId="old" onSelectActivity={() => {}} onNewActivity={() => {}} />);
     expect(earlier().open).toBe(true);
@@ -76,7 +78,8 @@ describe("ActivitiesPanel (UX-OPS-015)", () => {
     render(<ActivitiesPanel activities={WITH_EVENT} selectedActivityId={null} onSelectActivity={() => {}} onNewActivity={() => {}} />);
     await userEvent.type(screen.getByRole("searchbox", { name: "Search activities" }), "arrl");
     const results = screen.getByRole("region", { name: "Search results" });
-    expect(within(results).getAllByRole("button")).toHaveLength(2);
-    expect(within(results).getAllByText("ARRL SET")).toHaveLength(2);
+    const found = within(results).getAllByRole("button");
+    expect(found).toHaveLength(2);
+    for (const b of found) expect(b).toHaveTextContent("· ARRL SET");
   });
 });

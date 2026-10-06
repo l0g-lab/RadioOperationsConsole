@@ -55,14 +55,14 @@ const sectionIds = (acts: Activity[]) =>
   activitySections(acts, NOW).map((s) => [s.id, ids(s.rows)] as [string, string[]]);
 
 describe("activitySections (UX-OPS-015)", () => {
-  it("lists what's happening in order: open, coming up, station logs, earlier (folded)", () => {
+  it("lists what's happening in order: open, coming up, station logs, closed (folded)", () => {
     expect(sectionIds(ACTS)).toEqual([
       ["open", ["o1"]],
       // u2 is in an event, so it's in the event's block rather than Coming up.
       ["event:ev9", ["u2"]],
       ["upcoming", ["u4", "u1", "u3"]],
       ["logs", ["l1"]],
-      ["earlier", ["c2", "c1", "l2"]],
+      ["closed", ["c2", "c1", "l2"]],
     ]);
   });
 
@@ -133,8 +133,8 @@ describe("nets whose day passed without starting", () => {
   it("say how long ago, in amber", () => {
     const stale = activity("s1", "Forgotten Net", "directed_net", "scheduled", { scheduled_at: "2026-09-10 19:00" });
     const yesterday = activity("s2", "Last Night", "directed_net", "scheduled", { scheduled_at: "2026-09-30 19:00" });
-    expect(activityRow(stale, NOW)).toMatchObject({ state: "Not started · 3 wk ago", tone: "due" });
-    expect(activityRow(yesterday, NOW).state).toBe("Not started · 1 day ago");
+    expect(activityRow(stale, NOW)).toMatchObject({ state: "Not started", ago: "3 wk ago", tone: "due" });
+    expect(activityRow(yesterday, NOW).ago).toBe("1 day ago");
   });
 
   it("counts ago in days, then weeks, then months", () => {

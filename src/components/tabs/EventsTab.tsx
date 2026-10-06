@@ -30,7 +30,7 @@ const STATUS_LABEL = { upcoming: "Upcoming", on: "Under way", finished: "Finishe
 /** "Sat 10/4 09:00", or "" if unknown. */
 function when(ms: number | null): string {
   if (ms == null) return "";
-  // As the Activities panel shows it, whatever the computer's regional settings.
+  // As the Activities pane shows it, whatever the computer's regional settings.
   const d = new Date(ms);
   const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
   return `${weekday} ${d.getMonth() + 1}/${d.getDate()} ${localTime(d)}`;

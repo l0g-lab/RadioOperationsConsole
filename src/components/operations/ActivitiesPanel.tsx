@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { Activity } from "../../types";
-import { isLog } from "../../activityTypes";
 import { activitySections, recordText, searchActivities, type ActivityRow } from "../../activityList";
 import { useMinuteClock } from "../../hooks/useMinuteClock";
 import { mhzFromText } from "../../bands";
@@ -30,9 +29,13 @@ function saveFolds(folds: Record<string, boolean>) {
   }
 }
 
-/** One activity on a line: type icon and name, band, when, how many records, state; its event when searching. */
+/**
+ * One activity in two short lines: its type icon, name, and state (open in
+ * green, due in amber); then, small, its band, when, how many records, how
+ * long ago a missed one was due, and its event when searching.
+ */
 function Row({
-  row: { activity: a, when, state, tone },
+  row: { activity: a, when, state, tone, ago },
   selected,
   showEvent,
   onSelect,
@@ -42,41 +45,38 @@ function Row({
   showEvent: boolean;
   onSelect: (id: string) => void;
 }) {
+  // A count once there's something to count, or once it's closed (0 then is worth seeing: often a test run).
+  const count = a.record_count > 0 || a.state === "closed" ? recordText(a) : "";
   return (
     <li>
       <button
-        className={"activity-table-row" + (showEvent ? " activity-table-row-event" : "") + (selected ? " selected" : "")}
+        className={"activity-row" + (selected ? " selected" : "")}
         aria-current={selected || undefined}
         onClick={() => onSelect(a.id)}
       >
-        <span className="activity-table-name">
+        <span className="activity-row-line">
           <ActivityTypeIcon type={a.activity_type} />
-          <span className="activity-table-title">{a.title}</span>
+          <span className="activity-row-title">{a.title}</span>
+          <span className={`activity-row-state activity-state-${tone}`}>{state}</span>
         </span>
-        <span className="activity-table-band">
+        <span className="activity-row-detail">
           <BandChip mhz={mhzFromText(a.frequency)} />
+          {[when, count].filter(Boolean).join(" · ")}
+          {ago && <span className="activity-state-due"> · {ago}</span>}
+          {showEvent && a.event && <span> · {a.event}</span>}
         </span>
-        <span className="activity-table-when checkin-row-mono">{when}</span>
-        <span className={"activity-table-count" + (a.record_count === 0 ? " activity-table-none" : "")}>
-          {isLog(a.activity_type) && a.state !== "closed" && a.record_count === 0 ? "" : recordText(a)}
-        </span>
-        <span className={`activity-table-state activity-state-${tone}`}>{state}</span>
-        {showEvent && (
-          <span className="activity-table-event" title={a.event || undefined}>
-            {a.event}
-          </span>
-        )}
       </button>
     </li>
   );
 }
 
 /**
- * Every activity at the top of the Operations tab, in sections in the order
- * things happen (UX-OPS-015): open now, each event as a block in running
- * order, coming up, station logs, and earlier (folded). Clicking one selects
- * it for the panels below; the top bar's Activity list stays the quick way to
- * switch from any tab.
+ * Every activity, in a pane beside the Operations tab (UX-OPS-015), in
+ * sections in the order things happen: open now, each event as a block in
+ * running order, coming up, station logs, and closed (folded). It scrolls on
+ * its own, so it never pushes the selected activity down. Clicking one
+ * selects it; the top bar's Activity list stays the quick way to switch from
+ * any tab.
  */
 export default function ActivitiesPanel({
   activities,
@@ -112,7 +112,7 @@ export default function ActivitiesPanel({
     const limit = shown[key] ?? PAGE;
     return (
       <>
-        <ul className="activity-table" aria-label={key === "search" ? "Search results" : undefined}>
+        <ul className="activity-list" aria-label={key === "search" ? "Search results" : undefined}>
           {rows.slice(0, limit).map((r) => (
             <Row
               key={r.activity.id}
@@ -139,22 +139,20 @@ export default function ActivitiesPanel({
           <ListChecks className="heading-icon" />
           Activities
         </h3>
-        <div className="checkin-roster-header-actions">
-          {activities.length > 0 && (
-            <input
-              type="search"
-              className="checkin-roster-search activities-search"
-              aria-label="Search activities"
-              placeholder="Search activities"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          )}
-          <button className="primary" onClick={onNewActivity}>
-            + New activity
-          </button>
-        </div>
+        <button className="primary activities-new" onClick={onNewActivity} title="New activity">
+          + New
+        </button>
       </div>
+      {activities.length > 0 && (
+        <input
+          type="search"
+          className="activities-search"
+          aria-label="Search activities"
+          placeholder="Search name, event, type, frequency"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      )}
 
       {activities.length === 0 && <p className="checkin-empty-state">No activities yet — start with + New activity.</p>}
 
@@ -163,9 +161,7 @@ export default function ActivitiesPanel({
           <p className="checkin-empty-state">No activities match “{query.trim()}”.</p>
         ) : (
           <section className="activity-section" aria-label="Search results">
-            <h4 className="activity-section-heading">
-              {results.length} found <span className="activity-section-summary">by name, event, type, or frequency</span>
-            </h4>
+            <h4 className="activity-section-heading">{results.length} found</h4>
             {rowsOf(results, "search", true)}
           </section>
         )
@@ -187,9 +183,11 @@ export default function ActivitiesPanel({
             >
               <summary className={"activity-section-heading" + (s.live ? " activity-section-live" : "")}>
                 {s.title}
-                <span className="activity-section-summary">
-                  {s.summary ? ` · ${s.summary}` : ` (${s.rows.length})`}
-                </span>
+                {s.summary ? (
+                  <span className="activity-section-summary activity-section-summary-line">{s.summary}</span>
+                ) : (
+                  <span className="activity-section-summary"> ({s.rows.length})</span>
+                )}
               </summary>
               {rowsOf(s.rows, s.id, false)}
             </details>

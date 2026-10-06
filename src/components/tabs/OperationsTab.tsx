@@ -10,7 +10,6 @@ import CreateActivityPanel from "../operations/CreateActivityPanel";
 import OperatorsPanel from "../operations/OperatorsPanel";
 import RepeatersPanel from "../operations/RepeatersPanel";
 import PlacesPanel from "../operations/PlacesPanel";
-import ActivitiesPanel from "../operations/ActivitiesPanel";
 
 interface Props {
   activities: Activity[];
@@ -105,12 +104,6 @@ export default function OperationsTab({
         onNewActivity={onNewActivity}
         onOpenSettings={onOpenSettings}
         onOpenWeather={onOpenWeather}
-      />
-      <ActivitiesPanel
-        activities={activities}
-        selectedActivityId={selectedActivityId}
-        onSelectActivity={onSelectActivity}
-        onNewActivity={onNewActivity}
       />
       <div className="operations-workspace">
         <div className="operations-column">

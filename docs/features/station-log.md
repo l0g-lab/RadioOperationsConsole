@@ -45,9 +45,9 @@ or end, and each record is a contact carrying its radio details.
 - **LOG-004:** A station log MUST NOT ask for a date or time, when created
   or edited; it is saved with none. Changing an activity's type to station
   log clears its date (the earlier date stays in its history).
-- **LOG-005:** The Activities panel MUST list open station logs in their own
+- **LOG-005:** The Activities pane MUST list open station logs in their own
   **Station logs** section, alphabetically, marked *Log*; a closed one is
-  under *Earlier* (see `UX-OPS-016`).
+  under *Closed* (see `UX-OPS-016`).
 
 ## Contacts
 
