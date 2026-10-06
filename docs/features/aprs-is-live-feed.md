@@ -96,13 +96,14 @@ than discovering it mid-implementation:
   for operator/activity locations (`CIMAP-073`): free-text search,
   clicking a map, or typing exact coordinates.
 - **APRSIS-002:** The operator MUST be able to choose a radius from a set
-  of presets described in terms an operator would recognize (e.g. local,
-  county-sized, multi-county, state-sized), rather than only a raw
-  kilometer figure, while the actual filter sent MUST be a plain radius —
+  of presets described in terms an operator would recognize, in miles (15 mi
+  local, 45 mi county, 125 mi multi-county, 300 mi state), rather than only
+  a raw figure, while the actual filter sent MUST be a plain radius —
   APRS-IS has no boundary-aware filter type to request instead.
 - **APRSIS-003:** The chosen area and radius MUST remain visible while a
-  feed is running, so the operator can confirm what they're looking at
-  without reopening the picker.
+  feed is running, in the tab's heading ("APRS — Orlando, FL · 45 mi"), with
+  a green **Live** and how many stations and packets while connected. The
+  area is changed from *Change area* (not while streaming).
 
 ## Connecting and identification
 
@@ -143,13 +144,27 @@ than discovering it mid-implementation:
   status, objects, messages, bulletins), are not decoded into coordinates;
   such packets MUST still appear in the feed per `APRSIS-020`, without a
   plotted position.
-- **APRSIS-023:** Packets with a decoded position MUST be plotted on the
+- **APRSIS-023:** Stations with a decoded position MUST be plotted on the
   same offline-tile-caching basemap used elsewhere in this application
-  (`CIMAP-050`), with each marker's popup showing at minimum the source
-  call sign and when it was heard.
+  (`CIMAP-050`), fitted to the chosen radius (drawn faintly): one marker per
+  station at its latest position, labeled with its call sign, colored by its
+  kind (`APRSIS-025`), with a dashed trail for one that has moved. A
+  marker's popup MUST show its call sign, kind, and comment.
 - **APRSIS-024:** The feed MUST bound its retained packet count
   independently of the 30-minute window, so a high-traffic area or radius
   cannot grow memory usage without limit.
+- **APRSIS-025:** Beside the map, the feed MUST be shown as **stations**, not
+  packets: one per call sign, most recently heard first, each with an icon
+  and kind from its APRS symbol (Mobile, Home, Weather, Digipeater, IGate,
+  On foot…; colored moving, fixed, weather, or infrastructure, clear of the
+  app's amber, red, and green), when it was last heard ("4 min ago";
+  dimmed after 15 minutes quiet), how far and which way from the center
+  ("4.2 mi NE"), and its latest comment. Clicking one MUST find it on the map.
+- **APRSIS-026:** A weather station's report MUST be put in words ("88°F ·
+  wind W 12 mph gusting 18 · humidity 78% · 1014 hPa") from the APRS weather
+  format, keeping any text after it.
+- **APRSIS-027:** The packets themselves MUST remain available, behind *Show
+  raw packets*, with 24-hour times, for troubleshooting.
 
 ## Stopping and lifecycle
 

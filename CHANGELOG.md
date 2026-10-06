@@ -6,6 +6,18 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Changed
+- **The APRS tab shows stations, not a wall of packets.** The heading says
+  the area and radius ("APRS — Orlando, FL · 45 mi") with a green **Live**
+  and counts while connected. Beside a map fitted to the radius, each
+  station takes two short lines: an icon and kind from its APRS symbol
+  (Mobile, Home, Weather, Digipeater, IGate…), when it was last heard, how
+  far and which way ("4.2 mi NE"), and its comment — a weather station's
+  report in words ("88°F · wind W 12 mph gusting 18 · humidity 78%"). On the
+  map each station is one marker, labeled and colored by kind, with a trail
+  if it's moving; click a station to find it. Radius choices are in miles,
+  and the raw packets are a click away.
+
 ## [2.5.0] - 2026-10-05
 
 ### Changed

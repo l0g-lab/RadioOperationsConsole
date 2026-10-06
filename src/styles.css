@@ -511,12 +511,6 @@ details > summary {
    Activity Log / History — generic event list, shared by both
    ============================================================ */
 
-.event-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .event-row {
   display: flex;
   justify-content: space-between;
@@ -3597,4 +3591,196 @@ button.online-pill-working-offline:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ---- APRS tab (AprsIsFeedPanel.tsx, AprsIsMap.tsx) ---- */
+
+/* One color per kind of station, shared by its map marker, trail, and list
+   icon: moving blue, fixed teal, weather the storm purple, digipeaters and
+   IGates gray — clear of the app's amber, red, and green. */
+.aprs-moving { --aprs: var(--band-vhf); }
+.aprs-fixed { --aprs: var(--band-uhf); }
+.aprs-weather { --aprs: var(--fc-storm); }
+.aprs-infrastructure { --aprs: var(--text-dim); }
+
+.aprs-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.aprs-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: aprs-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes aprs-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aprs-live-dot {
+    animation: none;
+  }
+}
+
+.aprs-area-editor {
+  margin: 4px 0 8px;
+}
+
+/* The map and the stations side by side. */
+.aprs-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.leaflet-map-container.aprs-map {
+  height: 520px;
+}
+
+/* Leaflet draws these as SVG paths; CSS sets their colors. */
+path.aprs-marker {
+  fill: var(--aprs);
+  fill-opacity: 0.95;
+  stroke: var(--bg-panel);
+  stroke-width: 2;
+}
+
+path.aprs-marker.aprs-selected {
+  stroke: var(--text);
+  stroke-width: 3;
+}
+
+path.aprs-trail {
+  fill: none;
+  stroke: var(--aprs);
+  stroke-width: 2;
+  stroke-dasharray: 4 5;
+  stroke-opacity: 0.8;
+}
+
+path.aprs-area {
+  fill: var(--accent);
+  fill-opacity: 0.04;
+  stroke: var(--accent);
+  stroke-opacity: 0.5;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 6;
+}
+
+.leaflet-tooltip.aprs-label {
+  padding: 0 4px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  box-shadow: none;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.leaflet-tooltip.aprs-label::before {
+  display: none;
+}
+
+/* Stations: two short lines each, scrolling beside the map at its height. */
+.aprs-station-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 470px;
+  overflow-y: auto;
+}
+
+.aprs-station {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  width: 100%;
+  padding: 4px 6px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+}
+
+.aprs-station:hover {
+  background: var(--bg-input);
+}
+
+.aprs-station.selected {
+  background: var(--bg-input);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Not heard in the last 15 minutes: dimmed. */
+.aprs-station.aprs-quiet {
+  opacity: 0.6;
+}
+
+.aprs-station-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.aprs-station-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--aprs);
+}
+
+.aprs-station-call {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.aprs-station-kind {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: calc(12px * var(--font-scale));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aprs-station-heard {
+  color: var(--text-dim);
+  font-size: calc(12px * var(--font-scale));
+  white-space: nowrap;
+}
+
+.aprs-station-detail {
+  display: block;
+  padding-left: 24px;
+  color: var(--text-dim);
+  font-size: calc(12px * var(--font-scale));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aprs-raw {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: calc(12px * var(--font-scale));
 }

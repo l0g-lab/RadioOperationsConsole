@@ -5,7 +5,25 @@ import type { AprsIsPacket } from "../../types";
 import { formatCoords } from "../../geo";
 import LocationPicker from "../LocationPicker";
 import AprsIsMap from "./AprsIsMap";
-import { Rss } from "lucide-react";
+import { QUIET_MS, heardAgo, stationsFrom, type Station, type StationKind } from "../../aprs";
+import { useMinuteClock } from "../../hooks/useMinuteClock";
+import { pad2 } from "../../utils";
+import {
+  Ambulance,
+  Bike,
+  Car,
+  CircleDot,
+  CloudSun,
+  Footprints,
+  House,
+  Plane,
+  RadioTower,
+  Rss,
+  Ship,
+  Truck,
+  Wifi,
+  type LucideIcon,
+} from "lucide-react";
 
 interface Props {
   loginCallSign: string;
@@ -20,11 +38,73 @@ interface RadiusOption {
 // point is the closest it supports, so these are rough stand-ins rather
 // than actual administrative areas.
 const RADIUS_OPTIONS: RadiusOption[] = [
-  { km: 25, label: "~25 km (local)" },
-  { km: 75, label: "~75 km (county-sized)" },
-  { km: 200, label: "~200 km (multi-county)" },
-  { km: 500, label: "~500 km (state-sized)" },
+  { km: 25, label: "15 mi (local)" },
+  { km: 75, label: "45 mi (county)" },
+  { km: 200, label: "125 mi (multi-county)" },
+  { km: 500, label: "300 mi (state)" },
 ];
+
+const KIND_ICONS: Record<StationKind["kind"], LucideIcon> = {
+  car: Car,
+  truck: Truck,
+  home: House,
+  weather: CloudSun,
+  digi: RadioTower,
+  igate: Wifi,
+  foot: Footprints,
+  boat: Ship,
+  plane: Plane,
+  bike: Bike,
+  emergency: Ambulance,
+  station: CircleDot,
+};
+
+const hm = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+};
+
+/** One station in two short lines: icon, call sign, kind, last heard; then how far and its comment. */
+function StationRow({
+  s,
+  now,
+  selected,
+  onSelect,
+}: {
+  s: Station;
+  now: Date;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const Icon = KIND_ICONS[s.kind.kind];
+  const quiet = now.getTime() - (Date.parse(s.heardAt) || 0) > QUIET_MS;
+  return (
+    <li>
+      <button
+        className={"aprs-station" + (selected ? " selected" : "") + (quiet ? " aprs-quiet" : "")}
+        aria-current={selected || undefined}
+        onClick={onSelect}
+      >
+        <span className="aprs-station-line">
+          <Icon className={`aprs-station-icon aprs-${s.kind.group}`} aria-hidden />
+          <span className="aprs-station-call">{s.call}</span>
+          <span className="aprs-station-kind">{s.kind.label}</span>
+          <span className="aprs-station-heard" title={`Heard ${s.packets} time${s.packets === 1 ? "" : "s"}`}>
+            {heardAgo(s.heardAt, now)}
+          </span>
+        </span>
+        {(() => {
+          const detail = [s.distance || (s.lat == null ? "no position" : ""), s.comment].filter(Boolean).join(" · ");
+          return (
+            <span className="aprs-station-detail" title={detail || undefined}>
+              {detail}
+            </span>
+          );
+        })()}
+      </button>
+    </li>
+  );
+}
 
 const ROLLING_WINDOW_MS = 30 * 60 * 1000;
 const MAX_PACKETS = 500;
@@ -84,6 +164,10 @@ export default function AprsIsFeedPanel({ loginCallSign }: Props) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [packets, setPackets] = useState<AprsIsPacket[]>([]);
+  const [editingArea, setEditingArea] = useState(false);
+  const [selectedCall, setSelectedCall] = useState<string | null>(null);
+  const [showRaw, setShowRaw] = useState(false);
+  const now = useMinuteClock();
 
   const hasArea = areaLat != null && areaLon != null;
 
@@ -176,94 +260,125 @@ export default function AprsIsFeedPanel({ loginCallSign }: Props) {
     }
   }
 
-  const withPosition = packets.filter((p) => p.lat != null && p.lon != null);
+  const stations = stationsFrom(packets, hasArea ? { lat: areaLat as number, lon: areaLon as number } : null);
+  const radiusLabel = RADIUS_OPTIONS.find((o) => o.km === radiusKm)?.label.replace(/ \(.*\)$/, "") ?? `${radiusKm} km`;
+  const areaName = areaLabel || (hasArea ? formatCoords(areaLat as number, areaLon as number) : "");
+
+  const areaEditor = (
+    <div className="inline-form aprs-area-editor">
+      <button onClick={() => setShowPicker(true)} disabled={streaming}>
+        {hasArea ? "Move the center" : "Choose the center"}
+      </button>
+      <label>
+        Radius{" "}
+        <select value={radiusKm} onChange={(e) => setRadiusKm(Number(e.target.value))} disabled={streaming}>
+          {RADIUS_OPTIONS.map((opt) => (
+            <option key={opt.km} value={opt.km}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {hasArea && editingArea && <button onClick={() => setEditingArea(false)}>Done</button>}
+      {streaming && <span className="settings-hint">Stop to change the area.</span>}
+    </div>
+  );
 
   return (
-    <div className="panel">
-      <h3><Rss className="heading-icon" />Live APRS-IS Feed (Area)</h3>
+    <div className="panel aprs-panel">
+      <div className="panel-header-row">
+        <h3>
+          <Rss className="heading-icon" />
+          APRS{hasArea ? ` — ${areaName} · ${radiusLabel}` : ""}
+        </h3>
+        <div className="checkin-roster-header-actions">
+          {streaming && (
+            <span className="aprs-live" title="Connected to APRS-IS">
+              <span className="aprs-live-dot" aria-hidden /> Live · {stations.length} station
+              {stations.length === 1 ? "" : "s"} · {packets.length} packet{packets.length === 1 ? "" : "s"}
+            </span>
+          )}
+          {hasArea &&
+            (!streaming ? (
+              <button className="primary" onClick={handleStart} disabled={!loginCallSign || starting}>
+                {starting ? "Connecting…" : "Start"}
+              </button>
+            ) : (
+              <button onClick={handleStop}>Stop</button>
+            ))}
+          {hasArea && !editingArea && !streaming && (
+            <button className="link-button" onClick={() => setEditingArea(true)}>
+              Change area
+            </button>
+          )}
+        </div>
+      </div>
       <p className="settings-hint">
-        Streams every packet APRS-IS hears within a radius of a point you choose — no API key or
-        internet dependency beyond APRS-IS itself. It's a live feed, not a history lookup: packets
-        only start arriving once you connect, and the list below stays a rolling last-30-minutes
-        window of whatever's come in since.
+        {loginCallSign ? (
+          <>
+            Live APRS-IS traffic within the area, received as <strong>{loginCallSign}</strong> (read-only). It shows the
+            last 30 minutes; nothing is kept.
+          </>
+        ) : (
+          "Set a call sign on the default operator to connect — APRS-IS servers turn away made-up ones."
+        )}
       </p>
 
-      <div className="inline-form">
-        <button onClick={() => setShowPicker(true)} disabled={streaming}>
-          {hasArea ? "Change area" : "Choose area"}
-        </button>
-        {hasArea && (
-          <span className="weather-area-status">
-            {areaLabel || formatCoords(areaLat as number, areaLon as number)}
-          </span>
-        )}
-        <label>
-          Radius:
-          <select
-            value={radiusKm}
-            onChange={(e) => setRadiusKm(Number(e.target.value))}
-            disabled={streaming}
-          >
-            {RADIUS_OPTIONS.map((opt) => (
-              <option key={opt.km} value={opt.km}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        {!streaming ? (
-          <button onClick={handleStart} disabled={!hasArea || !loginCallSign || starting}>
-            {starting ? "Connecting…" : "Start streaming"}
-          </button>
-        ) : (
-          <button onClick={handleStop}>Stop streaming</button>
-        )}
-      </div>
-
-      {loginCallSign ? (
-        <p className="settings-hint">
-          Connects to APRS-IS as <strong>{loginCallSign}</strong> (read-only, your focused
-          operator's call sign).
-        </p>
-      ) : (
-        <p className="checkin-empty-state">
-          Focus an operator with a call sign set to stream — APRS-IS servers reject generic
-          placeholder call signs, so a real one is required.
-        </p>
-      )}
-
+      {(!hasArea || editingArea) && areaEditor}
       {error && <p className="weather-area-error">APRS-IS: {error}</p>}
 
-      {streaming && (
-        <p className="weather-area-status">
-          Streaming — {packets.length} packet(s) in the last 30 minutes ({withPosition.length}{" "}
-          with a decoded position).
-        </p>
-      )}
-
-      {packets.length > 0 && (
-        <>
-          {hasArea && (
-            <AprsIsMap
-              packets={withPosition}
-              centerLat={areaLat as number}
-              centerLon={areaLon as number}
-            />
-          )}
-          <div className="event-list">
-            {packets.map((p, i) => (
-              <div key={`${p.source}-${p.received_at}-${i}`} className="event-row">
-                <span>
-                  {new Date(p.received_at).toLocaleTimeString()} — <strong>{p.source}</strong> @{" "}
-                  {p.lat != null && p.lon != null
-                    ? formatCoords(p.lat, p.lon)
-                    : "no position decoded"}
-                  {p.comment ? `: ${p.comment}` : ""}
-                </span>
-              </div>
-            ))}
+      {!hasArea ? (
+        <p className="checkin-empty-state">Choose a center and radius to see the stations around it.</p>
+      ) : (
+        <div className="aprs-workspace">
+          <AprsIsMap
+            stations={stations}
+            centerLat={areaLat as number}
+            centerLon={areaLon as number}
+            radiusKm={radiusKm}
+            selectedCall={selectedCall}
+            onSelect={setSelectedCall}
+          />
+          <div className="aprs-stations">
+            <h4 className="net-day-heading">
+              Stations{stations.length > 0 ? ` (${stations.length})` : ""}
+            </h4>
+            {stations.length === 0 ? (
+              <p className="settings-hint">
+                {streaming
+                  ? "Listening — stations appear as they're heard."
+                  : "Start to see the stations heard around the center."}
+              </p>
+            ) : (
+              <ul className="aprs-station-list">
+                {stations.map((st) => (
+                  <StationRow
+                    key={st.call}
+                    s={st}
+                    now={now}
+                    selected={st.call === selectedCall}
+                    onSelect={() => setSelectedCall(st.call)}
+                  />
+                ))}
+              </ul>
+            )}
+            {packets.length > 0 && (
+              <button className="link-button" onClick={() => setShowRaw((v) => !v)}>
+                {showRaw ? "Hide raw packets" : `Show raw packets (${packets.length})`}
+              </button>
+            )}
+            {showRaw && (
+              <ul className="aprs-raw">
+                {packets.map((p, i) => (
+                  <li key={`${p.source}-${p.received_at}-${i}`} className="checkin-row-mono">
+                    {hm(p.received_at)} {p.source}&gt;{p.dest}
+                    {p.path ? `,${p.path}` : ""}: {p.comment ?? ""}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        </>
+        </div>
       )}
 
       {showPicker && (
