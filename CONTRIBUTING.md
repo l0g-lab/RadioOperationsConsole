@@ -77,8 +77,8 @@ request; all must pass.
    git push origin main vX.Y.Z
    ```
 5. The [Release workflow](.github/workflows/release.yml) checks that the tag
-   matches the version, runs the full test suite, builds the Linux and Windows
-   installers, and creates a **draft** release whose description is that
+   matches the version, runs the full test suite, builds the Linux, Windows,
+   and macOS installers, and creates a **draft** release whose description is that
    version's CHANGELOG section. Review the draft on the Releases page and
    publish it. Installed copies see a release only once it's published (not
    a draft or pre-release), and "Update now" finds the installer for each

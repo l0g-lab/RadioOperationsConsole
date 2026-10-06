@@ -6,6 +6,13 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **macOS support.** Builds and runs natively on macOS — no platform-specific
+  code changes were needed, just the build/release plumbing. Release builds
+  now publish a `.dmg` alongside the existing Linux and Windows installers,
+  as a universal binary covering both Apple Silicon and Intel. See the
+  README's "Get it running" section for local build prerequisites.
+
 ## [2.5.2] - 2026-10-06
 
 ### Changed
