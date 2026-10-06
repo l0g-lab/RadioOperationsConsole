@@ -3,6 +3,7 @@
  * as the app marks what needs acting on now, and watches, advisories and
  * statements in amber; the most serious first, with when each ends.
  */
+import type { Geometry } from "geojson";
 import { pad2 } from "./utils";
 
 export interface NwsAlert {
@@ -16,6 +17,8 @@ export interface NwsAlert {
   expires?: string;
   /** When the hazard itself ends, if NWS says (expires is when the message does). */
   ends?: string | null;
+  /** The area it covers, for outlining on the radar map; null for one given only by county zones. */
+  geometry?: Geometry | null;
 }
 
 /** "danger" for a warning (or an emergency), "warning" for anything else. */

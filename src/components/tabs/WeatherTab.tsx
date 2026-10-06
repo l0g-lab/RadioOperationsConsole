@@ -4,7 +4,7 @@ import type { AppSettings, CurrentWeather } from "../../types";
 import { ERR_OFFLINE } from "../../types";
 import { offlineMessage, useWorkOffline } from "../../workOffline";
 import { pad2 } from "../../utils";
-import RadarPanel from "../RadarPanel";
+import RadarMap, { RADAR_REFRESH_MS } from "../weather/RadarMap";
 import LocationPicker from "../LocationPicker";
 import {
   ChevronDown,
@@ -243,7 +243,7 @@ function failed<T>(f: Fetched<T>): f is { error: string } {
 /**
  * The Weather tab: what it's doing now, the forecast, alerts, and radar for
  * the weather area. Opening the tab fetches them (NWSA-013); Refresh fetches
- * again. Radar loads only when asked for, being a large image that reloads.
+ * again. Radar is a map of its own below, starting on the latest scan.
  */
 export default function WeatherTab() {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -255,8 +255,9 @@ export default function WeatherTab() {
   const [alerts, setAlerts] = useState<Fetched<NwsAlert[]>>(null);
   const [loading, setLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  // When the alerts were last checked (they're checked every five minutes too).
+  const [alertsAt, setAlertsAt] = useState<Date | null>(null);
   const [showAllForecast, setShowAllForecast] = useState(false);
-  const [showRadar, setShowRadar] = useState(false);
 
   const lat = settings?.weather_area_lat ?? null;
   const lon = settings?.weather_area_lon ?? null;
@@ -270,6 +271,16 @@ export default function WeatherTab() {
       .catch(() => setSettings(null));
   }, []);
 
+  /** The alerts in effect for the area, most serious first, each with its area to outline. */
+  const fetchAlerts = () =>
+    api.fetchNwsAlerts().then((v) =>
+      sortAlerts(
+        ((v as { features?: { properties?: NwsAlert; geometry?: NwsAlert["geometry"] }[] }).features ?? []).map(
+          (x) => ({ ...(x.properties ?? {}), geometry: x.geometry ?? null })
+        )
+      )
+    );
+
   async function refresh() {
     if (lat == null || lon == null) return;
     setLoading(true);
@@ -282,20 +293,32 @@ export default function WeatherTab() {
           .fetchNwsForecast()
           .then((v) => (v as { properties?: { periods?: NwsForecastPeriod[] } }).properties?.periods ?? [])
       ),
-      wrap(
-        api.fetchNwsAlerts().then((v) =>
-          sortAlerts(
-            ((v as { features?: { properties?: NwsAlert }[] }).features ?? []).map((x) => x.properties ?? {})
-          )
-        )
-      ),
+      wrap(fetchAlerts()),
     ]);
     setNow(n);
     setForecast(f);
     setAlerts(a);
     setUpdatedAt(new Date());
+    if (a && !("error" in a)) setAlertsAt(new Date());
     setLoading(false);
   }
+
+  // While the tab is open and online, the alerts are checked again every five
+  // minutes, with the radar (NWSA-017), so a new warning appears on its own.
+  // A failed check keeps the list as it was.
+  useEffect(() => {
+    if (!areaSet || offline) return;
+    const id = setInterval(() => {
+      fetchAlerts()
+        .then((list) => {
+          setAlerts({ data: list });
+          setAlertsAt(new Date());
+        })
+        .catch(() => {});
+    }, RADAR_REFRESH_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat, lon, offline]);
 
   // Opening the tab, setting the area, or going back online fetches it all.
   useEffect(() => {
@@ -363,31 +386,64 @@ export default function WeatherTab() {
         <div className="weather-workspace">
           <div className="operations-column">
             <div className="panel">
+              <div className="panel-header-row">
               <h3>
                 <Thermometer className="heading-icon" />
                 Now
               </h3>
+              {/* Who reported it and when, beside the heading, so the reading has its line to itself. */}
+              {now && !failed(now) && now.data && (
+                <span
+                  className="settings-hint"
+                  title={`${now.data.station_id}${now.data.station_name ? ` ${now.data.station_name}` : ""}`}
+                >
+                  {now.data.station_id} · reported {hm(new Date(now.data.observed_at))}
+                </span>
+              )}
+            </div>
               {failed(now) ? (
                 <p className="weather-area-error" title={now.error}>
                   {unreachable}
                 </p>
               ) : now?.data ? (
-                <div className="weather-now">
-                  <div className="weather-now-main">
-                    {now.data.temp_c != null && <span className="weather-now-temp">{fahrenheit(now.data.temp_c)}</span>}
-                    <span>{now.data.conditions}</span>
-                  </div>
-                  {windText(now.data) && <div>{windText(now.data)}</div>}
-                  <div className="settings-hint">
-                    {now.data.station_id}
-                    {now.data.station_name && ` ${now.data.station_name}`} · reported{" "}
-                    {hm(new Date(now.data.observed_at))}
-                  </div>
+                <div className="weather-now-main">
+                  {now.data.temp_c != null && <span className="weather-now-temp">{fahrenheit(now.data.temp_c)}</span>}
+                  <span>{now.data.conditions}</span>
+                  {windText(now.data) && <span className="weather-now-wind">{windText(now.data)}</span>}
                 </div>
               ) : now ? (
                 <p className="settings-hint">No nearby weather station has reported in the last 90 minutes.</p>
               ) : (
                 <p className="settings-hint">Loading…</p>
+              )}
+            </div>
+
+            <div className="panel">
+              <div className="panel-header-row">
+                <h3>
+                  <TriangleAlert className="heading-icon heading-icon-warning" />
+                  Alerts{alertList && alertList.length > 0 ? ` (${alertList.length})` : ""}
+                </h3>
+                {alertsAt && (
+                  <span className="settings-hint" title="Checked again every five minutes while this tab is open">
+                    checked {hm(alertsAt)}
+                  </span>
+                )}
+              </div>
+              {failed(alerts) ? (
+                <p className="weather-area-error" title={alerts.error}>
+                  {unreachable}
+                </p>
+              ) : !alertList ? (
+                <p className="settings-hint">Loading…</p>
+              ) : alertList.length === 0 ? (
+                <p className="settings-hint">No alerts in effect.</p>
+              ) : (
+                <div className="weather-alert-list">
+                  {alertList.map((a, i) => (
+                    <AlertRow a={a} key={`${a.event}-${i}`} />
+                  ))}
+                </div>
               )}
             </div>
 
@@ -422,43 +478,18 @@ export default function WeatherTab() {
           </div>
 
           <div className="operations-column">
-            <div className="panel">
+            {/* The whole right column, filling the window's height: zoom, pan, Full view (RADAR-001). */}
+            <div className="panel radar-panel-fill">
               <h3>
-                <TriangleAlert className="heading-icon heading-icon-warning" />
-                Alerts{alertList && alertList.length > 0 ? ` (${alertList.length})` : ""}
+                <Radar className="heading-icon" />
+                Radar
               </h3>
-              {failed(alerts) ? (
-                <p className="weather-area-error" title={alerts.error}>
-                  {unreachable}
-                </p>
-              ) : !alertList ? (
-                <p className="settings-hint">Loading…</p>
-              ) : alertList.length === 0 ? (
-                <p className="settings-hint">No alerts in effect.</p>
-              ) : (
-                <div className="weather-alert-list">
-                  {alertList.map((a, i) => (
-                    <AlertRow a={a} key={`${a.event}-${i}`} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="panel">
-              <div className="panel-header-row">
-                <h3>
-                  <Radar className="heading-icon" />
-                  Radar
-                </h3>
-                <button className="link-button" onClick={() => setShowRadar((v) => !v)}>
-                  {showRadar ? "Hide radar" : "Show radar"}
-                </button>
-              </div>
-              {showRadar && <RadarPanel centerLat={lat} centerLon={lon} />}
+              <RadarMap lat={lat as number} lon={lon as number} alerts={alertList ?? []} offline={offline} />
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 }

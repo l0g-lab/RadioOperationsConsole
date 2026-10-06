@@ -107,6 +107,16 @@ pub async fn fetch_nws_alerts(
         .map_err(|e| e.to_string())
 }
 
+/// The radar loop's scan times, oldest first (RADAR-011). Fetched here, not
+/// by the window, like the app's other online requests.
+#[tauri::command]
+pub async fn fetch_radar_frames() -> Result<Vec<String>, String> {
+    if crate::net::working_offline() {
+        return Err(crate::net::WORKING_OFFLINE_MESSAGE.to_string());
+    }
+    crate::weather::fetch_radar_frames().await.map_err(|e| e.to_string())
+}
+
 /// What it's doing now at a point: the nearest NWS station's latest reading,
 /// or None when none nearby has reported in the last 90 minutes.
 #[tauri::command]

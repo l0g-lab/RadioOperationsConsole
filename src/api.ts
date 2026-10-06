@@ -470,6 +470,9 @@ export const fetchNwsAlerts = (point?: { lat: number; lon: number }) =>
 
 export const fetchNwsForecast = () => invoke<unknown>("fetch_nws_forecast");
 
+/** The radar loop's scan times (ISO, oldest first): the last hour, about every 4 minutes. */
+export const fetchRadarFrames = () => invoke<string[]>("fetch_radar_frames");
+
 /** The nearest station's latest reading at a point, or null if none has reported. */
 export const fetchCurrentWeather = (lat: number, lon: number) =>
   invoke<CurrentWeather | null>("fetch_current_weather", { lat, lon });

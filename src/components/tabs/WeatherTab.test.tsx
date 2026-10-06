@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppSettings } from "../../types";
@@ -13,7 +13,14 @@ vi.mock("../../workOffline", () => ({
   useWorkOffline: vi.fn(() => false),
   offlineMessage: () => "You're working offline.",
 }));
-vi.mock("../RadarPanel", () => ({ default: () => null }));
+const radarProps = vi.hoisted(() => ({ last: null as null | { alerts: { event?: string; geometry?: unknown }[] } }));
+vi.mock("../weather/RadarMap", () => ({
+  RADAR_REFRESH_MS: 300_000,
+  default: (p: { alerts: { event?: string; geometry?: unknown }[] }) => {
+    radarProps.last = p;
+    return null;
+  },
+}));
 vi.mock("../LocationPicker", () => ({ default: () => null }));
 
 import * as api from "../../api";
@@ -118,6 +125,44 @@ describe("WeatherTab (NWSA-013)", () => {
     await user.click(heads[0]);
     expect(screen.getByText("At 312 PM, a tornado was reported.")).toBeInTheDocument();
     expect(screen.getByText("Take cover now.")).toBeInTheDocument();
+  });
+
+  it("gives the radar map the alerts with their areas, to outline", async () => {
+    const area = { type: "Polygon", coordinates: [[[-81.5, 28.4], [-81.2, 28.4], [-81.2, 28.7], [-81.5, 28.4]]] };
+    vi.mocked(api.fetchNwsAlerts).mockResolvedValue({
+      features: [
+        { properties: { event: "Tornado Warning", severity: "Severe" }, geometry: area },
+        { properties: { event: "Heat Advisory", severity: "Minor" }, geometry: null },
+      ],
+    });
+    render(<WeatherTab />);
+    await screen.findByText("Alerts (2)");
+    expect(radarProps.last?.alerts.map((a) => [a.event, a.geometry ?? null])).toEqual([
+      ["Tornado Warning", area],
+      ["Heat Advisory", null],
+    ]);
+  });
+
+  it("checks the alerts again every five minutes while open (NWSA-017)", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+    try {
+      const { unmount } = render(<WeatherTab />);
+      await screen.findByText("Alerts (2)");
+      expect(api.fetchNwsAlerts).toHaveBeenCalledTimes(1);
+      vi.mocked(api.fetchNwsAlerts).mockResolvedValue({ features: [{ properties: { event: "Tornado Warning" } }] });
+      await act(async () => {
+        vi.advanceTimersByTime(300_000);
+      });
+      expect(api.fetchNwsAlerts).toHaveBeenCalledTimes(2);
+      expect(await screen.findByText("Alerts (1)")).toBeInTheDocument();
+      // Only the alerts: Now and the forecast wait for Refresh.
+      expect(api.fetchNwsForecast).toHaveBeenCalledTimes(1);
+      unmount();
+      vi.advanceTimersByTime(300_000);
+      expect(api.fetchNwsAlerts).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("asks for an area, fetching nothing, when none is set", async () => {

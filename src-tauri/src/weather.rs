@@ -68,6 +68,58 @@ pub async fn fetch_current(lat: f64, lon: f64) -> Result<Option<CurrentWeather>,
     }))
 }
 
+/// NOAA's national radar mosaic (base reflectivity, quality-controlled), as
+/// a map layer that radar.weather.gov itself draws from (RADAR-010).
+pub const RADAR_WMS: &str = "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows";
+
+/// Scans kept for the loop: every one of the last hour (about every two
+/// minutes, so about 30), for smooth motion (RADAR-011).
+const RADAR_LOOP_MINUTES: i64 = 60;
+
+/**
+ * The times of the radar scans to loop, oldest first, from the layer's WMS
+ * capabilities: its `time` dimension lists every scan of the last couple of
+ * hours; this keeps the last hour's.
+ */
+pub fn radar_frame_times(capabilities: &str, now: DateTime<Utc>) -> Vec<String> {
+    let Some(start) = capabilities.find("<Dimension name=\"time\"") else {
+        return Vec::new();
+    };
+    let Some(open) = capabilities[start..].find('>') else {
+        return Vec::new();
+    };
+    let body = &capabilities[start + open + 1..];
+    let body = &body[..body.find('<').unwrap_or(body.len())];
+    let cutoff = now - ChronoDuration::minutes(RADAR_LOOP_MINUTES);
+    let mut times: Vec<String> = body
+        .split(',')
+        .map(str::trim)
+        .filter(|t| {
+            DateTime::parse_from_rfc3339(t)
+                .map(|d| d.with_timezone(&Utc) >= cutoff)
+                .unwrap_or(false)
+        })
+        .map(String::from)
+        .collect();
+    times.sort();
+    times
+}
+
+/// The radar loop's scan times, oldest first (RADAR-011).
+pub async fn fetch_radar_frames() -> Result<Vec<String>, Box<dyn Error>> {
+    let c = client(Duration::from_secs(5), Some(Duration::from_secs(15)))?;
+    let resp = c
+        .get(RADAR_WMS)
+        .query(&[("service", "WMS"), ("version", "1.3.0"), ("request", "GetCapabilities")])
+        .header("User-Agent", USER_AGENT)
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        return Err(Box::from(format!("NOAA radar HTTP error: {}", resp.status())));
+    }
+    Ok(radar_frame_times(&resp.text().await?, Utc::now()))
+}
+
 /// A station's reading, before it's tied to an activity.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Observation {
@@ -347,6 +399,31 @@ mod tests {
         let (station, _, o) = found.unwrap().unwrap();
         assert!(!station.is_empty());
         assert!((o.observed_at - at).num_minutes().abs() <= WINDOW_MINUTES);
+    }
+
+    #[test]
+    fn loops_every_radar_scan_of_the_last_hour() {
+        let now = t("2026-10-06T03:30:00Z");
+        let caps = r#"<Layer><Dimension name="time" default="2026-10-06T03:28:00Z" units="ISO8601">2026-10-06T02:00:00.000Z,2026-10-06T02:32:00.000Z,2026-10-06T02:34:00.000Z,2026-10-06T02:36:00.000Z,2026-10-06T03:26:00.000Z,2026-10-06T03:28:00.000Z</Dimension></Layer>"#;
+        assert_eq!(
+            radar_frame_times(caps, now),
+            [
+                "2026-10-06T02:32:00.000Z",
+                "2026-10-06T02:34:00.000Z",
+                "2026-10-06T02:36:00.000Z",
+                "2026-10-06T03:26:00.000Z",
+                "2026-10-06T03:28:00.000Z"
+            ]
+        );
+        assert!(radar_frame_times("<nothing/>", now).is_empty());
+    }
+
+    /// Against NOAA's live radar service: `cargo test -- --ignored radar`.
+    #[test]
+    #[ignore]
+    fn reads_the_live_radar_scan_times() {
+        let frames = tauri::async_runtime::block_on(fetch_radar_frames()).unwrap();
+        assert!(frames.len() >= 5, "{frames:?}");
     }
 
     #[test]

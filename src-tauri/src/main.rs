@@ -125,6 +125,7 @@ fn main() {
             commands::fetch_nws_alerts,
             commands::fetch_nws_forecast,
             commands::fetch_current_weather,
+            commands::fetch_radar_frames,
             commands::start_aprs_is_stream,
             commands::stop_aprs_is_stream,
             commands::allow_export_extension,

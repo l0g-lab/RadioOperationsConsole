@@ -6,6 +6,25 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.5.2] - 2026-10-06
+
+### Changed
+- **Radar you can zoom and pan.** The Weather tab's radar is now NOAA's live
+  radar over the app's own map — zoom in on a storm, pan around, or open it in
+  Full view — instead of a fixed animated picture of one radar site. It takes
+  the right column, with the alerts moved above the forecast and Now down to
+  one line, so there's no Show radar button and no scrolling to see it. It
+  loops every scan of the last hour (about 30), saying how old each is
+  ("19:42, 4 min ago"), with pause and step back and forward — it starts
+  paused if your computer is set to reduce motion — and, left up, picks up new
+  scans every five minutes. In Full view, a small strip in the corner keeps
+  the play/pause, step, and time. An opacity slider lets the streets show
+  through, and the areas of the NWS alerts in effect are outlined — warnings
+  in red, watches and advisories in amber.
+- **Alerts check themselves every five minutes** while the Weather tab is
+  open, so a new warning appears on its own; the Alerts heading says when they
+  were last checked.
+
 ## [2.5.1] - 2026-10-05
 
 ### Changed
@@ -449,7 +468,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.1...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.2...HEAD
+[2.5.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.1...v2.5.2
 [2.5.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.2...v2.5.0
 [2.4.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.1...v2.4.2

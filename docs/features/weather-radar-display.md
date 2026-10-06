@@ -2,39 +2,23 @@
 
 ## Status
 
-Draft — first vertical slice in active implementation.
+Draft — implemented.
 
 ## Purpose
 
-Shows live, animated NEXRAD radar on the Weather tab, on demand, centered
-on the operator's configured weather area of interest — or a national view
-when no area is configured. This document has gone through several designs
-in this same slice; each is recorded below as superseded rather than
-deleted from history, since the reasoning for rejecting each still matters
-for not re-trying it later.
-
-The current design displays NWS's own pre-rendered animated radar-loop
-image directly — not an interactive map, not an embedded copy of NWS's web
-application, just their already-animated GIF shown with a plain `<img>`.
-This is a deliberately narrow choice made after a heavier alternative
-(embedding NWS's full radar web app in an iframe) proved slow and
-unreliable in practice inside this application's webview.
+Shows live radar on the Weather tab on a map the operator can zoom, pan, and
+take to full view: NOAA's national radar mosaic over the app's own map,
+looping the last hour, with the areas of the NWS alerts in effect outlined.
+The designs this replaced are recorded below, since the reasons for leaving
+each still matter for not trying it again.
 
 ## Relationship to other documents
 
-- Shares the weather area of interest setting defined in
-  [nws-alerts.md](nws-alerts.md) (`NWSA-001`–`006`) — this feature does not
-  introduce a second location control.
-- Uses the NEXRAD station table and nearest-station selection first
-  introduced for the animated-loop design and kept through every later
-  revision.
-- Governed by the online-enhancement boundary in
-  [02-scope-and-release-boundaries.md](../02-scope-and-release-boundaries.md)
-  ("Online map and radar sources") and `VISION-005` (supporting, not
-  required).
-- Supersedes all prior designs in this document's history (below). Code and
-  settings specific to superseded designs are removed rather than kept
-  alongside the current one.
+- Centered on the weather area of interest from
+  [nws-alerts.md](nws-alerts.md) (`NWSA-001`–`006`); outlines the same alerts
+  the tab lists (`NWSA-016`).
+- Drawn on the app's base map (`CIMAP-050`), with its offline-cached tiles
+  and its Full view control.
 
 ## Superseded designs (kept for context, not current)
 
@@ -63,87 +47,104 @@ unreliable in practice inside this application's webview.
    over a third-party app's internal rendering once embedded. Rejected in
    favor of a plain animated image this application does not need to
    execute any of NWS's JavaScript to display.
+5. **NWS's per-station animated loop image (`_loop.gif`), shown inline.**
+   Fast and simple, but a fixed picture of one radar site's coverage: no
+   zooming in on a street or out to a region, no panning, and a table of
+   every NEXRAD site kept in the app only to pick the nearest. Replaced by a
+   radar layer on the app's own map with its own loop — which also answers
+   design 2's objection, since there is now one view, not a live map and a
+   separate loop.
+
 
 ## Display
 
-- **RADAR-001:** The Weather tab MUST show radar only on explicit request,
-  via a single, clearly labeled button (`UX-007`). Radar content MUST NOT
-  render automatically when the tab opens (`VISION-005`: supporting, not
-  ambient).
-- **RADAR-002:** The Weather tab MUST NOT present more than one radar view
-  at a time. A single button opens a single view.
-- **RADAR-003:** The radar view MUST display NWS's own pre-rendered
-  animated radar-loop image directly (a plain image element), not an
-  embedded copy of any NWS web application and not any rendering, tiling,
-  panning, zooming, or animation logic implemented in this application.
-- **RADAR-004:** When a weather area of interest is configured (`NWSA-004`),
-  the image MUST be NWS's per-station loop for the NEXRAD station nearest
-  the resolved coordinates, using the existing offline station table (no
-  network lookup required to pick the station).
-- **RADAR-005:** Radar is shown only once a weather area of interest is
-  configured (`NWSA-005`); until then the tab asks for one.
-- **RADAR-006:** The operator MUST be able to dismiss the radar view and
-  return to the rest of the Weather tab without side effects on any other
-  application state.
-- **RADAR-009:** The radar view MUST render inline within the Weather tab's
-  own content, as part of the normal page, rather than as a separate
-  overlay, pop-up, or modal window.
+- **RADAR-001:** The Weather tab MUST show radar as the right column, beside
+  Now, the alerts, and the forecast, seen without scrolling: a map a little wider
+  than tall (10:9), never taller than the window leaves room for (at least
+  300px; it redraws as it's resized), on the app's own map (zoom, pan, and
+  **Full view** to fill the window), centered on the weather area, which is
+  marked. It's shown at once, with no Show radar step.
+- **RADAR-010:** The radar MUST be NOAA's national base-reflectivity mosaic
+  (`opengeo.ncep.noaa.gov`, as radar.weather.gov uses), drawn as a layer over
+  the map at any zoom, with no key.
+- **RADAR-011:** The radar MUST loop every scan of the last hour (about 30,
+  two minutes apart; about ten seconds a loop), playing on its own once
+  they're in — unless the computer asks for reduced motion, when it starts
+  paused on the latest: play/pause, an earlier and a later scan, and the shown
+  scan's local time and age ("19:42, 4 min ago"). Pausing or stepping stops
+  the loop until played again. The loop MUST NOT move to a scan before its
+  picture has arrived (or failed), loading a few ahead, so it waits on a good
+  frame rather than flash a blank one. The loop rests briefly on the latest scan. The
+  list of scans MUST be fetched by the application's backend, like its other
+  online requests, and *Refresh* fetches it again.
+- **RADAR-014:** While shown and online, the radar MUST check for new scans
+  every five minutes, adding them to the loop and unloading scans that have
+  aged out of the hour, so a radar left up stays current.
+- **RADAR-015:** If NOAA's list of scans can't be had, the radar MUST still
+  work, asking for times two minutes apart over the last hour; NOAA answers
+  each with its nearest scan.
+- **RADAR-016:** Each scan MUST be one picture of exactly the map's view (a
+  WMS GetMap for its bounds and size), not a dozen tiles — about 30 requests a
+  loop instead of hundreds, which NOAA's delivery network throttles — redrawn
+  for a new view once a pan or zoom has finished. If NOAA turns a picture
+  away, the radar MUST say its server is busy and that it will try again at
+  the next refresh, rather than show nothing.
+- **RADAR-017:** In Full view, where the panel's controls are hidden behind
+  the map, a small strip in the map's bottom-left corner MUST give the loop's
+  earlier / play-pause / later and the shown scan's time (or why there's no
+  radar). Pressing, double-clicking, or scrolling on it MUST NOT pan or zoom
+  the map.
+- **RADAR-012:** An opacity slider MUST let the map show through the radar;
+  the choice is remembered on this computer.
+- **RADAR-013:** The areas of the NWS alerts in effect MUST be outlined on the
+  map — warnings in red, watches, advisories, and statements in amber (dashed),
+  as in the Alerts list — each naming its alert, areas, and end when clicked,
+  and can be hidden. Alerts given only by whole counties (no outline) MUST be
+  counted in a note pointing to the Alerts list.
 
 ## Freshness and failure
 
-- **RADAR-007:** The loop MUST offer a manual refresh control and SHOULD
-  refresh automatically on an interval consistent with the source's own
-  update cadence (NWS's loop images are cached roughly 2 minutes at the
-  source), so it does not go stale while the operator has it open.
-- **RADAR-008:** A failure to load the image (offline, source unreachable)
-  MUST be visible in the radar view without blocking the rest of the
-  Weather tab or the application. Because this is a plain image element,
-  load failure is directly detectable and MUST be reported as such, rather
-  than failing silently or opaquely the way an embedded third-party app's
-  internal failures would.
+- **RADAR-007:** Radar MUST NOT be saved to disk — old radar is worse than
+  none — while the base map keeps working offline from its saved tiles.
+- **RADAR-008:** Working offline, nothing MUST be fetched; the radar is hidden
+  with the rest of the tab's weather, which says it needs the internet. A
+  failure to reach the radar MUST say so, without blocking the rest of the
+  tab.
 
 ## Explicit non-goals for this slice
 
-- Any radar rendering, tiling, compositing, or frame-timing logic in this
-  application — NWS's image is already animated; this application only
-  displays it.
-- Embedding any NWS web application (interactive map, layer controls, etc.)
-  — rejected per superseded design 4, above.
-- Alternate radar products (velocity, storm-relative motion, precipitation
-  totals) — base reflectivity only, whatever the station loop shows.
-- Letting the operator pick a specific station manually instead of using
-  nearest-station selection — deferred; not needed for the stated use case.
-- Precise "as of" freshness timestamps for the displayed sweep — periodic
-  and manual refresh are this slice's freshness mechanism.
+- Other radar products (velocity, storm-relative motion, precipitation
+  totals), future radar, and lightning — base reflectivity only.
+- Embedding any NWS web application — rejected per superseded design 4.
+- Spotter reports on the radar map; the Spotter Reports tab has its own.
 
 ## Acceptance examples
 
 ```gherkin
-Scenario: Radar is not loaded until requested
-  Given the operator has not clicked "Show radar"
-  When the Weather tab is open
-  Then no radar content has been requested
+Scenario: Radar opens looping the last hour
+  Given a weather area of interest is configured near Orlando, FL
+  When the operator opens the Weather tab
+  Then the radar map loops the last hour of scans over the app's map around Orlando
+  And it says when the scan shown was ("19:42, 4 min ago")
 
-Scenario: Radar shows the nearest station's loop when an area is configured
-  Given a weather area of interest is configured near Miami, FL
-  When the operator clicks "Show radar"
-  Then NWS's animated loop for the nearest station (KAMX) is displayed
-  And it renders as a plain animated image, not an embedded application
+Scenario: Reduced motion
+  Given the computer is set to reduce motion
+  When the operator opens the Weather tab
+  Then the radar shows the latest scan, paused, until played
 
-Scenario: Radar falls back to the national loop with no area configured
-  Given no weather area of interest is configured
-  When the operator clicks "Show radar"
-  Then NWS's national CONUS animated loop is displayed
+Scenario: Zooming in on a storm
+  Given the radar map is showing
+  When the operator zooms in and pans to a storm
+  Then the radar redraws at that zoom over the streets
+  And Full view shows the same map filling the window
 
-Scenario: Radar renders inline, not as a separate window
-  Given the operator clicks "Show radar"
-  When the radar view appears
-  Then it renders within the Weather tab's own content
-  And no separate overlay, pop-up, or modal window is shown
+Scenario: A warning's area is outlined
+  Given a Severe Thunderstorm Warning with an area is in effect
+  Then its area is outlined in red on the radar map
+  And clicking it names the warning, its counties, and when it ends
 
-Scenario: A load failure is visible, not silent
-  Given the radar image fails to load (offline, source unreachable)
-  When the operator has the radar view open
-  Then a clear failure message is shown in the radar view
-  And the rest of the Weather tab and the application remain usable
+Scenario: Working offline
+  Given the operator is working offline
+  Then the Weather tab says the weather needs the internet
+  And nothing is fetched
 ```

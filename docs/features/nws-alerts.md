@@ -68,19 +68,28 @@ regardless of which of those they type.
   fetch the current conditions, forecast, and alerts at once, with no further
   click. One Refresh beside the heading fetches all three again, and the
   heading MUST say when they were last updated. Nothing fetches while
-  working offline (the tab says so), on any other tab, or in the background.
+  working offline (the tab says so) or on any other tab; the only fetching in
+  the background is the alerts and radar every five minutes while the tab is
+  open (`NWSA-017`, `RADAR-014`).
 - **NWSA-014:** The tab MUST lay its sections out in two columns, like the
-  Operations tab: **Now** and **Forecast** on the left; **Alerts** and
-  **Radar** on the right.
+  Operations tab: **Now**, **Alerts** (more pressing than the forecast), and
+  **Forecast** on the left; **Radar** in the right column (`RADAR-001`).
 - **NWSA-015:** **Now** MUST show the nearest NWS station's latest reading
-  (within 90 minutes): temperature in °F, conditions, wind in mph with gusts,
-  and which station reported and when (`WX-003`'s lookup).
+  (within 90 minutes) on one line: temperature in °F, conditions, and wind in
+  mph with gusts; with which station reported it and when beside the panel's
+  heading ("KORL · reported 23:39", its full name on hovering) (`WX-003`'s
+  lookup).
 - **NWSA-016:** Each alert MUST take one line: its event (red for a warning or
   emergency, amber for a watch, advisory, or statement, as the app marks what
   needs acting on now), the counties it covers, and when it ends in local
   time ("until 16:00", "until Tue 08:00"). Warnings come first, then by
   severity, then the soonest to end. Clicking an alert MUST show NWS's text,
   keeping its paragraphs; the heading MUST give the count.
+- **NWSA-017:** While the tab is open and online, the alerts MUST be checked
+  again every five minutes (with the radar, `RADAR-014`), so a new warning
+  appears on its own; the Alerts heading MUST say when they were last checked.
+  A failed check keeps the list as it was. Now and the forecast still wait for
+  Refresh.
 
 ## Current forecast
 
