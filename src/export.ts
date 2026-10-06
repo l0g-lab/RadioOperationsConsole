@@ -2,7 +2,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { mkdir, writeTextFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import * as api from "./api";
-import type { Activity, ActivitySummary, Checkin, HistoryEvent, RelayMessage, SpotterReport } from "./types";
+import type { Activity, ActivitySummary, Checkin, HistoryEntry, RelayMessage, SpotterReport } from "./types";
 import { stationKindLabel } from "./rangeCheck";
 import { formatTimeLines, pad2, splitScheduledAt } from "./utils";
 import { activityTypeLabel, isLog } from "./activityTypes";
@@ -11,6 +11,7 @@ import { latLonToGridSquare } from "./grid";
 import { formatCoords } from "./geo";
 import { summaryFacts } from "./summaryFacts";
 import { relayStatusLabel } from "./relay";
+import { describeHistory, historyPlain } from "./historyText";
 
 /**
  * Prompts the operator with a native "Save As" dialog and writes the
@@ -368,28 +369,29 @@ export function spotterReportsToText(activity: Activity | null, reports: Spotter
 
 // ---------------------------------------------------------- log, history, package
 
-function eventRows(events: HistoryEvent[]): string[][] {
-  return events.map((e) => [
-    localStamp(e.created_at),
-    utcStamp(e.created_at),
-    e.entity_type,
-    e.action,
-    e.operator,
-    e.data,
-    e.entity_id,
-  ]);
-}
-
 /**
- * The full history of an activity: every start, close, correction, removal,
- * restore, log entry and traffic-handled mark, with the operator and both
- * times. `Detail` holds the event's own data as recorded (before/after values
- * for a correction).
+ * The full history of an activity, oldest first, as the History tab says it
+ * (AUDIT-022): both times, what happened in words, and who did it; then, for
+ * the record, the kind of record, the stored action, the data as recorded
+ * (every before/after value of a correction), and the record's id.
+ * `operatorName` names an operator by id, for a change of who runs the net.
  */
-export function historyToCsv(events: HistoryEvent[]): string {
+export function historyToCsv(
+  events: HistoryEntry[],
+  operatorName: (id: string) => string | null = () => null
+): string {
   return csv([
-    ["Time (Local)", "Time (UTC)", "Record Type", "Action", "Operator", "Detail", "Record Id"],
-    ...eventRows(events),
+    ["Time (Local)", "Time (UTC)", "What Happened", "Who", "Record Type", "Action", "Recorded Data", "Record Id"],
+    ...events.map((e) => [
+      localStamp(e.created_at),
+      utcStamp(e.created_at),
+      historyPlain(describeHistory(e, operatorName)),
+      e.operator,
+      e.entity_type,
+      e.action,
+      e.data,
+      e.entity_id,
+    ]),
   ]);
 }
 

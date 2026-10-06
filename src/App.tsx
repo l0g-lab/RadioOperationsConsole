@@ -261,7 +261,15 @@ export default function App() {
           {currentTab === "APRS" && (
             <MapAprsTab operators={operators} selectedOperatorId={defaultOperatorId} />
           )}
-          {currentTab === "History" && <HistoryTab />}
+          {currentTab === "History" && (
+            <HistoryTab
+              operators={operators}
+              onOpenActivity={(id) => {
+                setSelectedActivityId(id);
+                setCurrentTab("Operations");
+              }}
+            />
+          )}
           {currentTab === "Events" && (
             <EventsTab
               events={events}

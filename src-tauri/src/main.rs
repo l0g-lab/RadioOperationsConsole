@@ -115,7 +115,7 @@ fn main() {
             commands::restore_operator,
             commands::create_audit_event,
             commands::list_audit_events,
-            commands::list_recent_audit_events,
+            commands::list_history,
             commands::activity_history,
             commands::get_settings,
             commands::save_settings,

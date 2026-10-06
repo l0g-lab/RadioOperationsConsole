@@ -1,10 +1,10 @@
-import type { HistoryEvent } from "./types";
+import type { HistoryEntry } from "./types";
 
 /**
  * When the activity last ended before being reopened, from its history; ""
  * if it never has (LIFE-008).
  */
-export function previousEnd(history: HistoryEvent[]): string {
+export function previousEnd(history: HistoryEntry[]): string {
   const closes = history.filter((e) => e.entity_type === "activity" && e.action === "closed");
   const last = closes[closes.length - 1];
   if (!last) return "";

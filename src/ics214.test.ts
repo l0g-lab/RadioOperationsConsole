@@ -11,7 +11,7 @@ import {
   resourcesFromRecords,
   type ActivityRecords,
 } from "./ics214";
-import type { Activity, ActivitySummary, Checkin, HistoryEvent, Ics214Details, SpotterReport } from "./types";
+import type { Activity, ActivitySummary, Checkin, HistoryEntry, Ics214Details, SpotterReport } from "./types";
 
 // October 3, 2026, local time.
 const at = (h: number, m = 0) => new Date(2026, 9, 3, h, m).toISOString();
@@ -37,6 +37,7 @@ function activity(o: Partial<Activity>): Activity {
     repeater_lon: null,
     operator_id: "",
     event_id: "",
+    record_count: 0,
     event: "",
     ...o,
   };
@@ -63,7 +64,7 @@ const summary = (o: Partial<ActivitySummary> = {}): ActivitySummary => ({
   ...o,
 });
 
-const handled = (id: string, when: string, on = true, operator = "Pat"): HistoryEvent => ({
+const handled = (id: string, when: string, on = true, operator = "Pat"): HistoryEntry => ({
   id: `h-${id}-${when}`,
   entity_type: "checkin",
   entity_id: id,
@@ -71,6 +72,9 @@ const handled = (id: string, when: string, on = true, operator = "Pat"): History
   data: JSON.stringify({ handled: on }),
   operator,
   created_at: when,
+  subject: "",
+  activity_id: "",
+  activity_title: "",
 });
 
 function records(): ActivityRecords[] {

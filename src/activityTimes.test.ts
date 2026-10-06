@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { HistoryEvent } from "./types";
+import type { HistoryEntry } from "./types";
 import { previousEnd, suggestedEnd } from "./activityTimes";
 
-const event = (action: string, utc: string): HistoryEvent => ({
+const event = (action: string, utc: string): HistoryEntry => ({
   id: action + utc,
   entity_type: "activity",
   entity_id: "a1",
@@ -10,6 +10,9 @@ const event = (action: string, utc: string): HistoryEvent => ({
   data: JSON.stringify({ utc_time: utc }),
   operator: "",
   created_at: utc,
+  subject: "",
+  activity_id: "",
+  activity_title: "",
 });
 
 describe("ending a reopened net (LIFE-008)", () => {

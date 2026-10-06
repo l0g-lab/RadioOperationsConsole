@@ -35,6 +35,8 @@ export interface Activity {
   /** The event it belongs to (an `EventRecord`'s id) and that event's name; "" if none. */
   event_id: string;
   event: string;
+  /** Its records, not counting removed ones: check-ins (a station log's contacts), or a relay's messages. */
+  record_count: number;
 }
 
 /** "none", "pl" (CTCSS) or "dcs". */
@@ -596,16 +598,21 @@ export interface ActivityWeather {
   alerts: string[];
 }
 
-/** One line of an activity's history, with the operator who made it. */
-export interface HistoryEvent {
+/** One line of the History tab, with what it's about and its activity, named (AUDIT-020). */
+export interface HistoryEntry {
   id: string;
-  /** "activity", "checkin", "spotter_report" or "relay_message". */
   entity_type: string;
   entity_id: string;
   action: string;
   data: string;
+  /** Who did it, "Pat Jones (K4NCS)", or empty. */
   operator: string;
   created_at: string;
+  /** What it's about, by name ("W4ABC", "Tuesday Net"); empty if since deleted. */
+  subject: string;
+  /** The activity it belongs to (itself, for an activity), or empty. */
+  activity_id: string;
+  activity_title: string;
 }
 
 /** Something kept on this computer besides the records (STORE-001). */

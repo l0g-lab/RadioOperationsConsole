@@ -66,7 +66,9 @@ be in one predictable place, complete, and unambiguous about time.
   closing notes, and in its history.
 - **EXPORT-013:** The full history as CSV: every start, close, correction, removal,
   restore, and traffic-handled mark, for the activity and for its
-  check-ins and spotter reports, each with the operator (`AUDIT-001`).
+  check-ins, spotter reports, and relayed messages, each with the operator
+  (`AUDIT-001`). Each row MUST say what happened in words, as the History
+  tab does (`AUDIT-020`, `AUDIT-022`), before the record as stored.
 - **EXPORT-014:** The activity summary as text, using the sections its type
   emphasises (`LIFE-054`).
 - **EXPORT-017:** The summary MUST be readable without saving a file, laid

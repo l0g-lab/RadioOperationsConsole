@@ -17,6 +17,7 @@ import type { ActivityPrefill } from "../operations/activityPrefill";
 import { shortMiles } from "../checkins/roster/shared";
 import { CalendarClock, Info, Play } from "lucide-react";
 import ActivityTypeIcon from "../ActivityTypeIcon";
+import { useMinuteClock } from "../../hooks/useMinuteClock";
 import { mhzFromText } from "../../bands";
 import BandChip from "../BandChip";
 
@@ -26,16 +27,6 @@ interface Props {
   selectedOperatorId: string | null;
   /** Opens the create-activity form filled from a listing (NETL-030). */
   onStartActivity: (prefill: ActivityPrefill) => void;
-}
-
-/** The time now, updated every minute so "on now" and "today" stay right. */
-function useMinuteClock(): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
 }
 
 /** A listing's details, for the form. */

@@ -26,6 +26,7 @@ const activity: Activity = {
   repeater_lon: null,
   operator_id: "",
   event_id: "",
+  record_count: 0,
   event: "",
 };
 

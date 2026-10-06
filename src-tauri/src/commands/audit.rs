@@ -1,5 +1,5 @@
 use super::{ensure_open, AppState};
-use crate::repo::{AuditEvent, HistoryEvent};
+use crate::repo::{AuditEvent, HistoryEntry};
 use tauri::State;
 
 #[tauri::command]
@@ -44,17 +44,10 @@ pub fn list_audit_events(
         .map_err(|e| e.to_string())
 }
 
+/// The History tab's lines, newest first, with what each is about (AUDIT-020).
 #[tauri::command]
-pub fn list_recent_audit_events(
-    state: State<AppState>,
-    limit: i64,
-) -> Result<Vec<AuditEvent>, String> {
-    state
-        .repo
-        .lock()
-        .unwrap()
-        .list_recent_audit_events(limit)
-        .map_err(|e| e.to_string())
+pub fn list_history(state: State<AppState>, limit: i64) -> Result<Vec<HistoryEntry>, String> {
+    state.repo.lock().unwrap().list_history(limit).map_err(|e| e.to_string())
 }
 
 /// Everything recorded about one activity, for exporting.
@@ -62,7 +55,7 @@ pub fn list_recent_audit_events(
 pub fn activity_history(
     state: State<AppState>,
     activity_id: String,
-) -> Result<Vec<HistoryEvent>, String> {
+) -> Result<Vec<HistoryEntry>, String> {
     state
         .repo
         .lock()

@@ -115,33 +115,44 @@ yet built, so these are documented here as the interim source of truth.
 ## Operations tab layout
 
 The Operations tab has no sidebar: it uses the full window. An **Activities**
-table at the top is for finding and choosing an activity; below it, the
+panel at the top, in sections, is for seeing what's on and choosing an
+activity; below it, the
 selected activity (details, summary, exports and forms) on the left, and
 operators, repeaters, and places on the right. The top bar's Activity list
 (`UX-OPS-003`) stays the quick way to switch from any tab.
 
-- **UX-OPS-001:** The Activities table MUST list every activity, and
+- **UX-OPS-001:** The Activities panel MUST list every activity, and
   clicking one MUST make it the focused activity. Besides **+ New
   activity**, it MUST NOT hold editing or deletion controls; those are in
   the Selected Activity panel.
-- **UX-OPS-015:** Each activity MUST take one line: its type icon and name,
-  its band (`NETL-026`), its type, when it ran or is to run ("Mon 10/5
-  17:46"), its state — *Open* in green, *Not started* in amber once its time
-  has come, *Closed* dimmed — and its event, if any. The focused one MUST be
-  marked.
-- **UX-OPS-016:** The table MUST offer three views, with how many each holds:
-  **Now & coming up** (the default: open, latest first; not started,
-  soonest first, unscheduled last; then station logs, `LOG-005`), **Closed**
-  (most recent first), and **All**. It MUST show 25 rows, with *Show more*
-  for the rest.
-- **UX-OPS-017:** A search MUST look through every activity, whatever the
-  view, by name, event, type, or frequency, and say so when nothing
-  matches.
+- **UX-OPS-015:** Each activity MUST take one line: its type icon (the type
+  on hovering) and name, then close by its band (`NETL-026`), when it ran or
+  is to run ("Mon 10/5 17:46"), how many records it holds ("14 check-ins",
+  "3 messages", "12 contacts"; removed ones not counted), and its state —
+  *Open* in green, *Not started* in amber once its time has come, *Closed*
+  dimmed. The focused one MUST be marked. States MUST stay current while the
+  tab is open (checked each minute). Each row MUST be a button in a list, so
+  it is reachable and announced as one.
+- **UX-OPS-016:** The panel MUST list activities in sections, in the order
+  things happen: **Open now**; each event still going as its own block, in
+  running order, headed by its name, day, and progress ("Mon 10/5 · 1 open ·
+  2 to go · 1 done", green while under way; `EVT-021`); **Coming up** (soonest
+  first, unscheduled after, then nets whose day passed without being started,
+  as "Not started · 3 wk ago" in amber); **Station logs** (`LOG-005`);
+  **Earlier** (closed, most recent first); and events that are over. Earlier
+  and events that are over MUST start folded; folding MUST be remembered on
+  this computer, and a folded section holding the focused activity MUST open.
+  Each section MUST show 25 rows, with *Show more* for the rest, and no
+  scroll box of its own.
+- **UX-OPS-017:** A search MUST look through every activity by name, event,
+  type, or frequency, listing the matches (with each one's event) in place
+  of the sections, and say so when nothing matches, or when the focused
+  activity isn't among them.
 - **UX-OPS-003:** The focused activity MUST be chosen from a selector in the
   application header, visible on every tab, listing each activity not yet
   closed, the 10 most recently closed, and the focused one, with its date and
   time so same-titled activities can be told apart; older ones are chosen from
-  the Activities table on the Operations tab, which the selector points to. Other tabs MUST NOT carry their
+  the Activities panel on the Operations tab, which the selector points to. Other tabs MUST NOT carry their
   own activity selector.
 - **UX-OPS-004:** The header MUST show the focused activity's frequency and
   offer an "Edit" action that goes to the Operations tab with that
@@ -166,8 +177,8 @@ operators, repeaters, and places on the right. The top bar's Activity list
 
 ## Activity correction and deletion
 
-Finished activities stay listed (under Closed in the Activities table), so a
-past net is never out of sight. There is no archiving; an
+Finished activities stay listed (under Earlier in the Activities panel), so
+a past net is never out of sight. There is no archiving; an
 activity is removed only by permanent deletion, a separate, explicitly
 confirmed action (`AUDIT-007`–`AUDIT-011`).
 

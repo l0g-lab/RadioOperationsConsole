@@ -6,7 +6,18 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-05
+
 ### Changed
+- **The History tab reads like a log.** Instead of codes and raw data, each
+  line says what happened — "Ended **Tuesday Net**", "Marked **W4ABC**'s
+  traffic handled", "Passed the message **wrmr677 for Monroe** to Monroe via
+  7.188", "Edited **GMRS net**: title “GMRS” → “GMRS net”" — with the time,
+  an icon for what it's about, the net it belongs to (click to go to it), and
+  who did it. Lines are grouped by day (Today, Yesterday, …), can be
+  searched, and older ones load with *Show older*. An activity's **Full
+  history** CSV (Exports & forms) says the same — a *What Happened* column
+  and *Who* — before the record as stored.
 - **The Nets tab is easier to read.** A **Coming up** box at the top shows
   the next three nets — "On now", "in 25 min", "Tomorrow 07:30" — and each
   meeting in the week below takes one line: time, name, and repeater with
@@ -21,14 +32,17 @@ top. Each release's section here is also its description on the
   repeater's band (**2m**, **70cm**, **GMRS**…) before its frequency, and an
   event's activities show each activity's type icon and band, with *not
   started* in amber.
-- **The Operations tab's activity list is now a table across the top**, in
-  place of the narrow sidebar, so the tab has the full window. One line per
-  activity — type icon, name, band, type, when, state (open in green, due
-  but not started in amber, closed dimmed), and event — with views for **Now
-  & coming up**, **Closed**, and **All**, and a search that finds any
-  activity by name, event, type, or frequency. **+ New activity** is beside
-  it. The top bar's Activity list is still the quick way to switch from any
-  tab.
+- **The Operations tab's activity list now runs across the top** in place of
+  the narrow sidebar, so the tab has the full window. It keeps the same
+  sections, in the order things happen — **Open now**, each event as its own
+  block in running order (with its day and "1 open · 2 to go · 1 done"),
+  **Coming up**, **Station logs**, and **Earlier** (folded) — with one line
+  per activity: type icon, name, band, when, how many check-ins (or messages,
+  or contacts), and state (open in green, due but not started in amber,
+  closed dimmed). A net whose day passed without being started shows at the
+  end of Coming up as "Not started · 3 wk ago". The search finds any activity
+  by name, event, type, or frequency, and **+ New activity** is beside it.
+  The top bar's Activity list is still the quick way to switch from any tab.
 
 ## [2.4.2] - 2026-10-05
 
@@ -404,7 +418,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.2...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.2...v2.5.0
 [2.4.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.3.1...v2.4.0

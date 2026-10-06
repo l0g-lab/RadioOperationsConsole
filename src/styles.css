@@ -3383,38 +3383,6 @@ button.online-pill-working-offline:hover {
   margin-bottom: 10px;
 }
 
-/* Now & coming up · Closed · All, as one segmented control. */
-.activity-views {
-  display: inline-flex;
-}
-
-.activity-view {
-  border-radius: 0;
-  margin-left: -1px;
-  white-space: nowrap;
-}
-
-.activity-view:first-child {
-  border-radius: 3px 0 0 3px;
-  margin-left: 0;
-}
-
-.activity-view:last-child {
-  border-radius: 0 3px 3px 0;
-}
-
-.activity-view-chosen {
-  position: relative;
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.activity-view-count {
-  color: var(--text-dim);
-  font-weight: normal;
-}
-
 .activities-search {
   width: 14em;
 }
@@ -3422,16 +3390,61 @@ button.online-pill-working-offline:hover {
 /* Each row is a button laid out as a grid of the same fixed and
    proportional columns, so they line up: name, band, type, when, state,
    event. */
+/* Sections in the order things happen: a heading each (an event's with its
+   day and progress, green while under way), Earlier and finished events
+   folded. */
+.activity-section {
+  margin-top: 8px;
+}
+
+.activity-section-heading {
+  margin: 0;
+  padding: 3px 0 4px;
+  border-bottom: 2px solid var(--border);
+  color: var(--text-dim);
+  font-size: calc(12px * var(--font-scale));
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.activity-section-summary {
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.activity-section-live {
+  color: var(--accent);
+  border-bottom-color: var(--accent-dim);
+}
+
+/* An event's block: its activities set in a little under the heading. */
+.activity-section-event .activity-table {
+  padding-left: 14px;
+}
+
+/* Search results add the event column. */
+.activity-table-row.activity-table-row-event {
+  grid-template-columns: minmax(12em, 22em) 4.6em 10.5em 8em 14em minmax(0, 1fr);
+}
+
+/* The page scrolls; long lists use Show more rather than a scroll box of
+   their own. */
 .activity-table {
   display: flex;
   flex-direction: column;
-  max-height: 360px;
-  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .activity-table-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) 4.6em minmax(0, 0.8fr) 10.5em 7em minmax(0, 1.2fr);
+  /* The name is capped, so the details follow it closely; spare room is
+     left at the end rather than between them. */
+  grid-template-columns: minmax(12em, 22em) 4.6em 10.5em 8em 14em minmax(0, 1fr);
   align-items: center;
   width: 100%;
   padding: 0;
@@ -3475,9 +3488,18 @@ button.online-pill-working-offline:hover {
   text-overflow: ellipsis;
 }
 
-.activity-table-type,
 .activity-table-when,
 .activity-table-event {
+  color: var(--text-dim);
+}
+
+/* A count of none is dimmed: often a test run, worth a look before deleting. */
+.activity-table-none {
+  color: var(--text-dim);
+}
+
+.activity-table-selected {
+  margin: 6px 0 0;
   color: var(--text-dim);
 }
 
@@ -3498,4 +3520,63 @@ button.online-pill-working-offline:hover {
 
 .activity-state-dim {
   color: var(--text-dim);
+}
+
+/* ---- History tab (HistoryTab.tsx, AUDIT-020) ---- */
+
+.history-panel {
+  max-width: 1100px;
+}
+
+.history-day {
+  margin-top: 10px;
+}
+
+.history-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One event a line: time, kind, what happened, its activity, who. */
+.history-row {
+  display: grid;
+  grid-template-columns: 3.6em 20px minmax(0, 1fr) minmax(0, 12em) minmax(0, 10em);
+  gap: 10px;
+  align-items: baseline;
+  padding: 4px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-time,
+.history-who {
+  color: var(--text-dim);
+}
+
+.history-who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(13px * var(--font-scale));
+}
+
+.history-icon {
+  align-self: center;
+  display: inline-flex;
+  color: var(--text-dim);
+}
+
+.history-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.history-text {
+  overflow-wrap: anywhere;
+}
+
+.history-activity {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

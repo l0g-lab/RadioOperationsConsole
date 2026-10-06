@@ -106,7 +106,7 @@ who attended.
   The same band and type marks MUST be used elsewhere: the band before each
   repeater's frequency in the Repeaters list (as colored text, leaving the
   names room), the band and type icon on each activity in the Activities
-  table (`UX-OPS-015`) and an event's activities, with *open* in green and
+  panel (`UX-OPS-015`) and an event's activities, with *open* in green and
   *not started* in amber.
   The top bar keeps neither, having no room to spare.
 - **NETL-022:** The list MUST be searchable by name, repeater, frequency,

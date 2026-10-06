@@ -44,6 +44,9 @@ pub struct Activity {
     /// The event it belongs to (events.rs), or empty; and that event's name.
     pub event_id: String,
     pub event: String,
+    /// Its records, not counting removed ones: check-ins (a station log's
+    /// contacts), or a relay's messages (UX-OPS-015).
+    pub record_count: i64,
 }
 
 /// Whether a relay message `m` has an outcome (passed or given up on).
@@ -196,18 +199,23 @@ pub struct AuditEvent {
     pub created_at: String,
 }
 
-/// One line of an activity's history: what happened, to what, by whom, and when.
+/// One line of the History tab (AUDIT-020): an event, with what it's about
+/// and the activity it belongs to, named.
 #[derive(Serialize, Debug, Clone)]
-pub struct HistoryEvent {
+pub struct HistoryEntry {
     pub id: String,
-    /// "activity", "checkin" or "spotter_report".
     pub entity_type: String,
     pub entity_id: String,
     pub action: String,
     pub data: String,
-    /// The operator who did it (display name and call sign), or empty.
+    /// Who did it (display name and call sign), or empty.
     pub operator: String,
     pub created_at: String,
+    /// What it's about, by name ("W4ABC", "Tuesday Net"), or empty if since deleted.
+    pub subject: String,
+    /// The activity it belongs to (itself, for an activity), or empty.
+    pub activity_id: String,
+    pub activity_title: String,
 }
 
 /// Where an operator is named, for removing them (`operator_usage`).
@@ -459,7 +467,10 @@ impl Repository {
         Ok(id)
     }
 
-    const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,''), coalesce(repeater_name,''), repeater_lat, repeater_lon, coalesce(operator_id,''), coalesce(event_id,''), coalesce((SELECT name FROM events WHERE events.id = activities.event_id),'')";
+    const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,''), coalesce(repeater_name,''), repeater_lat, repeater_lon, coalesce(operator_id,''), coalesce(event_id,''), coalesce((SELECT name FROM events WHERE events.id = activities.event_id),''), \
+        CASE WHEN type = 'relay' \
+            THEN (SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = activities.id AND m.voided_at IS NULL) \
+            ELSE (SELECT COUNT(*) FROM checkins c WHERE c.activity_id = activities.id AND c.voided_at IS NULL) END";
 
     fn map_activity(r: &rusqlite::Row) -> rusqlite::Result<Activity> {
         Ok(Activity {
@@ -481,6 +492,7 @@ impl Repository {
             operator_id: r.get(15)?,
             event_id: r.get(16)?,
             event: r.get(17)?,
+            record_count: r.get(18)?,
         })
     }
 
@@ -1293,20 +1305,65 @@ impl Repository {
     /// activity itself (started, closed, corrections, log entries) and on its
     /// check-ins and spotter reports (corrections, removals, restores, traffic
     /// handled), each with the operator who made it.
-    pub fn activity_history(&self, activity_id: &str) -> rusqlite::Result<Vec<HistoryEvent>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT e.id, e.entity_type, e.entity_id, e.action, coalesce(e.data,''), \
-                    coalesce(o.display_name || CASE WHEN coalesce(o.call_sign,'') != '' THEN ' (' || o.call_sign || ')' ELSE '' END, ''), \
-                    e.created_at \
-             FROM audit_events e LEFT JOIN operators o ON o.id = e.operator_id \
-             WHERE e.entity_id = ?1 \
+    pub fn activity_history(&self, activity_id: &str) -> rusqlite::Result<Vec<HistoryEntry>> {
+        self.history(
+            "e.entity_id = ?1 \
                 OR e.entity_id IN (SELECT id FROM checkins WHERE activity_id = ?1) \
                 OR e.entity_id IN (SELECT id FROM spotter_reports WHERE activity_id = ?1) \
-                OR e.entity_id IN (SELECT id FROM relay_messages WHERE activity_id = ?1) \
-             ORDER BY e.created_at, e.rowid",
-        )?;
-        let rows = stmt.query_map(params![activity_id], |r| {
-            Ok(HistoryEvent {
+                OR e.entity_id IN (SELECT id FROM relay_messages WHERE activity_id = ?1)",
+            "ASC",
+            -1,
+            params![activity_id],
+        )
+    }
+
+    /**
+     * The History tab's lines, newest first (AUDIT-020): each event with what
+     * it's about, named ("W4ABC", "Hail from W4ABC", "wrmr677 for Monroe"),
+     * the activity it belongs to, and who did it. Something since deleted
+     * has no name here; the event's own data still says what it was.
+     */
+    pub fn list_history(&self, limit: i64) -> rusqlite::Result<Vec<HistoryEntry>> {
+        self.history("1", "DESC", limit, params![])
+    }
+
+    /// Audit events matching `filter` (SQL on `e`, the audit_events row), in
+    /// time order `order` ("ASC" or "DESC"), at most `limit` (-1 for all),
+    /// each named as `list_history` describes.
+    fn history(&self, filter: &str, order: &str, limit: i64, args: impl rusqlite::Params) -> rusqlite::Result<Vec<HistoryEntry>> {
+        let sql = format!(
+            "WITH h AS (
+                SELECT e.*, e.rowid AS seq, CASE e.entity_type
+                    WHEN 'activity' THEN e.entity_id
+                    WHEN 'checkin' THEN (SELECT activity_id FROM checkins WHERE id = e.entity_id)
+                    WHEN 'spotter_report' THEN (SELECT activity_id FROM spotter_reports WHERE id = e.entity_id)
+                    WHEN 'relay_message' THEN (SELECT activity_id FROM relay_messages WHERE id = e.entity_id)
+                END AS activity_id
+                FROM audit_events e WHERE {filter} ORDER BY e.created_at {order}, e.rowid {order} LIMIT {limit}
+            )
+            SELECT h.id, h.entity_type, h.entity_id, h.action, coalesce(h.data, ''),
+                coalesce(o.display_name || CASE WHEN coalesce(o.call_sign, '') != '' THEN ' (' || o.call_sign || ')' ELSE '' END, ''),
+                h.created_at,
+                coalesce(CASE h.entity_type
+                    WHEN 'activity' THEN (SELECT title FROM activities WHERE id = h.entity_id)
+                    WHEN 'checkin' THEN (SELECT upper(call_sign) FROM checkins WHERE id = h.entity_id)
+                    WHEN 'spotter_report' THEN (SELECT hazard_type || CASE WHEN coalesce(reporter, '') != '' THEN ' from ' || reporter ELSE '' END FROM spotter_reports WHERE id = h.entity_id)
+                    WHEN 'relay_message' THEN (SELECT from_station || ' for ' || for_station FROM relay_messages WHERE id = h.entity_id)
+                    WHEN 'operator' THEN (SELECT display_name || CASE WHEN coalesce(call_sign, '') != '' THEN ' (' || call_sign || ')' ELSE '' END FROM operators WHERE id = h.entity_id)
+                    WHEN 'repeater' THEN (SELECT name FROM repeaters WHERE id = h.entity_id)
+                    WHEN 'net_listing' THEN (SELECT name FROM net_listings WHERE id = h.entity_id)
+                    WHEN 'place' THEN (SELECT name FROM places WHERE id = h.entity_id)
+                    WHEN 'event' THEN (SELECT name FROM events WHERE id = h.entity_id)
+                    WHEN 'ics214_log' THEN (SELECT incident_name FROM ics214_logs WHERE id = h.entity_id)
+                END, ''),
+                coalesce(h.activity_id, ''),
+                coalesce((SELECT title FROM activities WHERE id = h.activity_id), '')
+             FROM h LEFT JOIN operators o ON o.id = h.operator_id
+             ORDER BY h.created_at {order}, h.seq {order}"
+        );
+        let mut stmt = self.conn.prepare(&sql)?;
+        let rows = stmt.query_map(args, |r| {
+            Ok(HistoryEntry {
                 id: r.get(0)?,
                 entity_type: r.get(1)?,
                 entity_id: r.get(2)?,
@@ -1314,28 +1371,12 @@ impl Repository {
                 data: r.get(4)?,
                 operator: r.get(5)?,
                 created_at: r.get(6)?,
+                subject: r.get(7)?,
+                activity_id: r.get(8)?,
+                activity_title: r.get(9)?,
             })
         })?;
         rows.collect()
-    }
-
-    pub fn list_recent_audit_events(&self, limit: i64) -> rusqlite::Result<Vec<AuditEvent>> {
-        let mut stmt = self.conn.prepare("SELECT id, entity_type, entity_id, action, coalesce(data,''), created_at FROM audit_events ORDER BY created_at DESC LIMIT ?1")?;
-        let rows = stmt.query_map(params![limit], |r| {
-            Ok(AuditEvent {
-                id: r.get(0)?,
-                entity_type: r.get(1)?,
-                entity_id: r.get(2)?,
-                action: r.get(3)?,
-                data: r.get(4)?,
-                created_at: r.get(5)?,
-            })
-        })?;
-        let mut v = Vec::new();
-        for r in rows {
-            v.push(r?);
-        }
-        Ok(v)
     }
 }
 
@@ -1543,6 +1584,34 @@ mod lifecycle_tests {
     }
 
     #[test]
+    fn history_names_what_each_event_is_about() {
+        let r = repo();
+        let id = r.create_activity("Tuesday Net", "directed_net", None, None).unwrap();
+        r.transition_activity(&id, "active", None, None, None).unwrap();
+        let c = r.create_checkin(&id, "w4abc", None, None, None, None, None, None, None, None, false, None, &ContactDetails::default()).unwrap();
+        r.create_audit_event("checkin", &c, "traffic_handled", Some("{\"handled\":true}"), None).unwrap();
+        let gone = r.create_activity("Test run", "simple_net", None, None).unwrap();
+        r.delete_activity_permanently(&gone, None).unwrap();
+
+        let h = r.list_history(10).unwrap();
+        // Newest first.
+        assert_eq!(h[0].action, "delete_permanently");
+        assert_eq!(h[0].subject, "", "deleted, so only its data names it");
+        assert!(h[0].data.contains("Test run"));
+        let handled = h.iter().find(|e| e.action == "traffic_handled").unwrap();
+        assert_eq!((handled.subject.as_str(), handled.activity_title.as_str()), ("W4ABC", "Tuesday Net"));
+        assert_eq!(handled.activity_id, id);
+        let started = h.iter().find(|e| e.action == "started").unwrap();
+        assert_eq!((started.subject.as_str(), started.activity_title.as_str()), ("Tuesday Net", "Tuesday Net"));
+        assert_eq!(r.list_history(1).unwrap().len(), 1);
+
+        // An activity's own history is named the same way, oldest first, and only its own.
+        let own = r.activity_history(&id).unwrap();
+        assert_eq!(own.iter().map(|e| e.action.as_str()).collect::<Vec<_>>(), ["started", "traffic_handled"]);
+        assert_eq!(own[1].subject, "W4ABC");
+    }
+
+    #[test]
     fn summary_counts_what_happened() {
         let r = repo();
         let id = r.create_activity("Net", "directed_net", None, None).unwrap();
@@ -1565,6 +1634,9 @@ mod lifecycle_tests {
         assert_eq!(s.traffic_items, 2);
         assert_eq!(s.open_traffic_items, 1);
         assert!(!s.first_checkin_at.is_empty());
+        // The Activities table's count leaves out the removed one too (UX-OPS-015).
+        assert_eq!(r.get_activity(&id).unwrap().record_count, 5);
+        assert_eq!(r.list_activities().unwrap().iter().find(|a| a.id == id).unwrap().record_count, 5);
     }
 
     #[test]

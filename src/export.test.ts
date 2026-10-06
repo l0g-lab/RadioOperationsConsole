@@ -8,7 +8,7 @@ import {
   spotterReportsToCsv,
   spotterReportsToText,
 } from "./export";
-import type { Activity, ActivitySummary, Checkin, HistoryEvent, SpotterReport } from "./types";
+import type { Activity, ActivitySummary, Checkin, HistoryEntry, SpotterReport } from "./types";
 
 function activity(overrides: Partial<Activity> = {}): Activity {
   return {
@@ -29,6 +29,7 @@ function activity(overrides: Partial<Activity> = {}): Activity {
     repeater_lon: null,
     operator_id: "",
     event_id: "",
+    record_count: 0,
     event: "",
     ...overrides,
   };
@@ -212,7 +213,7 @@ describe("spotter report exports", () => {
 });
 
 describe("historyToCsv", () => {
-  const events: HistoryEvent[] = [
+  const events: HistoryEntry[] = [
     {
       id: "e1",
       entity_type: "activity",
@@ -221,6 +222,9 @@ describe("historyToCsv", () => {
       data: '{"from":"scheduled"}',
       operator: "Bob (K4NCS)",
       created_at: "2026-09-21T22:00:00Z",
+      subject: "Tuesday Net",
+      activity_id: "a1",
+      activity_title: "Tuesday Net",
     },
     {
       id: "e2",
@@ -230,18 +234,30 @@ describe("historyToCsv", () => {
       data: "{}",
       operator: "",
       created_at: "2026-09-21T23:10:00Z",
+      subject: "W4ABC",
+      activity_id: "a1",
+      activity_title: "Tuesday Net",
     },
   ];
 
-  it("includes every event with both times, the operator, and the record it applies to", () => {
-    const csv = historyToCsv(events);
-    const rows = csv.trim().split("\r\n");
+  it("says what happened as the History tab does, then keeps the record as stored (AUDIT-022)", () => {
+    const rows = parseCsv(historyToCsv(events));
+    expect(rows[0]).toEqual([
+      "Time (Local)", "Time (UTC)", "What Happened", "Who", "Record Type", "Action", "Recorded Data", "Record Id",
+    ]);
     expect(rows).toHaveLength(3); // header + 2 events
-    expect(rows[1]).toContain("activity");
-    expect(rows[1]).toContain("started");
-    expect(rows[1]).toContain("Bob (K4NCS)");
-    expect(rows[2]).toContain("checkin");
-    expect(rows[2]).toContain("c1"); // the event's own record id
+    expect(rows[1].slice(2)).toEqual(["Started Tuesday Net", "Bob (K4NCS)", "activity", "started", '{"from":"scheduled"}', "a1"]);
+    expect(rows[2][2]).toBe("Edited W4ABC's check-in");
+    expect(rows[2][7]).toBe("c1"); // the event's own record id
+    expect(rows[1][1]).toBe("2026-09-21T22:00:00Z");
+  });
+
+  it("names the operators a net was moved between", () => {
+    const moved = { ...events[0], action: "change_operator", data: '{"from":"o1","to":"o2"}' };
+    const names: Record<string, string> = { o1: "W0LAB", o2: "K4NCS" };
+    expect(parseCsv(historyToCsv([moved], (id) => names[id] ?? null))[1][2]).toBe(
+      "Changed who runs Tuesday Net from W0LAB to K4NCS"
+    );
   });
 
   it("handles an empty history", () => {

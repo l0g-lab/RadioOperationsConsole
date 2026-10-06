@@ -25,6 +25,7 @@ function activity(activity_type: string, state: string): Activity {
     repeater_lon: null,
     operator_id: "",
     event_id: "",
+    record_count: 0,
     event: "",
   };
 }

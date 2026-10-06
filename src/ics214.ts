@@ -2,7 +2,7 @@ import type {
   Activity,
   ActivitySummary,
   Checkin,
-  HistoryEvent,
+  HistoryEntry,
   Ics214Details,
   Ics214Line,
   Ics214Resource,
@@ -28,7 +28,7 @@ export interface ActivityRecords {
   activity: Activity;
   summary: ActivitySummary | null;
   checkins: Checkin[];
-  history: HistoryEvent[];
+  history: HistoryEntry[];
   reports: SpotterReport[];
   /** A relay station's messages (relay.ts). */
   relay?: RelayMessage[];

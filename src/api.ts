@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  HistoryEntry,
   CurrentWeather,
   Activity,
   EventRecord,
@@ -15,7 +16,6 @@ import type {
   NetListingDetails,
   Repeater,
   RepeaterDetails,
-  HistoryEvent,
   ActivitySummary,
   DeletedCounts,
   BackupSummary,
@@ -447,8 +447,8 @@ export const createAuditEvent = (
 export const listAuditEvents = (entity_id: string) =>
   invoke<AuditEvent[]>("list_audit_events", { entityId: entity_id });
 
-export const listRecentAuditEvents = (limit: number) =>
-  invoke<AuditEvent[]>("list_recent_audit_events", { limit });
+/** The History tab's lines, newest first. */
+export const listHistory = (limit: number) => invoke<HistoryEntry[]>("list_history", { limit });
 
 export const getSettings = () => invoke<AppSettings>("get_settings");
 
@@ -578,7 +578,7 @@ export const activitySummary = (activity_id: string) =>
   invoke<ActivitySummary>("activity_summary", { activityId: activity_id });
 
 export const activityHistory = (activity_id: string) =>
-  invoke<HistoryEvent[]>("activity_history", { activityId: activity_id });
+  invoke<HistoryEntry[]>("activity_history", { activityId: activity_id });
 
 // Relay station (docs/features/relay-station.md).
 

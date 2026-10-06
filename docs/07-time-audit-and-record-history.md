@@ -85,6 +85,28 @@ longer needed.
   stay linked to the operator, so they show the corrected name; logging under
   a different call sign is done by adding another operator.
 
+## The History tab
+
+- **AUDIT-020:** The History tab MUST show what's been recorded in words, not
+  stored codes or data: one line per event — its local time, an icon for the
+  kind of thing it's about, a sentence naming it ("Ended **Tuesday Net**",
+  "Marked **W4ABC**'s traffic handled", "Passed the message **wrmr677 for
+  Monroe** to Monroe via 7.188", "Edited **GMRS net**: title “GMRS” → “GMRS
+  net”"), the activity it belongs to (a link to it on the Operations tab),
+  and who did it (by call sign; their name on hovering). Something since
+  deleted MUST be named from the event's own data. An edit MUST say what
+  changed — up to three fields, with before and after when short — and an
+  event of a kind it doesn't know MUST still be shown readably.
+- **AUDIT-021:** Lines MUST be grouped by day ("Today · Mon 10/5",
+  "Yesterday · Sun 10/4", "Fri 10/2"), newest first, 200 at a time with
+  *Show older*, and searchable by what they say, their activity, or who did
+  them. Nothing is hidden or merged: every event recorded is listed.
+- **AUDIT-022:** An activity's full history CSV (`EXPORT-013`) MUST use the
+  same words: columns *Time (Local)*, *Time (UTC)*, *What Happened* (the
+  History tab's sentence), and *Who*, then the record as stored — *Record
+  Type*, *Action*, *Recorded Data* (every before/after value of a
+  correction), and *Record Id* — oldest first.
+
 ## Example
 
 ```text

@@ -352,6 +352,15 @@ mod tests {
     }
 
     #[test]
+    fn a_relay_counts_its_messages_in_the_activities_table() {
+        let (r, a) = repo_with_activity();
+        let m = clean_message(sitrep()).unwrap();
+        r.create_relay_message(&a, &m, None).unwrap();
+        r.create_relay_message(&a, &m, None).unwrap();
+        assert_eq!(r.get_activity(&a).unwrap().record_count, 2);
+    }
+
+    #[test]
     fn a_failed_attempt_keeps_it_held_until_passed() {
         let (r, a) = repo_with_activity();
         let m = clean_message(sitrep()).unwrap();

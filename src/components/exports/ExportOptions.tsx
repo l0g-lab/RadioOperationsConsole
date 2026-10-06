@@ -4,7 +4,7 @@ import type {
   Activity,
   ActivitySummary,
   Checkin,
-  HistoryEvent,
+  HistoryEntry,
   Operator,
   RelayMessage,
   SpotterReport,
@@ -101,7 +101,18 @@ export default function ExportOptions({
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [reports, setReports] = useState<SpotterReport[]>([]);
   const [relayed, setRelayed] = useState<RelayMessage[]>([]);
-  const [history, setHistory] = useState<HistoryEvent[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  // Every operator, retired too, to name who a net was moved between in its history.
+  const [allOperators, setAllOperators] = useState<Operator[]>([]);
+  useEffect(() => {
+    Promise.all([api.listOperators().catch(() => []), api.listRetiredOperators().catch(() => [])]).then(
+      ([a, b]) => setAllOperators([...a, ...b])
+    );
+  }, []);
+  const operatorById = (id: string) => {
+    const o = allOperators.find((x) => x.id === id);
+    return o ? o.call_sign || o.display_name : null;
+  };
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
   const [message, setMessage] = useState<{
     text: string;
@@ -133,7 +144,7 @@ export default function ExportOptions({
     Promise.all([
       api.listCheckins(activity.id).catch(() => [] as Checkin[]),
       api.listSpotterReports(activity.id).catch(() => [] as SpotterReport[]),
-      api.activityHistory(activity.id).catch(() => [] as HistoryEvent[]),
+      api.activityHistory(activity.id).catch(() => [] as HistoryEntry[]),
       api.activitySummary(activity.id).catch(() => null),
       api.listRelayMessages(activity.id).catch(() => [] as RelayMessage[]),
     ]).then(([c, r, h, s, m]) => {
@@ -309,7 +320,7 @@ export default function ExportOptions({
           notify={notify}
           title="Full history"
           count={plural(history.length, "event", "events")}
-          note="Every start, close, correction, removal and restore, with the operator and time."
+          note="Every start, close, correction, removal and restore, in words as on the History tab, with who and when."
           actions={[
             {
               label: "Show CSV",
@@ -321,7 +332,7 @@ export default function ExportOptions({
                 setCsvPreview({
                   heading: `Full history — ${activity.title}`,
                   filename: exportFilename(activity, "History", "csv"),
-                  csv: historyToCsv(history),
+                  csv: historyToCsv(history, operatorById),
                   what: "the history",
                 }),
             },
@@ -334,7 +345,7 @@ export default function ExportOptions({
               onClick: () =>
                 save(
                   exportFilename(activity, "History", "csv"),
-                  historyToCsv(history),
+                  historyToCsv(history, operatorById),
                   "the history"
                 ),
             },

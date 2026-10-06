@@ -1,13 +1,11 @@
 /**
- * The Activities table on the Operations tab (UX-OPS-015): every activity,
- * one line each, viewed as what's current (open, not started, station logs),
- * what's closed, or all; or found by searching.
+ * The Activities panel on the Operations tab (UX-OPS-015): every activity,
+ * one line each, in sections in the order things happen — open now, each
+ * event, coming up, station logs, earlier — or found by searching.
  */
 import type { Activity } from "./types";
-import { activityTypeLabel, isLog } from "./activityTypes";
+import { activityTypeLabel, isLog, isRelay } from "./activityTypes";
 import { pad2, splitScheduledAt } from "./utils";
-
-export type ActivityView = "current" | "closed" | "all";
 
 /** green: open; amber: not started though its time has come; dim: closed, logs, later nets. */
 export type StateTone = "open" | "due" | "plain" | "dim";
@@ -51,6 +49,35 @@ function scheduledText(a: Activity, now: Date): string {
   return time ? `${shortDate(d, now)} ${time}` : shortDate(d, now);
 }
 
+const DAY_MS = 86_400_000;
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+/**
+ * A net never started whose day has passed (not today's, which is just due):
+ * listed last in Now & coming up, with how long ago, so it can be started,
+ * corrected, or deleted without crowding today's nets.
+ */
+export function isStale(a: Activity, now: Date): boolean {
+  if (a.state !== "scheduled" || isLog(a.activity_type)) return false;
+  const d = scheduledDate(a);
+  return d != null && startOfDay(d) < startOfDay(now);
+}
+
+/** "1 day ago", "6 days ago", "3 wk ago", "2 mo ago". */
+export function agoText(d: Date, now: Date): string {
+  const days = Math.round((startOfDay(now) - startOfDay(d)) / DAY_MS);
+  if (days < 14) return `${days} day${days === 1 ? "" : "s"} ago`;
+  if (days < 60) return `${Math.round(days / 7)} wk ago`;
+  return `${Math.round(days / 30)} mo ago`;
+}
+
+/** "14 check-ins", "1 contact" (station log), "3 messages" (relay). */
+export function recordText(a: Activity): string {
+  const n = a.record_count;
+  const noun = isRelay(a.activity_type) ? "message" : isLog(a.activity_type) ? "contact" : "check-in";
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
 /** One activity as a row of the table. */
 export function activityRow(a: Activity, now: Date): ActivityRow {
   if (isLog(a.activity_type)) {
@@ -63,6 +90,9 @@ export function activityRow(a: Activity, now: Date): ActivityRow {
     return { activity: a, when: stamp(a.opened_at, now) || scheduledText(a, now), state: "Closed", tone: "dim" };
   }
   const due = scheduledDate(a);
+  if (due && isStale(a, now)) {
+    return { activity: a, when: scheduledText(a, now), state: `Not started · ${agoText(due, now)}`, tone: "due" };
+  }
   return {
     activity: a,
     when: scheduledText(a, now),
@@ -75,10 +105,15 @@ export function activityRow(a: Activity, now: Date): ActivityRow {
 const time = (iso: string) => (iso ? new Date(iso).getTime() || 0 : 0);
 const byTitle = (x: Activity, y: Activity) => x.title.localeCompare(y.title, undefined, { sensitivity: "base" });
 
-/** Open (latest started first), then not started (soonest first, unscheduled last), then station logs. */
-function current(acts: Activity[]): Activity[] {
+/**
+ * Open (latest started first), then not started (soonest first, unscheduled
+ * last), then station logs, then nets whose day passed without starting
+ * (most recent first).
+ */
+function current(acts: Activity[], now: Date): Activity[] {
   const open = acts.filter((a) => a.state === "active" && !isLog(a.activity_type));
-  const upcoming = acts.filter((a) => a.state === "scheduled" && !isLog(a.activity_type));
+  const stale = acts.filter((a) => isStale(a, now));
+  const upcoming = acts.filter((a) => a.state === "scheduled" && !isLog(a.activity_type) && !isStale(a, now));
   const logs = acts.filter((a) => isLog(a.activity_type) && a.state !== "closed");
   open.sort((x, y) => time(y.opened_at) - time(x.opened_at));
   upcoming.sort((x, y) => {
@@ -86,7 +121,8 @@ function current(acts: Activity[]): Activity[] {
     if (dx == null || dy == null) return dx == null && dy == null ? byTitle(x, y) : dx == null ? 1 : -1;
     return dx - dy || byTitle(x, y);
   });
-  return [...open, ...upcoming, ...logs.sort(byTitle)];
+  stale.sort((x, y) => (scheduledDate(y)?.getTime() ?? 0) - (scheduledDate(x)?.getTime() ?? 0));
+  return [...open, ...upcoming, ...logs.sort(byTitle), ...stale];
 }
 
 /** Closed, most recently first (by when it closed, else started, else was scheduled). */
@@ -95,24 +131,103 @@ function closed(acts: Activity[]): Activity[] {
   return acts.filter((a) => a.state === "closed").sort((x, y) => when(y) - when(x));
 }
 
-/** How many each view holds, for its chip. */
-export function viewCounts(acts: Activity[]): Record<ActivityView, number> {
-  const c = current(acts).length;
-  const d = closed(acts).length;
-  return { current: c, closed: d, all: c + d };
+/** When an activity ran or is to run, for ordering an event's activities; null if neither. */
+function startMs(a: Activity): number | null {
+  return time(a.opened_at) || scheduledDate(a)?.getTime() || null;
+}
+
+export interface ActivitySection {
+  /** "open", "upcoming", "logs", "earlier", or "event:<id>". */
+  id: string;
+  title: string;
+  /** For an event: its day and how it's going ("Mon 10/5 · 1 open · 2 to go · 1 done"). */
+  summary: string;
+  /** Something in it is open (an event under way), so its heading is green. */
+  live: boolean;
+  /** Earlier, and events that are over, start folded. */
+  folded: boolean;
+  rows: ActivityRow[];
+}
+
+/** An event's day and progress, e.g. "Mon 10/5 · 1 open · 2 to go · 1 done". */
+function eventSummary(acts: Activity[], now: Date): string {
+  const first = Math.min(...acts.map((a) => startMs(a) ?? Infinity));
+  const n = (state: string) => acts.filter((a) => a.state === state).length;
+  return [
+    Number.isFinite(first) ? shortDate(new Date(first), now) : "",
+    n("active") ? `${n("active")} open` : "",
+    n("scheduled") ? `${n("scheduled")} to go` : "",
+    n("closed") ? `${n("closed")} done` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 /**
- * The rows to show. A search looks through everything, whatever the view, by
+ * The Activities panel's sections, in the order things happen (UX-OPS-015):
+ * Open now; each event still going, as its own block in running order (one
+ * under way first); Coming up (soonest first, unscheduled, then nets whose
+ * day passed without starting); Station logs; Earlier (closed, most recent
+ * first, folded); and events that are over (latest first, folded). An
+ * event's activities are only in its block. Empty sections are left out.
+ */
+export function activitySections(acts: Activity[], now: Date): ActivitySection[] {
+  const byEvent = new Map<string, Activity[]>();
+  for (const a of acts) {
+    if (a.event_id && !isLog(a.activity_type)) byEvent.set(a.event_id, [...(byEvent.get(a.event_id) ?? []), a]);
+  }
+  const loose = acts.filter((a) => !a.event_id || isLog(a.activity_type));
+  const row = (a: Activity) => activityRow(a, now);
+  const section = (id: string, title: string, list: Activity[], folded = false): ActivitySection => ({
+    id,
+    title,
+    summary: "",
+    live: false,
+    folded,
+    rows: list.map(row),
+  });
+
+  const events = [...byEvent.entries()].map(([id, list]) => {
+    const ordered = [...list].sort((x, y) => (startMs(x) ?? Infinity) - (startMs(y) ?? Infinity) || byTitle(x, y));
+    const over = list.every((a) => a.state === "closed");
+    const live = list.some((a) => a.state === "active");
+    return {
+      first: Math.min(...list.map((a) => startMs(a) ?? Infinity)),
+      over,
+      section: {
+        id: `event:${id}`,
+        title: list[0].event || "Event",
+        summary: eventSummary(list, now),
+        live,
+        folded: over,
+        rows: ordered.map(row),
+      } as ActivitySection,
+    };
+  });
+  const going = events
+    .filter((e) => !e.over)
+    .sort((x, y) => Number(y.section.live) - Number(x.section.live) || x.first - y.first);
+  const over = events.filter((e) => e.over).sort((x, y) => y.first - x.first);
+
+  const now_ = current(loose, now);
+  return [
+    section("open", "Open now", now_.filter((a) => a.state === "active" && !isLog(a.activity_type))),
+    ...going.map((e) => e.section),
+    section("upcoming", "Coming up", now_.filter((a) => a.state === "scheduled" && !isLog(a.activity_type))),
+    section("logs", "Station logs", now_.filter((a) => isLog(a.activity_type))),
+    section("earlier", "Earlier", closed(loose), true),
+    ...over.map((e) => e.section),
+  ].filter((s) => s.rows.length > 0);
+}
+
+/**
+ * A search through every activity — current ones first, then closed — by
  * title, event, type, or frequency (ignoring case).
  */
-export function activityRows(acts: Activity[], view: ActivityView, query: string, now: Date): ActivityRow[] {
+export function searchActivities(acts: Activity[], query: string, now: Date): ActivityRow[] {
   const q = query.trim().toLowerCase();
-  if (q) {
-    const hit = (a: Activity) =>
-      [a.title, a.event, activityTypeLabel(a.activity_type), a.frequency].some((v) => v.toLowerCase().includes(q));
-    return [...current(acts), ...closed(acts)].filter(hit).map((a) => activityRow(a, now));
-  }
-  const list = view === "current" ? current(acts) : view === "closed" ? closed(acts) : [...current(acts), ...closed(acts)];
-  return list.map((a) => activityRow(a, now));
+  if (!q) return [];
+  const hit = (a: Activity) =>
+    [a.title, a.event, activityTypeLabel(a.activity_type), a.frequency].some((v) => v.toLowerCase().includes(q));
+  return [...current(acts, now), ...closed(acts)].filter(hit).map((a) => activityRow(a, now));
 }
