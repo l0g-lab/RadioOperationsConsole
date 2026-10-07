@@ -227,7 +227,7 @@ function Form309({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [records, left, netControl, callFor]
   );
-  const { rows, shortened } = useMemo(() => form309Rows(entries), [entries]);
+  const { rows, continued } = useMemo(() => form309Rows(entries), [entries]);
   const pages = useMemo(() => form309Pages(rows), [rows]);
   const page = Math.min(pageIndex, pages.length - 1);
 
@@ -371,10 +371,10 @@ function Form309({
           </span>
         </p>
       )}
-      {shortened > 0 && (
-        <p className="closeout-warning">
-          {shortened} line{shortened === 1 ? " was" : "s were"} shortened to the form's 90-character
-          limit.
+      {continued > 0 && (
+        <p className="settings-hint">
+          {continued} {continued === 1 ? "message is" : "messages are"} longer than the form's
+          90-character line, so {continued === 1 ? "it runs" : "they run"} on to the next line.
         </p>
       )}
       <p className="settings-hint">

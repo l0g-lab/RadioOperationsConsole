@@ -178,7 +178,7 @@ describe("period defaults (ICSF-051, ICSF-054)", () => {
   });
 });
 
-describe("Winlink ICS 214 (ICSF-055, ICSF-056)", () => {
+describe("Winlink ICS 214 (ICSF-055, ICSF-057)", () => {
   const log = (lineCount: number): Ics214Details => ({
     incident_name: "SET 2026",
     period_from: FROM,
@@ -204,16 +204,18 @@ describe("Winlink ICS 214 (ICSF-055, ICSF-056)", () => {
     expect(second.Incident_Name).toBe("SET 2026");
   });
 
-  it("cuts text to the form's lengths and counts shortened lines", () => {
-    const d = log(1);
-    d.lines[0].text = "x".repeat(150);
+  it("runs a long entry on to the next line instead of cutting it (ICSF-057)", () => {
+    const d = log(2);
+    d.lines[0].text = `${"word ".repeat(30)}end`;
     d.incident_name = "y".repeat(80);
     const [p] = form214Pages(d);
     const f = Object.fromEntries(p.fields);
-    expect(f.Activities1).toHaveLength(100);
-    expect(f.Activities1.endsWith("...")).toBe(true);
+    expect(f.Activities1.length).toBeLessThanOrEqual(100);
+    expect(f.ActivityDateTime2).toBe("");
+    expect(`${f.Activities1} ${f.Activities2}`).toBe(d.lines[0].text);
+    expect(f.Activities3).toBe("Line 2");
     expect(f.Incident_Name).toHaveLength(55);
-    expect(p.shortened).toBe(1);
+    expect(p.continued).toBe(1);
   });
 
   it("writes only the form's own field names in the load file", () => {

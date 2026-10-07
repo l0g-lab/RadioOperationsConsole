@@ -196,28 +196,85 @@ export function form309Header(h: Form309Header): Form309Header {
   };
 }
 
-/** Log entries as rows for the Winlink form (date and time always included). */
-export function form309Rows(entries: Comms309Entry[]): { rows: Form309Row[]; shortened: number } {
-  let shortened = 0;
-  const rows = entries.map((e) => {
-    const sub = clip(e.message, 90);
-    if (
-      sub !==
-      winlinkText(e.message)
-        .replace(/[\t\r\n]+/g, " ")
-        .trim()
-    )
-      shortened++;
-    return { time: entryTime(e, true), from: clip(e.from, 13), to: clip(e.to, 13), sub };
-  });
-  return { rows, shortened };
+/**
+ * Text as a Winlink form's log lines of at most `max` characters, broken at
+ * spaces (a word longer than a line is split), so nothing is cut off: an
+ * entry too long for one line runs on to the next, as on a paper log. Always
+ * at least one line.
+ */
+export function formLines(v: string, max: number): string[] {
+  const flat = winlinkText(v).replace(/\s+/g, " ").trim();
+  const lines: string[] = [];
+  let cur = "";
+  for (let word of flat.split(" ")) {
+    while (word.length > max) {
+      if (cur) lines.push(cur);
+      cur = "";
+      lines.push(word.slice(0, max));
+      word = word.slice(max);
+    }
+    if (!word) continue;
+    if (!cur) cur = word;
+    else if (cur.length + 1 + word.length <= max) cur += ` ${word}`;
+    else {
+      lines.push(cur);
+      cur = word;
+    }
+  }
+  if (cur || lines.length === 0) lines.push(cur);
+  return lines;
 }
 
-/** Splits rows into form pages of 30; there is always at least one page. */
+/**
+ * Rows split into pages of `size`, an entry's run-on lines (`continues`) kept
+ * on the same page as its first where they fit. Always at least one page.
+ */
+export function formPages<T>(rows: T[], size: number, continues: (row: T) => boolean): T[][] {
+  const pages: T[][] = [];
+  let page: T[] = [];
+  for (let i = 0; i < rows.length; ) {
+    let end = i + 1;
+    while (end < rows.length && continues(rows[end])) end++;
+    const entry = rows.slice(i, end);
+    if (page.length > 0 && page.length + entry.length > size && entry.length <= size) {
+      pages.push(page);
+      page = [];
+    }
+    for (const row of entry) {
+      if (page.length === size) {
+        pages.push(page);
+        page = [];
+      }
+      page.push(row);
+    }
+    i = end;
+  }
+  if (page.length > 0 || pages.length === 0) pages.push(page);
+  return pages;
+}
+
+/**
+ * Log entries as rows for the Winlink form (date and time always included).
+ * A message longer than the form's 90 characters runs on to more rows, with
+ * the time, From and To left blank (ICSF-036); `continued` counts the entries
+ * that do.
+ */
+export function form309Rows(entries: Comms309Entry[]): { rows: Form309Row[]; continued: number } {
+  let continued = 0;
+  const rows = entries.flatMap((e) => {
+    const [first, ...more] = formLines(e.message, 90);
+    if (more.length > 0) continued++;
+    return [
+      { time: entryTime(e, true), from: clip(e.from, 13), to: clip(e.to, 13), sub: first },
+      ...more.map((sub) => ({ time: "", from: "", to: "", sub })),
+    ];
+  });
+  return { rows, continued };
+}
+
+/** Splits rows into form pages of 30, keeping an entry's rows together; there is always at least one page. */
 export function form309Pages(rows: Form309Row[]): Form309Row[][] {
-  const pages: Form309Row[][] = [];
-  for (let i = 0; i < rows.length; i += FORM309_ROWS) pages.push(rows.slice(i, i + FORM309_ROWS));
-  return pages.length > 0 ? pages : [[]];
+  return formPages(rows, FORM309_ROWS, (r) => r.time === "");
 }
 
 /**

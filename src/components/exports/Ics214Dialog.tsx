@@ -425,7 +425,7 @@ function Editor({
     }
   }
 
-  const shortened = pages[p]?.shortened ?? 0;
+  const continued = pages[p]?.continued ?? 0;
   const resourceRows = Array.from({ length: ICS214_RESOURCE_ROWS }, (_, i) => d.resources[i] ?? { name: "", position: "", agency: "" });
 
   return (
@@ -556,9 +556,10 @@ function Editor({
                 </span>
               </p>
             )}
-            {shortened > 0 && (
-              <p className="closeout-warning">
-                {shortened} line{shortened === 1 ? " was" : "s were"} shortened to the form's 100-character limit.
+            {continued > 0 && (
+              <p className="settings-hint">
+                {continued} {continued === 1 ? "entry is" : "entries are"} longer than the form's 100-character
+                line, so {continued === 1 ? "it runs" : "they run"} on to the next line.
               </p>
             )}
             <p className="settings-hint">

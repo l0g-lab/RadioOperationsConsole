@@ -11,7 +11,7 @@ import type {
 } from "./types";
 import { activityTypeLabel, isRelay } from "./activityTypes";
 import { relay214Lines } from "./relay";
-import { clip, esc, field, localDateTime, multiline, page, winlinkFormXml, winlinkText } from "./icsForms";
+import { clip, esc, field, formLines, formPages, localDateTime, multiline, page, winlinkFormXml, winlinkText } from "./icsForms";
 
 /**
  * ICS 214 Activity Log (ics-form-exports.md, ICSF-050–056): what a station did
@@ -201,11 +201,15 @@ const LIMITS = {
 /** One page of the form, as its fields, cut to their lengths. */
 export interface Form214Page {
   fields: [string, string][];
-  /** Log lines on this page that had to be shortened to fit 100 characters. */
-  shortened: number;
+  /** Log entries on this page too long for one 100-character line, run on to the next (ICSF-057). */
+  continued: number;
 }
 
-/** The log as pages of the Winlink form, 24 lines each; always at least one page (ICSF-055). */
+/**
+ * The log as pages of the Winlink form, 24 lines each; always at least one
+ * page (ICSF-055). An entry longer than a line runs on to the next with the
+ * date/time left blank, kept on one page where it fits.
+ */
 export function form214Pages(d: Ics214Details): Form214Page[] {
   const header: [string, string][] = [
     ["Incident_Name", clip(d.incident_name, LIMITS.Incident_Name)],
@@ -223,21 +227,22 @@ export function form214Pages(d: Ics214Details): Form214Page[] {
   }
   header.push(["PreparedName", clip(d.prepared_name, LIMITS.PreparedName)]);
 
-  const lines = sortLines(d.lines);
-  const pages: Form214Page[] = [];
-  for (let start = 0; start === 0 || start < lines.length; start += ICS214_LOG_ROWS) {
-    const fields: [string, string][] = [...header, ["Page", String(pages.length + 1)]];
-    let shortened = 0;
+  // Each entry as one or more form lines; a run-on line has no date/time.
+  const rows = sortLines(d.lines).flatMap((l) =>
+    formLines(l.text, LIMITS.Activities).map((text, i) => ({
+      at: i === 0 ? clip(localDateTime(l.at), LIMITS.ActivityDateTime) : "",
+      text,
+      runsOn: i === 1,
+    }))
+  );
+  return formPages(rows, ICS214_LOG_ROWS, (r) => r.at === "").map((page, n) => {
+    const fields: [string, string][] = [...header, ["Page", String(n + 1)]];
     for (let i = 0; i < ICS214_LOG_ROWS; i++) {
-      const l = lines[start + i];
-      const text = l ? clip(l.text, LIMITS.Activities) : "";
-      if (l && text !== winlinkText(l.text).replace(/[\t\r\n]+/g, " ").trim()) shortened++;
-      fields.push([`ActivityDateTime${i + 1}`, l ? clip(localDateTime(l.at), LIMITS.ActivityDateTime) : ""]);
-      fields.push([`Activities${i + 1}`, text]);
+      fields.push([`ActivityDateTime${i + 1}`, page[i]?.at ?? ""]);
+      fields.push([`Activities${i + 1}`, page[i]?.text ?? ""]);
     }
-    pages.push({ fields, shortened });
-  }
-  return pages;
+    return { fields, continued: page.filter((r) => r.runsOn).length };
+  });
 }
 
 /**

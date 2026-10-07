@@ -34,6 +34,10 @@ top. Each release's section here is also its description on the
   its name and location in place of what was looked up for the wrong call.
 
 ### Fixed
+- **Long traffic is no longer cut off in the Winlink ICS 309 and ICS 214.**
+  Traffic longer than the form's line (90 characters on the 309, 100 on the
+  214) now runs on to the next line, as on a paper log, instead of being
+  shortened with "...", so traffic can be as long as it needs to be.
 - A station log's summary no longer shows when it started, ended, or how long
   it has run, which mean little for a log kept open for days.
 

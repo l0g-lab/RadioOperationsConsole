@@ -58,9 +58,9 @@ forms' own loading code and viewer pages. They are not guesses (`SCOPE-005`).
   so a longer log MUST be split into pages of 30, each its own file and message.
   Values MUST be cut to the form's field lengths — time 23, from 13, to 13, subject
   90, Task # 7, Task Name 50, Date/Time Prepared 18 (`YYYY-MM-DD HH:mm`), Operational
-  Period # 15, Operator Name 35, Station ID 13 — a cut marked with an ellipsis, and
-  the operator MUST be told how many lines were shortened. Times MUST include the
-  date.
+  Period # 15, Operator Name 35, Station ID 13 — a cut marked with an ellipsis.
+  The subject is the exception: it MUST NOT be cut (`ICSF-036`). Times MUST
+  include the date.
 - **ICSF-012 (ICS 309, form data):** The application MUST also produce Winlink
   form-data XML for a page — a file named exactly
   `RMS_Express_Form_Form-309_Viewer.xml` with the form's own field names (Title,
@@ -123,6 +123,12 @@ forms' own loading code and viewer pages. They are not guesses (`SCOPE-005`).
   MUST NOT split across pages.
 - **ICSF-034:** The ICS 309 MUST be reachable from the activity's Exports & forms and the
   end-of-net step.
+- **ICSF-036:** Traffic (or a relayed message) longer than the Winlink form's
+  90-character subject MUST run on to the following lines, broken at spaces,
+  with time, from and to left blank on those lines, as on a paper log; it
+  MUST NOT be cut. An entry's lines MUST stay on one page where they fit, and
+  the operator MUST be told how many entries run on. Traffic itself has no
+  length limit.
 - **ICSF-035:** Winlink header values MUST default as follows: Task Name from the
   activity's title; Operator Name and Station ID from the acting operator; Date/Time
   Prepared from now; Operational Period # from the start date as `YYYYMMDD`; Task #
@@ -177,10 +183,14 @@ record, edited, and exported again as the period fills in.
   *ICS214 Activity Log* form, 24 log lines per page, as many pages as needed: a
   file for the form's *Load ICS 214 Data*, the log lines in the form's
   *Paste Data* layout, and form data (`ICSF-014`) with its subject and message
-  text, one set per page. Text MUST be cut to the form's field lengths, and the
-  operator MUST be told when a line was shortened.
+  text, one set per page. Header text MUST be cut to the form's field
+  lengths; log lines MUST NOT be (`ICSF-057`).
 - **ICSF-056 (printable):** The printable ICS 214 (`ICSF-020`) MUST carry every
   line in full, on as many pages as needed.
+- **ICSF-057 (Winlink log lines):** A log entry longer than the form's
+  100-character line MUST run on to the following lines, broken at spaces,
+  with the date/time left blank on those lines, kept on one page where it
+  fits, and the operator MUST be told how many entries run on.
 
 ## Acceptance examples
 

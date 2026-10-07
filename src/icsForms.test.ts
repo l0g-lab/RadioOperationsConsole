@@ -7,6 +7,7 @@ import {
   form309Header,
   form309Message,
   form309Pages,
+  formLines,
   form309Rows,
   form309Xml,
   ICS213_WINLINK_FILENAME,
@@ -230,15 +231,17 @@ describe("form309Header: field-length limits (Winlink's Form-309)", () => {
 });
 
 describe("form309Rows", () => {
-  it("counts how many entries were shortened to fit the 90-character subject limit", () => {
-    const longMessage = "x".repeat(120);
-    const { rows, shortened } = form309Rows([
+  it("runs a message longer than 90 characters on to more rows (ICSF-036)", () => {
+    const longMessage = `Priority traffic for the EOC: ${"supplies needed at the shelter ".repeat(4)}`.trim();
+    const { rows, continued } = form309Rows([
       { at: 0, from: "K4ABC", to: "K4NCS", message: "short" },
       { at: 1, from: "K4ABC", to: "K4NCS", message: longMessage },
     ]);
-    expect(shortened).toBe(1);
+    expect(continued).toBe(1);
     expect(rows[0].sub).toBe("short");
-    expect(rows[1].sub).toHaveLength(90);
+    expect(rows[1].sub.length).toBeLessThanOrEqual(90);
+    expect(rows.slice(2).every((r) => r.time === "" && r.from === "" && r.to === "")).toBe(true);
+    expect(rows.slice(1).map((r) => r.sub).join(" ")).toBe(longMessage);
   });
 
   it("clips from/to call signs to 13 characters", () => {
@@ -251,6 +254,16 @@ describe("form309Rows", () => {
   it("always includes the date in the row time (per ICSF-011)", () => {
     const { rows } = form309Rows([{ at: new Date(2026, 8, 21, 19, 4).getTime(), from: "A", to: "B", message: "m" }]);
     expect(rows[0].time).toBe("2026-09-21 19:04");
+  });
+});
+
+describe("formLines", () => {
+  it("breaks text at spaces into lines no longer than the limit", () => {
+    expect(formLines("short", 10)).toEqual(["short"]);
+    expect(formLines("one two three four", 9)).toEqual(["one two", "three", "four"]);
+    expect(formLines("abcdefghijkl x", 5)).toEqual(["abcde", "fghij", "kl x"]);
+    expect(formLines("  line\nbreaks\tand  spaces ", 40)).toEqual(["line breaks and spaces"]);
+    expect(formLines("", 10)).toEqual([""]);
   });
 });
 
@@ -272,6 +285,15 @@ describe("form309Pages", () => {
     expect(pages).toHaveLength(2);
     expect(pages[0]).toHaveLength(30);
     expect(pages[1]).toHaveLength(4);
+  });
+
+  it("keeps an entry's run-on rows on the same page as its first", () => {
+    const row = (i: number) => ({ time: `${i}`, from: "A", to: "B", sub: "s" });
+    const more = { time: "", from: "", to: "", sub: "more" };
+    const rows = [...Array.from({ length: 29 }, (_, i) => row(i)), row(29), more];
+    const pages = form309Pages(rows);
+    expect(pages[0]).toHaveLength(29);
+    expect(pages[1]).toEqual([row(29), more]);
   });
 
   it("splits exactly at a multiple of 30 into full pages with no trailing empty page", () => {
