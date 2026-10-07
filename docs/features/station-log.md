@@ -103,6 +103,9 @@ or end, and each record is a contact carrying its radio details.
 - **LOG-021:** The log MUST be searchable by call sign, name, location, and
   notes, saying so when nothing matches.
 - **LOG-022:** The roster CSV export MUST include the contact fields.
+- **LOG-024:** A log's summary (on screen and as text) MUST NOT show when it
+  started or ended, how long it ran, or the weather: a log stays open for
+  days, so none of these say anything useful.
 
 ## Worked before
 

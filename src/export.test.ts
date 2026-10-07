@@ -325,6 +325,11 @@ describe("activitySummaryToText", () => {
     expect(activitySummaryToText(activity({ activity_type: "station_log" }), offline)).not.toContain("Weather");
   });
 
+  it("leaves a station log's start and end out", () => {
+    const text = activitySummaryToText(activity({ activity_type: "station_log" }), summary());
+    expect(text).not.toMatch(/Started|Not started|Ended|Duration/);
+  });
+
   it("says 'Not started' when there's no opened_at, and omits Ended/Duration", () => {
     const text = activitySummaryToText(activity(), summary({ opened_at: "", closed_at: "" }));
     expect(text).toContain("Not started");

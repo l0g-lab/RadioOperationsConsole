@@ -77,6 +77,7 @@ export function SummaryView({
   notes: string;
 }) {
   const shown = visibleSections(activity.activity_type, summary);
+  const log = isLog(activity.activity_type);
   const ended = summary.closed_at || "";
   const duration = summary.opened_at
     ? formatDuration(summary.opened_at, ended || new Date().toISOString())
@@ -132,22 +133,27 @@ export function SummaryView({
           )}
         </Row>
       )}
-      <Row label="Started">
-        {started ? (
-          <>
-            {started.local} <span className="summary-detail">({started.utc})</span>
-          </>
-        ) : (
-          <span className="summary-detail">Not started yet</span>
-        )}
-      </Row>
-      {finished && (
-        <Row label="Ended">
-          {finished.local} <span className="summary-detail">({finished.utc})</span>
-        </Row>
+      {/* A station log stays open for days, so its start, end and weather mean little. */}
+      {!log && (
+        <>
+          <Row label="Started">
+            {started ? (
+              <>
+                {started.local} <span className="summary-detail">({started.utc})</span>
+              </>
+            ) : (
+              <span className="summary-detail">Not started yet</span>
+            )}
+          </Row>
+          {finished && (
+            <Row label="Ended">
+              {finished.local} <span className="summary-detail">({finished.utc})</span>
+            </Row>
+          )}
+          {duration && <Row label={ended ? "Lasted" : "Running for"}>{duration}</Row>}
+          <WeatherRow summary={summary} />
+        </>
       )}
-      {duration && <Row label={ended ? "Lasted" : "Running for"}>{duration}</Row>}
-      {!isLog(activity.activity_type) && <WeatherRow summary={summary} />}
       <Row label="Notes">{notes || <span className="summary-detail">None recorded</span>}</Row>
     </dl>
   );

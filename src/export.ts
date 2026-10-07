@@ -272,10 +272,15 @@ export function activitySummaryToText(activity: Activity, s: ActivitySummary): s
       .join(" · "),
     activity.location_label ? `Location: ${activity.location_label}` : "",
     "",
-    s.opened_at ? `Started: ${when(s.opened_at)}` : "Not started",
-    s.closed_at ? `Ended:   ${when(s.closed_at)}` : "",
-    s.opened_at && s.closed_at ? `Duration: ${formatDuration(s.opened_at, s.closed_at)}` : "",
-    ...(isLog(activity.activity_type) ? [] : weatherTextLines(s)),
+    // A station log stays open for days, so its start and end mean little.
+    ...(isLog(activity.activity_type)
+      ? []
+      : [
+          s.opened_at ? `Started: ${when(s.opened_at)}` : "Not started",
+          s.closed_at ? `Ended:   ${when(s.closed_at)}` : "",
+          s.opened_at && s.closed_at ? `Duration: ${formatDuration(s.opened_at, s.closed_at)}` : "",
+          ...weatherTextLines(s),
+        ]),
     "",
     ...summaryFacts(activity.activity_type, s).map((f) =>
       [f.text, f.detail].filter(Boolean).join(" ")

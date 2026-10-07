@@ -23,6 +23,10 @@ top. Each release's section here is also its description on the
   and frequency as text. The History tab keeps showing the names of deleted
   repeaters, nets, and places.
 
+### Fixed
+- A station log's summary no longer shows when it started, ended, or how long
+  it has run, which mean little for a log kept open for days.
+
 ## [2.5.2] - 2026-10-06
 
 ### Changed
