@@ -25,6 +25,13 @@ top. Each release's section here is also its description on the
 - **Show map from the Summary.** The selected activity's Summary on the
   Operations tab has the same Show map as the Check-ins tab, so the check-ins
   can be seen on the map without switching tabs.
+- **Correct a closed net without reopening it.** Check-ins and contacts can
+  still be edited, placed on the map, and looked up, traffic marked handled,
+  and relayed messages marked passed, after the net has ended. Adding or
+  removing anything still needs Reopen.
+- **Correcting a call sign offers the right station's details.** Changing a
+  check-in's call sign in Edit looks up the new one and asks whether to use
+  its name and location in place of what was looked up for the wrong call.
 
 ### Fixed
 - A station log's summary no longer shows when it started, ended, or how long

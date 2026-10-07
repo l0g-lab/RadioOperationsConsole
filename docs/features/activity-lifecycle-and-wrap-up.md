@@ -62,15 +62,29 @@ and stops later edits from quietly changing a net that is over.
 ## Closed activities are read-only
 
 - **LIFE-010:** While an activity is closed, the application MUST refuse to
-  add or change its check-ins (including their traffic), spotter reports,
-  including removing and restoring them (`AUDIT-004`). This MUST be
-  enforced by the backend, not only hidden in the interface.
-- **LIFE-011:** In the interface, entry forms and edit/remove actions for a
-  closed activity MUST be replaced or hidden, with a visible banner saying
-  the activity is closed and how to reopen it. Existing records MUST stay
-  viewable and exportable.
+  add, remove, or restore its check-ins, spotter reports, and relayed
+  messages, and to edit its spotter reports and relayed messages
+  (`AUDIT-004`), except as `LIFE-013` allows. This MUST be enforced by the
+  backend, not only hidden in the interface.
+- **LIFE-011:** In the interface, entry forms and the actions `LIFE-010`
+  refuses MUST be replaced or hidden for a closed activity, with a visible
+  banner saying the activity is closed, what can still be done, and how to
+  reopen it. Existing records MUST stay viewable and exportable.
 - **LIFE-012:** Activity details (title, date, frequency, location) MAY still
   be corrected on a closed activity.
+- **LIFE-013:** A closed activity MUST still take corrections and what
+  happens after the net, without reopening, each recorded in the history as
+  usual: correcting a check-in or contact (Edit, its location, a call-sign
+  lookup), marking traffic handled, and recording a relayed message passed,
+  tried, or not passed (and undoing such a step). Who was on the net and
+  what was reported change only by reopening (`LIFE-004`).
+- **LIFE-014:** When a check-in's call sign is corrected in Edit, the new one
+  MUST be looked up, and when it's found the operator MUST be asked whether
+  to use its name and location in place of what's there ("W4ABC is Pat
+  Smith, Orlando, FL. Use this name and location instead?"), since those
+  were most likely looked up for the wrong call sign. Replace MUST NOT
+  change a location placed by hand (`CIMAP-003`) or anything changed in the
+  same edit; Keep mine saves the edit as typed.
 
 ## Controls
 
@@ -155,7 +169,6 @@ type-driven tab visibility (`TEMPLATE-005`, `TEMPLATE-006`).
 - `draft` and `suspended` states.
 - Opening and closing scripts (planned with net listings), and a closeout
   checklist supplied by the activity type.
-- Guarding location changes on closed check-ins.
 
 ## Acceptance examples
 

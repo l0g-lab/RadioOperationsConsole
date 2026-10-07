@@ -37,10 +37,8 @@ export function NetRow({
   checkin: c,
   selected,
   onSelect,
-  readOnly,
   onTrafficHandled,
 }: RowProps & {
-  readOnly: boolean;
   onTrafficHandled: (handled: boolean) => void;
 }) {
   return (
@@ -67,7 +65,6 @@ export function NetRow({
               <input
                 type="checkbox"
                 checked={c.traffic_handled}
-                disabled={readOnly}
                 onChange={(e) => onTrafficHandled(e.target.checked)}
               />
               Handled

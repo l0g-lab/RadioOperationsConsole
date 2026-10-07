@@ -3949,3 +3949,8 @@ path.radar-alert-warning {
   justify-content: space-between;
   gap: 8px;
 }
+
+/* A corrected call sign's lookup, offered under the row being edited. */
+.checkin-edit-offer {
+  flex-basis: 100%;
+}

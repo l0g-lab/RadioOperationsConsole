@@ -152,7 +152,7 @@ pub(super) fn persist_settings(state: &AppState, settings: &AppSettings) -> Resu
     Ok(())
 }
 
-const CLOSED_MESSAGE: &str = "This activity is closed. Reopen it to add or change records.";
+const CLOSED_MESSAGE: &str = "This activity is closed. Reopen it to make that change.";
 
 /// Refuses ordinary changes to a closed activity until it is reopened (AUDIT-004).
 pub(super) fn ensure_open(repo: &crate::repo::Repository, activity_id: &str) -> Result<(), String> {

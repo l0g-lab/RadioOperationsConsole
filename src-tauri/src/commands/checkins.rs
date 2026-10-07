@@ -128,7 +128,6 @@ pub fn update_checkin(
 ) -> Result<(), String> {
     let mut contact = normalize_contact(contact)?;
     let repo = state.repo.lock().unwrap();
-    ensure_checkin_open(&repo, &checkin_id)?;
     if checkin_activity_type(&repo, &checkin_id).is_some_and(|t| range_check::is_range_check(&t)) {
         // RANGE-017: a correction meets the same rules. Without contact
         // details (a call-sign lookup) they're unchanged, but the point stays.
@@ -254,7 +253,6 @@ pub fn set_checkin_location_coords(
     label: Option<String>,
 ) -> Result<Checkin, String> {
     let repo = state.repo.lock().unwrap();
-    ensure_checkin_open(&repo, &checkin_id)?;
     repo.set_checkin_location_coords(&checkin_id, lat, lon, label.as_deref())
         .map_err(|e| e.to_string())?;
     repo.get_checkin(&checkin_id).map_err(|e| e.to_string())
@@ -266,7 +264,6 @@ pub fn clear_checkin_location(
     checkin_id: String,
 ) -> Result<Checkin, String> {
     let repo = state.repo.lock().unwrap();
-    ensure_checkin_open(&repo, &checkin_id)?;
     if checkin_activity_type(&repo, &checkin_id).is_some_and(|t| range_check::is_range_check(&t)) {
         return Err(range_check::POINT_CANNOT_CLEAR.to_string());
     }
@@ -284,7 +281,6 @@ pub fn set_checkin_traffic_handled(
     operator_id: Option<String>,
 ) -> Result<(), String> {
     let repo = state.repo.lock().unwrap();
-    ensure_checkin_open(&repo, &checkin_id)?;
     repo.set_checkin_traffic_handled(&checkin_id, handled)
         .map_err(|e| e.to_string())?;
     let data = serde_json::json!({ "handled": handled }).to_string();

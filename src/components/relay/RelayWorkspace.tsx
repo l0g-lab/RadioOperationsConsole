@@ -338,11 +338,9 @@ export default function RelayWorkspace({
             {m.steps.map((s) => (
               <li key={s.id}>
                 <span className="relay-time">{when(s.at)}</span> {stepText(s)}
-                {!readOnly && (
-                  <button className="link-button" onClick={() => undo(s)} title="Take back a step recorded by mistake">
-                    Undo
-                  </button>
-                )}
+                <button className="link-button" onClick={() => undo(s)} title="Take back a step recorded by mistake">
+                  Undo
+                </button>
               </li>
             ))}
           </ul>
@@ -352,7 +350,8 @@ export default function RelayWorkspace({
             Reply logged: {replies.map((r) => `${when(r.received_at)} from ${r.from_station}`).join("; ")}
           </div>
         )}
-        {!readOnly && (
+        {/* Passing a message on is recorded even once the activity is closed (LIFE-013). */}
+        {(m.status === "held" || !readOnly) && (
           <div className="inline-form relay-actions">
             {m.status === "held" ? (
               <>
@@ -369,8 +368,8 @@ export default function RelayWorkspace({
                 </button>
               </>
             )}
-            <button onClick={() => edit(m)}>Edit</button>
-            <button onClick={() => setRemoving({ id: m.id, reason: "" })}>Remove</button>
+            {!readOnly && <button onClick={() => edit(m)}>Edit</button>}
+            {!readOnly && <button onClick={() => setRemoving({ id: m.id, reason: "" })}>Remove</button>}
           </div>
         )}
         {removing?.id === m.id && (

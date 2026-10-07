@@ -28,7 +28,7 @@ interface Props {
   /** Goes to the activity's Exports & forms on the Operations tab. */
   onOpenExports: () => void;
   checkins: Checkin[];
-  /** True for a closed activity: the roster is shown but can't be changed. */
+  /** A closed activity: entries can be corrected but not added or removed (LIFE-013). */
   readOnly?: boolean;
   qrzConfigured: boolean;
   offlineCallsAvailable: boolean;
@@ -350,6 +350,7 @@ export default function CheckinRoster({
                     activity={activity}
                     operatorId={operatorId}
                     log={log}
+                    qrzConfigured={qrzConfigured}
                     onSaved={finishEdit}
                     onCancel={cancelEdit}
                   />
@@ -370,7 +371,6 @@ export default function CheckinRoster({
                 <NetRow
                   key={c.id}
                   {...row}
-                  readOnly={readOnly}
                   onTrafficHandled={(handled) => handleTrafficHandled(c.id, handled)}
                 />
               );
@@ -378,8 +378,7 @@ export default function CheckinRoster({
           </div>
         </div>
 
-        {!readOnly &&
-          selectedCheckin &&
+        {selectedCheckin &&
           removingCheckinId !== selectedCheckin.id &&
           !editingCheckinId && (
             <div className="inline-form checkin-roster-actions">
@@ -387,7 +386,7 @@ export default function CheckinRoster({
               <button onClick={() => setShowLocationPicker(true)}>
                 {selectedCheckin.location_lat != null ? "Edit location" : "Set location"}
               </button>
-              <button onClick={() => startRemove(selectedCheckin.id)}>Remove</button>
+              {!readOnly && <button onClick={() => startRemove(selectedCheckin.id)}>Remove</button>}
               {(qrzConfigured || offlineCallsAvailable || selectedIsGmrs) && (
                 <button
                   onClick={handleLookupSelectedCheckin}
@@ -414,7 +413,7 @@ export default function CheckinRoster({
               {checkinLookupStatus === "error" && (
                 <span className="qrz-status qrz-status-muted">QRZ lookup failed</span>
               )}
-              {!log && !rangeCheck && (
+              {!readOnly && !log && !rangeCheck && (
                 <button
                   onClick={() =>
                     api.createAuditEvent(

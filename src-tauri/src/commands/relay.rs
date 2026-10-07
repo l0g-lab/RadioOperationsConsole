@@ -85,7 +85,6 @@ pub fn add_relay_step(
     operator_id: Option<String>,
 ) -> Result<String, String> {
     let repo = state.repo.lock().unwrap();
-    ensure_message_open(&repo, &message_id)?;
     let message = repo.get_relay_message(&message_id).map_err(|e| e.to_string())?;
     let s = clean_step(step, &message.received_at)?;
     let id = repo.add_relay_step(&message_id, &s, operator_id.as_deref())?;
@@ -100,7 +99,6 @@ pub fn add_relay_step(
 pub fn undo_relay_step(state: State<AppState>, step_id: String, operator_id: Option<String>) -> Result<(), String> {
     let repo = state.repo.lock().unwrap();
     let message_id = repo.message_id_of_relay_step(&step_id).ok_or("That step no longer exists.")?;
-    ensure_message_open(&repo, &message_id)?;
     let step = repo
         .get_relay_message(&message_id)
         .map_err(|e| e.to_string())?

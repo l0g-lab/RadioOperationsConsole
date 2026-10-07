@@ -163,7 +163,9 @@ export default function CheckinsTab({
 
       {focusedActivity && relay && (
         <>
-          {closed && <ClosedBanner title={focusedActivity.title} />}
+          {closed && (
+            <ClosedBanner title={focusedActivity.title} still="Messages can still be marked passed or not passed" />
+          )}
           <RelayWorkspace activity={focusedActivity} operatorId={selectedOperatorId} readOnly={closed} />
         </>
       )}
@@ -171,7 +173,10 @@ export default function CheckinsTab({
       {focusedActivity && !relay && (
         <>
           {closed ? (
-            <ClosedBanner title={focusedActivity.title} />
+            <ClosedBanner
+              title={focusedActivity.title}
+              still={`${log ? "Contacts" : "Check-ins"} can still be corrected: select one to edit it, fix its location${log ? "" : ", or mark traffic handled"}`}
+            />
           ) : (
             <CheckinEntryForm
               activityId={focusedActivity.id}

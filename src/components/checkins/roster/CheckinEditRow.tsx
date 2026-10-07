@@ -1,7 +1,9 @@
 import { useState } from "react";
 import * as api from "../../../api";
-import type { Activity, Checkin } from "../../../types";
+import type { Activity, Checkin, QrzLookupResponse } from "../../../types";
 import { resolveCheckinLocation } from "../../../checkinLocation";
+import { lookupCallsign, sourceLabels, type CallsignSource } from "../../../callsignLookup";
+import { resolveOfflineLocationAsync } from "../../../locationResolution";
 import { isWorkingOffline } from "../../../workOffline";
 import {
   contactTimeError,
@@ -11,15 +13,26 @@ import {
   type ContactDraft,
 } from "../ContactFields";
 
+/** What a corrected call sign looks up as, offered in place of the old one's details. */
+type Offer = { data: QrzLookupResponse; source: CallsignSource };
+
+/** "Pat Smith, Orlando, FL", or the call sign alone when the record has neither. */
+export function offerText(call: string, data: QrzLookupResponse): string {
+  const who = [data.name, data.qth_location].filter(Boolean).join(", ");
+  return who ? `${call.toUpperCase()} is ${who}` : `${call.toUpperCase()} is on file`;
+}
+
 /**
  * Correcting a net check-in (with its traffic) or a station-log contact
- * (with its radio details).
+ * (with its radio details). Correcting the call sign looks the new one up and
+ * offers its name and location in place of the old one's (LIFE-013).
  */
 export function CheckinEditRow({
   checkin,
   activity,
   operatorId,
   log,
+  qrzConfigured,
   onSaved,
   onCancel,
 }: {
@@ -28,6 +41,7 @@ export function CheckinEditRow({
   operatorId: string | null;
   /** A station log: contact details instead of traffic. */
   log: boolean;
+  qrzConfigured: boolean;
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -39,14 +53,31 @@ export function CheckinEditRow({
   const [traffic, setTraffic] = useState(checkin.traffic);
   const [contact, setContact] = useState<ContactDraft>(() => draftFromCheckin(checkin));
   const [saveRefused, setSaveRefused] = useState(false);
+  const [offer, setOffer] = useState<Offer | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  async function save() {
+  /**
+   * Saves the row. `replace` answers the offer for a corrected call sign:
+   * its record to use, or null to keep what's here; left out, a corrected
+   * call sign is looked up first.
+   */
+  async function save(replace?: QrzLookupResponse | null) {
     const call = callSign.trim();
     if (!call) return;
     if (log && contactTimeError(contact)) {
       setSaveRefused(true);
       return;
     }
+    if (replace === undefined && call.toUpperCase() !== checkin.call_sign.toUpperCase()) {
+      setChecking(true);
+      const outcome = await lookupCallsign(call, qrzConfigured).catch(() => null);
+      setChecking(false);
+      if (outcome?.kind === "found") {
+        setOffer({ data: outcome.data, source: outcome.source });
+        return;
+      }
+    }
+    let savedName = name.trim() || null;
     let qth: string | null = checkin.qth_location || null;
     let grid: string | null = checkin.grid_square || null;
     let address: string | null = checkin.address || null;
@@ -69,12 +100,31 @@ export function CheckinEditRow({
         locationLabel = r.label;
       }
       grid = r.grid ?? grid;
+    } else if (replace) {
+      // The old call sign's details make way for the new one's; a spot placed
+      // by hand stays (CIMAP-003), and anything changed in this edit is kept.
+      qth = replace.qth_location;
+      grid = replace.grid_square;
+      address = replace.address;
+      if (!checkin.location_manual) {
+        const r = await resolveOfflineLocationAsync({
+          qrzLat: replace.exact_lat,
+          qrzLon: replace.exact_lon,
+          gridSquare: grid,
+          address,
+          qthLocation: qth,
+        });
+        locationLat = r?.lat ?? null;
+        locationLon = r?.lon ?? null;
+        locationLabel = r ? qth || address || r.sourceText : null;
+      }
     }
+    if (replace && name.trim() === checkin.name.trim()) savedName = replace.name || null;
 
     await api.updateCheckin(
       checkin.id,
       call,
-      name.trim() || null,
+      savedName,
       qth,
       grid,
       address,
@@ -93,7 +143,7 @@ export function CheckinEditRow({
   }
 
   const keys = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") save();
+    if (e.key === "Enter") save(offer ? offer.data : undefined);
     if (e.key === "Escape") onCancel();
   };
   const text = (value: string, set: (v: string) => void, className: string, placeholder?: string) => (
@@ -112,7 +162,10 @@ export function CheckinEditRow({
         autoFocus
         className="checkin-edit-call"
         value={callSign}
-        onChange={(e) => setCallSign(e.target.value)}
+        onChange={(e) => {
+          setCallSign(e.target.value);
+          setOffer(null);
+        }}
         onKeyDown={keys}
       />
       {text(name, setName, "checkin-edit-name", "Name")}
@@ -122,7 +175,7 @@ export function CheckinEditRow({
           idPrefix={`checkin-edit-${checkin.id}`}
           value={contact}
           onChange={setContact}
-          onEnter={save}
+          onEnter={() => save()}
           frequencyPlaceholder={activity.frequency || undefined}
           saveAttempted={saveRefused}
         />
@@ -130,9 +183,23 @@ export function CheckinEditRow({
         text(traffic, setTraffic, "checkin-edit-traffic", "Traffic (blank if none)")
       )}
       <div className="checkin-edit-actions">
-        <button onClick={save}>Save</button>
+        <button onClick={() => save()} disabled={checking || offer !== null}>
+          {checking ? "Looking up…" : "Save"}
+        </button>
         <button onClick={onCancel}>Cancel</button>
       </div>
+      {offer && (
+        <div className="inline-form confirm-row checkin-edit-offer" role="status">
+          <span>
+            {offerText(callSign, offer.data)} ({sourceLabels(offer.source).found}). Use this name and location
+            instead?
+          </span>
+          <button className="primary" onClick={() => save(offer.data)}>
+            Replace
+          </button>
+          <button onClick={() => save(null)}>Keep mine</button>
+        </div>
+      )}
     </div>
   );
 }
