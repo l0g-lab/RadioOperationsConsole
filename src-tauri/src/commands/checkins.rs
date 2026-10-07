@@ -13,14 +13,16 @@ fn checkin_activity_type(repo: &Repository, checkin_id: &str) -> Option<String> 
 /// contacts sort correctly whatever offset the interface sent.
 fn normalize_contact(contact: Option<ContactDetails>) -> Result<Option<ContactDetails>, String> {
     let Some(mut c) = contact else { return Ok(None) };
-    if let Some(at) = c.contacted_at.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
-        let parsed = chrono::DateTime::parse_from_rfc3339(at)
-            .map_err(|_| format!("The contact time \"{at}\" isn't a valid date and time."))?;
-        c.contacted_at = Some(parsed.with_timezone(&chrono::Utc).to_rfc3339());
-    } else {
-        c.contacted_at = None;
-    }
+    c.contacted_at = normalize_time(c.contacted_at.as_deref(), "contact")?;
     Ok(Some(c))
+}
+
+/// A given time checked and stored as UTC; blank means "not given".
+fn normalize_time(at: Option<&str>, what: &str) -> Result<Option<String>, String> {
+    let Some(at) = at.map(str::trim).filter(|t| !t.is_empty()) else { return Ok(None) };
+    let parsed = chrono::DateTime::parse_from_rfc3339(at)
+        .map_err(|_| format!("The {what} time \"{at}\" isn't a valid date and time."))?;
+    Ok(Some(parsed.with_timezone(&chrono::Utc).to_rfc3339()))
 }
 
 #[tauri::command]
@@ -125,8 +127,11 @@ pub fn update_checkin(
     has_traffic: bool,
     traffic: Option<String>,
     contact: Option<ContactDetails>,
+    checked_in_at: Option<String>,
 ) -> Result<(), String> {
     let mut contact = normalize_contact(contact)?;
+    // A net check-in's time, corrected without contact details (LIFE-013).
+    let checked_in_at = normalize_time(checked_in_at.as_deref(), "check-in")?;
     let repo = state.repo.lock().unwrap();
     if checkin_activity_type(&repo, &checkin_id).is_some_and(|t| range_check::is_range_check(&t)) {
         // RANGE-017: a correction meets the same rules. Without contact
@@ -157,6 +162,9 @@ pub fn update_checkin(
         contact.as_ref(),
     )
     .map_err(|e| e.to_string())?;
+    if let Some(at) = &checked_in_at {
+        repo.set_checkin_time(&checkin_id, at).map_err(|e| e.to_string())?;
+    }
     let after = repo.get_checkin(&checkin_id).map_err(|e| e.to_string())?;
     let data = serde_json::json!({
         "before": {
@@ -324,5 +332,11 @@ mod tests {
         // Blank means "not given".
         assert_eq!(normalize_contact(Some(c("  "))).unwrap().unwrap().contacted_at, None);
         assert_eq!(normalize_contact(None).unwrap(), None);
+        // A net check-in's corrected time is checked the same way.
+        assert_eq!(
+            normalize_time(Some("2026-09-14T10:05:00-04:00"), "check-in").unwrap().as_deref(),
+            Some("2026-09-14T14:05:00+00:00")
+        );
+        assert!(normalize_time(Some("noon"), "check-in").unwrap_err().contains("check-in time"));
     }
 }

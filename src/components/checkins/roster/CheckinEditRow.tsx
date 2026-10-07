@@ -5,6 +5,7 @@ import { resolveCheckinLocation } from "../../../checkinLocation";
 import { lookupCallsign, sourceLabels, type CallsignSource } from "../../../callsignLookup";
 import { resolveOfflineLocationAsync } from "../../../locationResolution";
 import { isWorkingOffline } from "../../../workOffline";
+import { formatContactTime, parseContactTime } from "../../../utils";
 import {
   contactTimeError,
   ContactFieldsInputs,
@@ -25,7 +26,8 @@ export function offerText(call: string, data: QrzLookupResponse): string {
 /**
  * Correcting a net check-in (with its traffic) or a station-log contact
  * (with its radio details). Correcting the call sign looks the new one up and
- * offers its name and location in place of the old one's (LIFE-013).
+ * offers its name and location in place of the old one's (LIFE-013). A net
+ * check-in's time can be corrected too, as a contact's can.
  */
 export function CheckinEditRow({
   checkin,
@@ -51,6 +53,14 @@ export function CheckinEditRow({
   const startLocation = checkin.address || checkin.qth_location;
   const [location, setLocation] = useState(startLocation);
   const [traffic, setTraffic] = useState(checkin.traffic);
+  // A net check-in's time; a station log's is in its contact details.
+  const startAt = formatContactTime(checkin.checked_in_at);
+  const [at, setAt] = useState(startAt);
+  const atParsed = parseContactTime(at);
+  const atError =
+    !log && atParsed.kind === "invalid"
+      ? `"${at.trim()}" isn't a time. Use YYYY-MM-DD HH:MM (seconds optional), or HH:MM for today — or leave it blank to keep it.`
+      : null;
   const [contact, setContact] = useState<ContactDraft>(() => draftFromCheckin(checkin));
   const [saveRefused, setSaveRefused] = useState(false);
   const [offer, setOffer] = useState<Offer | null>(null);
@@ -64,7 +74,7 @@ export function CheckinEditRow({
   async function save(replace?: QrzLookupResponse | null) {
     const call = callSign.trim();
     if (!call) return;
-    if (log && contactTimeError(contact)) {
+    if ((log && contactTimeError(contact)) || atError) {
       setSaveRefused(true);
       return;
     }
@@ -135,7 +145,8 @@ export function CheckinEditRow({
       // Anything entered as traffic means the station has traffic.
       traffic.trim() !== "",
       traffic.trim() || null,
-      log ? toContactDetails(contact) : null
+      log ? toContactDetails(contact) : null,
+      !log && at.trim() !== startAt && atParsed.kind === "ok" ? atParsed.iso : null
     );
     // Typed coordinates or a mile marker: placed by hand.
     if (pinned) await api.setCheckinLocationCoords(checkin.id, pinned.lat, pinned.lon, pinned.label);
@@ -180,7 +191,19 @@ export function CheckinEditRow({
           saveAttempted={saveRefused}
         />
       ) : (
-        text(traffic, setTraffic, "checkin-edit-traffic", "Traffic (blank if none)")
+        <>
+          {text(traffic, setTraffic, "checkin-edit-traffic", "Traffic (blank if none)")}
+          <input
+            className="checkin-edit-time"
+            aria-label="Check-in time"
+            placeholder="YYYY-MM-DD HH:MM"
+            title="When the station checked in, in this computer's time: YYYY-MM-DD HH:MM, seconds optional."
+            aria-invalid={saveRefused && atError != null}
+            value={at}
+            onChange={(e) => setAt(e.target.value)}
+            onKeyDown={keys}
+          />
+        </>
       )}
       <div className="checkin-edit-actions">
         <button onClick={() => save()} disabled={checking || offer !== null}>
@@ -188,6 +211,11 @@ export function CheckinEditRow({
         </button>
         <button onClick={onCancel}>Cancel</button>
       </div>
+      {saveRefused && atError && (
+        <p className="weather-area-error contact-time-error" role="alert">
+          {atError}
+        </p>
+      )}
       {offer && (
         <div className="inline-form confirm-row checkin-edit-offer" role="status">
           <span>

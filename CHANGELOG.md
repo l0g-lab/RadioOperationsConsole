@@ -6,6 +6,10 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **Correct a check-in's time.** Edit on a net check-in has a Time box, so
+  when a station checked in can be fixed, during the net or after it ends.
+
 ## [2.5.3] - 2026-10-07
 
 ### Added

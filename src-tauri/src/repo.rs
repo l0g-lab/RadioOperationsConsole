@@ -728,6 +728,12 @@ impl Repository {
         Ok(())
     }
 
+    /// Corrects when a check-in was made (a UTC RFC 3339 time).
+    pub fn set_checkin_time(&self, id: &str, at: &str) -> rusqlite::Result<()> {
+        self.conn.execute("UPDATE checkins SET checked_in_at = ?1 WHERE id = ?2", params![at, id])?;
+        Ok(())
+    }
+
     /// Earlier records of a call sign across every activity, newest first
     /// (removed ones don't count). Case-insensitive.
     pub fn station_history(&self, call_sign: &str) -> rusqlite::Result<StationHistory> {

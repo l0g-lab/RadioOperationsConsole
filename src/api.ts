@@ -309,7 +309,9 @@ export const updateCheckin = (
   has_traffic: boolean,
   traffic: string | null,
   /** Left out, the contact's details and time stay as they are. */
-  contact: ContactDetails | null = null
+  contact: ContactDetails | null = null,
+  /** A corrected check-in time (ISO); left out, it stays as it is. */
+  checked_in_at: string | null = null
 ) =>
   invoke<void>("update_checkin", {
     checkinId: checkin_id,
@@ -325,6 +327,7 @@ export const updateCheckin = (
     hasTraffic: has_traffic,
     traffic,
     contact,
+    checkedInAt: checked_in_at,
   });
 
 export const setCheckinTrafficHandled = (

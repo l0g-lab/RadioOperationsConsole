@@ -1115,6 +1115,12 @@ details > summary {
   text-transform: uppercase;
 }
 
+/* Wide enough for "YYYY-MM-DD HH:MM:SS". */
+.checkin-edit-time {
+  width: 20ch;
+  flex-shrink: 0;
+}
+
 .checkin-edit-actions {
   display: flex;
   gap: 6px;
