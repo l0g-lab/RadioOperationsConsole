@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.5.4] - 2026-10-07
+
 ### Added
 - **Correct a check-in's time.** Edit on a net check-in has a Time box, so
   when a station checked in can be fixed, during the net or after it ends.
@@ -509,7 +511,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.3...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.4...HEAD
+[2.5.4]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.3...v2.5.4
 [2.5.3]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.2...v2.5.3
 [2.5.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.1...v2.5.2
 [2.5.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.0...v2.5.1
