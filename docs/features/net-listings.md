@@ -66,6 +66,9 @@ who attended.
   A retired listing is hidden but kept, and MAY be restored.
 - **NETL-011:** Editing or retiring a listing MUST NOT change any activity
   started from it.
+- **NETL-012:** A retired listing MAY be deleted for good, from the retired
+  list (retiring first stands in for a confirmation). Activities started from
+  it MUST NOT change, and the history MUST keep showing its name.
 
 ## Seeing what's on
 

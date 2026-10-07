@@ -1355,7 +1355,12 @@ impl Repository {
                     WHEN 'place' THEN (SELECT name FROM places WHERE id = h.entity_id)
                     WHEN 'event' THEN (SELECT name FROM events WHERE id = h.entity_id)
                     WHEN 'ics214_log' THEN (SELECT incident_name FROM ics214_logs WHERE id = h.entity_id)
-                END, ''),
+                END,
+                -- Deleted from the directory: the name its deletion recorded.
+                (SELECT json_extract(d.data, '$.before.name') FROM audit_events d
+                 WHERE d.entity_type = h.entity_type AND d.entity_id = h.entity_id
+                   AND d.action = 'delete' AND h.entity_type IN ('repeater', 'net_listing', 'place')
+                 LIMIT 1), ''),
                 coalesce(h.activity_id, ''),
                 coalesce((SELECT title FROM activities WHERE id = h.activity_id), '')
              FROM h LEFT JOIN operators o ON o.id = h.operator_id
@@ -1397,6 +1402,17 @@ mod lifecycle_tests {
         let o = r.list_operators().unwrap().into_iter().find(|o| o.id == pat).unwrap();
         assert_eq!((o.display_name.as_str(), o.call_sign.as_str()), ("Pat Jones", "K4NCS"));
         assert!(r.update_operator("missing", "X", None).is_err());
+    }
+
+    #[test]
+    fn history_keeps_the_name_of_a_deleted_repeater() {
+        let r = repo();
+        r.create_audit_event("repeater", "rpt1", "create", None, None).unwrap();
+        r.create_audit_event("repeater", "rpt1", "retire", None, None).unwrap();
+        r.create_audit_event("repeater", "rpt1", "delete", Some(r#"{"before":{"name":"W4ABC Orlando"}}"#), None)
+            .unwrap();
+        let subjects: Vec<_> = r.list_history(10).unwrap().into_iter().map(|e| e.subject).collect();
+        assert_eq!(subjects, ["W4ABC Orlando"; 3]);
     }
 
     #[test]

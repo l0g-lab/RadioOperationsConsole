@@ -54,3 +54,14 @@ pub fn set_net_listing_retired(
         .map_err(|e| e.to_string())?;
     Ok(())
 }
+
+/// Permanently deletes a retired listing, recording what it was (NETL-012).
+#[tauri::command]
+pub fn delete_net_listing(state: State<AppState>, listing_id: String, operator_id: Option<String>) -> Result<(), String> {
+    let repo = state.repo.lock().unwrap();
+    let before = repo.delete_net_listing(&listing_id)?;
+    let data = serde_json::json!({ "before": before }).to_string();
+    repo.create_audit_event("net_listing", &listing_id, "delete", Some(&data), operator_id.as_deref())
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}

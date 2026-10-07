@@ -62,6 +62,11 @@ out frequency and tone.
   MUST be searchable by name, frequency, and notes.
 - **RPT-012:** Editing a repeater MUST NOT change activities previously set
   up from it (`RPT-021`).
+- **RPT-013:** A retired repeater MAY be deleted for good, from the retired
+  list (retiring first stands in for a confirmation). Nets on it MUST keep its
+  name and one-line form as their frequency text, unlinked, and the change to
+  each MUST be recorded. The history MUST keep showing the repeater's name.
+  Activities are never changed.
 
 ## Using a repeater
 

@@ -2,6 +2,7 @@
 //! repeater kept once, with its offset and tones, so activities can be set up
 //! from it. Retired repeaters are hidden, never deleted.
 
+use crate::net_listings::NetListingDetails;
 use crate::repo::Repository;
 use chrono::Utc;
 use rusqlite::params;
@@ -224,6 +225,33 @@ impl Repository {
         Ok(())
     }
 
+    /// Permanently deletes a retired repeater (RPT-013). Nets on it keep its
+    /// name and frequency as their own frequency text; returns those nets as
+    /// they were and as they are now, for the history.
+    pub fn delete_repeater(&self, id: &str) -> Result<Vec<(String, NetListingDetails, NetListingDetails)>, String> {
+        let r = self.get_repeater(id).map_err(|_| "That repeater no longer exists.".to_string())?;
+        if r.retired_at.is_empty() {
+            return Err("Retire the repeater before deleting it.".into());
+        }
+        let text = format!("{} {}", r.details.name, one_line(&r.details));
+        let tx = self.conn.unchecked_transaction().map_err(|e| e.to_string())?;
+        let mut changed = Vec::new();
+        for l in self.list_net_listings(false).map_err(|e| e.to_string())?.into_iter()
+            .chain(self.list_net_listings(true).map_err(|e| e.to_string())?)
+        {
+            if l.details.repeater_id.as_deref() == Some(id) {
+                let mut after = l.details.clone();
+                after.repeater_id = None;
+                after.frequency = text.clone();
+                self.update_net_listing(&l.id, &after).map_err(|e| e.to_string())?;
+                changed.push((l.id, l.details, after));
+            }
+        }
+        self.conn.execute("DELETE FROM repeaters WHERE id = ?1", params![id]).map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())?;
+        Ok(changed)
+    }
+
     /// Sets an activity's repeater, or clears it with no point (RPT-021, RPT-023).
     pub fn set_activity_repeater(
         &self,
@@ -336,6 +364,31 @@ mod tests {
         both.tone_out_kind = "pl".into();
         both.tone_out = "123.0".into();
         assert_eq!(one_line(&both), "146.940 -0.600 PL 100.0 / out PL 123.0");
+    }
+
+    #[test]
+    fn a_retired_repeater_can_be_deleted_and_its_nets_keep_its_frequency() {
+        // RPT-013
+        let r = repo();
+        let id = r.create_repeater(&clean(w4abc()).unwrap()).unwrap();
+        let net = crate::net_listings::clean(NetListingDetails {
+            name: "ARES Net".into(),
+            repeater_id: Some(id.clone()),
+            schedule_kind: "as_needed".into(),
+            ..Default::default()
+        })
+        .unwrap();
+        let net_id = r.create_net_listing(&net).unwrap();
+
+        assert!(r.delete_repeater(&id).unwrap_err().contains("Retire"));
+        r.set_repeater_retired(&id, true).unwrap();
+        let changed = r.delete_repeater(&id).unwrap();
+        assert_eq!(changed.len(), 1);
+        assert!(r.get_repeater(&id).is_err());
+        let after = r.get_net_listing(&net_id).unwrap().details;
+        assert_eq!(after.repeater_id, None);
+        assert_eq!(after.frequency, "W4ABC Orlando 146.940 -0.600 PL 100.0");
+        assert!(r.delete_repeater(&id).is_err());
     }
 
     #[test]

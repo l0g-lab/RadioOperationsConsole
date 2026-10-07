@@ -381,6 +381,16 @@ export default function RepeatersPanel({
     }
   }
 
+  async function remove(r: Repeater) {
+    setError(null);
+    try {
+      await api.deleteRepeater(r.id, selectedOperatorId);
+      onRepeatersChanged();
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   const shown = repeaters.filter((r) => repeaterMatches(r, search));
 
   return (
@@ -499,13 +509,23 @@ export default function RepeatersPanel({
                 <span className="settings-hint">
                   {r.name} — {formatRepeater(r)}
                 </span>
-                <button
-                  className="link-button"
-                  aria-label={`Restore ${r.name}`}
-                  onClick={() => setRetiredState(r, false)}
-                >
-                  Restore
-                </button>
+                <span className="operator-row-actions">
+                  <button
+                    className="link-button"
+                    aria-label={`Restore ${r.name}`}
+                    onClick={() => setRetiredState(r, false)}
+                  >
+                    Restore
+                  </button>
+                  <button
+                    className="link-button danger-link"
+                    aria-label={`Delete ${r.name}`}
+                    title="Delete for good. Nets on it keep its name and frequency as text."
+                    onClick={() => remove(r)}
+                  >
+                    Delete
+                  </button>
+                </span>
               </div>
             ))}
         </>

@@ -52,6 +52,24 @@ pub fn set_repeater_retired(
     Ok(())
 }
 
+/// Permanently deletes a retired repeater, recording what it was. Nets on it
+/// keep its name and frequency as text (RPT-013).
+#[tauri::command]
+pub fn delete_repeater(state: State<AppState>, repeater_id: String, operator_id: Option<String>) -> Result<(), String> {
+    let repo = state.repo.lock().unwrap();
+    let before = repo.get_repeater(&repeater_id).map_err(|_| "That repeater no longer exists.".to_string())?;
+    let nets = repo.delete_repeater(&repeater_id)?;
+    for (id, before, after) in nets {
+        let data = serde_json::json!({ "before": before, "after": after }).to_string();
+        repo.create_audit_event("net_listing", &id, "correct", Some(&data), operator_id.as_deref())
+            .map_err(|e| e.to_string())?;
+    }
+    let data = serde_json::json!({ "before": before.details }).to_string();
+    repo.create_audit_event("repeater", &repeater_id, "delete", Some(&data), operator_id.as_deref())
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Sets the repeater an activity runs on (picked from the directory or placed
 /// by hand), or clears it with no point. A range check's can be moved, not
 /// cleared (RANGE-002, RPT-021–023).

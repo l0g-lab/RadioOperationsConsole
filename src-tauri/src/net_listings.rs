@@ -194,6 +194,17 @@ impl Repository {
         Ok(())
     }
 
+    /// Permanently deletes a retired listing (NETL-012). Activities started
+    /// from it keep their own copies. Returns what it was, for the history.
+    pub fn delete_net_listing(&self, id: &str) -> Result<NetListingDetails, String> {
+        let l = self.get_net_listing(id).map_err(|_| "That net no longer exists.".to_string())?;
+        if l.retired_at.is_empty() {
+            return Err("Retire the net before deleting it.".into());
+        }
+        self.conn.execute("DELETE FROM net_listings WHERE id = ?1", params![id]).map_err(|e| e.to_string())?;
+        Ok(l.details)
+    }
+
     /// Hides (or, with `retired` false, restores) a listing (NETL-010).
     pub fn set_net_listing_retired(&self, id: &str, retired: bool) -> rusqlite::Result<()> {
         let at = retired.then(|| Utc::now().to_rfc3339());
@@ -290,5 +301,12 @@ mod tests {
         assert_eq!(r.list_net_listings(true).unwrap().len(), 1);
         r.set_net_listing_retired(&id, false).unwrap();
         assert_eq!(r.list_net_listings(false).unwrap().len(), 1);
+
+        // NETL-012: deleted only once retired.
+        assert!(r.delete_net_listing(&id).unwrap_err().contains("Retire"));
+        r.set_net_listing_retired(&id, true).unwrap();
+        assert_eq!(r.delete_net_listing(&id).unwrap().schedule_kind, "monthly");
+        assert!(r.get_net_listing(&id).is_err());
+        assert!(r.delete_net_listing(&id).is_err());
     }
 }

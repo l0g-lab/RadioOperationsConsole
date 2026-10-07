@@ -18,6 +18,10 @@ top. Each release's section here is also its description on the
   will add and only ever adds: anything already there is left as it is. A
   net goes as text alone — its repeater's name and frequency, not a link — so
   whoever imports it can link it to a repeater of their own.
+- **Delete repeaters and nets for good.** Once retired, a repeater or net can
+  be deleted from the retired list. Nets on a deleted repeater keep its name
+  and frequency as text. The History tab keeps showing the names of deleted
+  repeaters, nets, and places.
 
 ## [2.5.2] - 2026-10-06
 

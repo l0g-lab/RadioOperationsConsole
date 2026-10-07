@@ -223,6 +223,9 @@ export const saveNetListing = (
 
 export const setNetListingRetired = (listing_id: string, retired: boolean, operator_id: string | null) =>
   invoke<void>("set_net_listing_retired", { listingId: listing_id, retired, operatorId: operator_id });
+/** Deletes a retired net listing for good (NETL-012). */
+export const deleteNetListing = (listing_id: string, operator_id: string | null) =>
+  invoke<void>("delete_net_listing", { listingId: listing_id, operatorId: operator_id });
 
 // Repeater directory (repeater-directory.md).
 export const listRepeaters = (retired = false) => invoke<Repeater[]>("list_repeaters", { retired });
@@ -236,6 +239,9 @@ export const saveRepeater = (
 
 export const setRepeaterRetired = (repeater_id: string, retired: boolean, operator_id: string | null) =>
   invoke<void>("set_repeater_retired", { repeaterId: repeater_id, retired, operatorId: operator_id });
+/** Deletes a retired repeater for good; nets on it keep its frequency as text (RPT-013). */
+export const deleteRepeater = (repeater_id: string, operator_id: string | null) =>
+  invoke<void>("delete_repeater", { repeaterId: repeater_id, operatorId: operator_id });
 
 /** Sets the activity's repeater, or clears it with no point. */
 export const setActivityRepeater = (

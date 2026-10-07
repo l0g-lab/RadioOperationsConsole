@@ -29,7 +29,8 @@ often in a hurry.
   ("generator on site").
 - **PLACE-010:** Places MUST be listed by name on the Operations tab, where
   they can be added, edited (including moved on the map), and deleted after
-  confirmation. Changes are recorded in the history (`AUDIT-001`).
+  confirmation. Changes are recorded in the history (`AUDIT-001`), which
+  keeps showing a deleted place's name.
 - **PLACE-011:** A location set from a place is a copy: editing or deleting
   the place MUST NOT change any activity, operator, or record.
 - **PLACE-020:** The map location picker MUST list saved places when there

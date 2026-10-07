@@ -118,6 +118,16 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
     }
   }
 
+  async function remove(l: NetListing) {
+    setError(null);
+    try {
+      await api.deleteNetListing(l.id, selectedOperatorId);
+      refresh();
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   function start(l: NetListing, meeting: Meeting | null) {
     const r = repeaterOf(l);
     onStartActivity({
@@ -377,13 +387,23 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
                 <span className="settings-hint">
                   {l.name} — {describeSchedule(l)}
                 </span>
-                <button
-                  className="link-button"
-                  aria-label={`Restore ${l.name}`}
-                  onClick={() => setRetiredState(l, false)}
-                >
-                  Restore
-                </button>
+                <span className="operator-row-actions">
+                  <button
+                    className="link-button"
+                    aria-label={`Restore ${l.name}`}
+                    onClick={() => setRetiredState(l, false)}
+                  >
+                    Restore
+                  </button>
+                  <button
+                    className="link-button danger-link"
+                    aria-label={`Delete ${l.name}`}
+                    title="Delete for good. Activities started from it don't change."
+                    onClick={() => remove(l)}
+                  >
+                    Delete
+                  </button>
+                </span>
               </div>
             ))}
         </>
