@@ -67,7 +67,7 @@ describe("SummaryDialog", () => {
   it("warns about traffic left unhandled", async () => {
     const user = userEvent.setup();
     vi.mocked(api.activitySummary).mockResolvedValue({ ...SUMMARY, open_traffic_items: 2 });
-    render(<ActivitySummaryPanel activity={NET} />);
+    render(<ActivitySummaryPanel activity={NET} operator={null} />);
     await user.click(await screen.findByRole("button", { name: /Summary/ }));
     expect(screen.getByRole("alert")).toHaveTextContent("2 not marked handled");
   });
@@ -100,7 +100,7 @@ describe("SummaryDialog", () => {
 
   it("is folded to one line on the Operations tab and opens laid out", async () => {
     const user = userEvent.setup();
-    render(<ActivitySummaryPanel activity={NET} />);
+    render(<ActivitySummaryPanel activity={NET} operator={null} />);
     // Folded: just the headline counts.
     expect(await screen.findByText(/12 check-ins/)).toBeInTheDocument();
     expect(screen.queryByText("Quiet night.")).not.toBeInTheDocument();

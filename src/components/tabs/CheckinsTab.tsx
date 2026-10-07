@@ -3,6 +3,7 @@ import * as api from "../../api";
 import type { Activity, Checkin, Operator } from "../../types";
 import { formatCoordsWithGrid } from "../../geo";
 import CheckinLocationMap from "../CheckinLocationMap";
+import { netControlPoint, repeaterPoint } from "../../mapPoints";
 import CheckinEntryForm from "../checkins/CheckinEntryForm";
 import CheckinRoster from "../checkins/CheckinRoster";
 import NotStartedBanner from "../lifecycle/NotStartedBanner";
@@ -49,33 +50,10 @@ export default function CheckinsTab({
   const relay = focusedActivity ? isRelay(focusedActivity.activity_type) : false;
   const focusedOperator = operators.find((o) => o.id === selectedOperatorId) ?? null;
 
-  // Net control: a per-activity location (e.g. a field site) takes
-  // precedence over the operator's own default location (CIMAP-060), since
-  // an operator may run a given activity from somewhere other than their
-  // usual QTH.
-  const netControl =
-    focusedActivity?.location_lat != null && focusedActivity?.location_lon != null
-      ? {
-          lat: focusedActivity.location_lat,
-          lon: focusedActivity.location_lon,
-          label: focusedActivity.location_label || focusedActivity.title,
-        }
-      : focusedOperator?.location_lat != null && focusedOperator?.location_lon != null
-        ? {
-            lat: focusedOperator.location_lat,
-            lon: focusedOperator.location_lon,
-            label: focusedOperator.location_label || focusedOperator.display_name,
-          }
-        : null;
-  // The repeater it runs on, kept apart from net control (RPT-021).
-  const repeater =
-    focusedActivity?.repeater_lat != null && focusedActivity?.repeater_lon != null
-      ? {
-          lat: focusedActivity.repeater_lat,
-          lon: focusedActivity.repeater_lon,
-          label: focusedActivity.repeater_name || "the repeater",
-        }
-      : null;
+  // Net control: the activity's location, else the operator's (CIMAP-060);
+  // the repeater it runs on is kept apart from it (RPT-021).
+  const netControl = netControlPoint(focusedActivity, focusedOperator);
+  const repeater = repeaterPoint(focusedActivity);
   // On a repeater, how far a station is from net control says little: the
   // signal goes through the repeater, so measure from it (RPT-031).
   const distanceFrom = repeater ?? netControl;

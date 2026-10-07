@@ -203,7 +203,10 @@ export default function SelectedActivityPanel({
             </button>
           </div>
 
-          <ActivitySummaryPanel activity={focusedActivity} />
+          <ActivitySummaryPanel
+            activity={focusedActivity}
+            operator={operators.find((o) => o.id === selectedOperatorId) ?? null}
+          />
 
         </>
       )}

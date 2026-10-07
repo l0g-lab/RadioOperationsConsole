@@ -109,6 +109,12 @@ fallback for check-ins that have location text but no grid square.
   traffic (on the row itself, `NETOPS-053`). The full address, coordinates, and how it was placed MUST be shown
   on hovering over the location. Exports keep every field.
 
+## Where it opens
+
+- **CIMAP-005:** The map MUST open from the check-in roster (Show map) and
+  from the selected activity's Summary on the Operations tab when the
+  activity has any check-ins, showing the same map either way.
+
 ## Offline and failure behavior
 
 - **CIMAP-020:** The map MUST open and render whatever pins are resolvable

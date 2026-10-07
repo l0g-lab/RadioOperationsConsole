@@ -7,14 +7,10 @@ import { haversineKm, formatDistance } from "../geo";
 import { BASEMAP_ATTRIBUTION, ZIP_ATTRIBUTION, createBaseMap } from "../map/baseMap";
 import { spreadDuplicates } from "../map/spreadDuplicates";
 import { MapPinned, Radio, RadioTower } from "lucide-react";
+import type { MapPoint } from "../mapPoints";
 import { SIGNAL_COLORS, SIGNAL_REPORTS, stationKindLabel } from "../rangeCheck";
 
-/** A labelled point: net control or the repeater. */
-interface Place {
-  lat: number;
-  lon: number;
-  label: string;
-}
+type Place = MapPoint;
 
 interface Props {
   checkins: Checkin[];

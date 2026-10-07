@@ -3941,3 +3941,11 @@ path.radar-alert-warning {
   display: flex;
   gap: 14px;
 }
+
+/* The Summary heading, with Show map at the far end. */
+.summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

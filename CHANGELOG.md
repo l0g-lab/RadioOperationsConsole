@@ -22,6 +22,9 @@ top. Each release's section here is also its description on the
   be deleted from the retired list. Nets on a deleted repeater keep its name
   and frequency as text. The History tab keeps showing the names of deleted
   repeaters, nets, and places.
+- **Show map from the Summary.** The selected activity's Summary on the
+  Operations tab has the same Show map as the Check-ins tab, so the check-ins
+  can be seen on the map without switching tabs.
 
 ### Fixed
 - A station log's summary no longer shows when it started, ended, or how long
