@@ -12,6 +12,12 @@ top. Each release's section here is also its description on the
   now publish a `.dmg` alongside the existing Linux and Windows installers,
   as a universal binary covering both Apple Silicon and Intel. See the
   README's "Get it running" section for local build prerequisites.
+- **Share your repeaters and nets.** Export repeaters… (under the Repeaters
+  panel) and Export nets… (under the Nets tab) save them to a file to hand to
+  other operators, who bring them in with Import. An import shows what it
+  will add and only ever adds: anything already there is left as it is. A
+  net goes as text alone — its repeater's name and frequency, not a link — so
+  whoever imports it can link it to a repeater of their own.
 
 ## [2.5.2] - 2026-10-06
 

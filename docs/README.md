@@ -66,7 +66,8 @@ stay consistent, and it changes along with the app.
 29. [features/repeater-directory.md](features/repeater-directory.md)
 30. [features/net-listings.md](features/net-listings.md)
 31. [features/saved-places.md](features/saved-places.md)
-32. [agent/BUILD_PROTOCOL.md](agent/BUILD_PROTOCOL.md)
+32. [features/shared-lists.md](features/shared-lists.md)
+33. [agent/BUILD_PROTOCOL.md](agent/BUILD_PROTOCOL.md)
 
 ## Normative language
 

@@ -50,7 +50,9 @@ change, without touching files by hand.
 - **BACKUP-021:** Before changing anything, the application MUST check the
   file: it MUST be one of this application's databases and MUST NOT have been
   made by a newer version. Anything else MUST be refused with a readable
-  message, leaving all data unchanged.
+  message, leaving all data unchanged. A shared repeater or net list
+  ([shared-lists.md](shared-lists.md)) MUST be refused with a pointer to
+  where it can be imported.
 - **BACKUP-022:** The operator MUST be shown what the file contains
   (counts and when it was saved) and MUST explicitly confirm, with a plain
   statement that everything currently in the application will be replaced

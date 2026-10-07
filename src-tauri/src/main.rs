@@ -17,6 +17,7 @@ mod range_check;
 mod repeaters;
 mod repo;
 mod routes;
+mod shared_lists;
 mod storage;
 mod updates;
 mod weather;
@@ -136,6 +137,9 @@ fn main() {
             commands::inspect_backup,
             commands::restore_database,
             commands::upgrade_backup,
+            commands::export_list,
+            commands::inspect_list,
+            commands::import_list,
             commands::list_data_packs,
             commands::update_data_pack,
             commands::resolve_mile_marker,

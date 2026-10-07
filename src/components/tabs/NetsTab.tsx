@@ -20,6 +20,7 @@ import ActivityTypeIcon from "../ActivityTypeIcon";
 import { useMinuteClock } from "../../hooks/useMinuteClock";
 import { mhzFromText } from "../../bands";
 import BandChip from "../BandChip";
+import ShareListControls from "../ShareListControls";
 
 interface Props {
   operators: Operator[];
@@ -387,6 +388,7 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
             ))}
         </>
       )}
+      <ShareListControls kind="nets" selectedOperatorId={selectedOperatorId} onImported={refresh} />
     </div>
   );
 }

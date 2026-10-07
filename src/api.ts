@@ -10,6 +10,7 @@ import type {
   RelayStepInput,
   Ics214Details,
   Ics214Log,
+  ImportSummary,
   NetListing,
   Place,
   PlaceDetails,
@@ -542,6 +543,14 @@ export const backupDatabase = (path: string) => invoke<BackupSummary>("backup_da
 export const inspectBackup = (path: string) => invoke<BackupSummary>("inspect_backup", { path });
 
 export const restoreDatabase = (path: string) => invoke<RestoreResult>("restore_database", { path });
+
+// Repeater and net lists to share (shared-lists.md).
+export type ListKind = "repeaters" | "nets";
+export const exportList = (kind: ListKind, path: string) => invoke<number>("export_list", { kind, path });
+export const inspectList = (kind: ListKind, path: string) =>
+  invoke<ImportSummary>("inspect_list", { kind, path });
+export const importList = (kind: ListKind, path: string, operator_id: string | null) =>
+  invoke<ImportSummary>("import_list", { kind, path, operatorId: operator_id });
 
 /** The copy saved before this launch upgraded the database, if it did. */
 export const upgradeBackup = () => invoke<UpgradeBackup | null>("upgrade_backup");

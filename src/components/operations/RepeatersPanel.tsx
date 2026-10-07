@@ -6,6 +6,7 @@ import { CTCSS_TONES, DCS_CODES, formatMhz, formatRepeater, inputMhz, repeaterMa
 import LocationPicker from "../LocationPicker";
 import { Archive, Info, Pencil, RadioTower } from "lucide-react";
 import BandChip from "../BandChip";
+import ShareListControls from "../ShareListControls";
 
 interface Props {
   repeaters: Repeater[];
@@ -509,6 +510,7 @@ export default function RepeatersPanel({
             ))}
         </>
       )}
+      <ShareListControls kind="repeaters" selectedOperatorId={selectedOperatorId} onImported={onRepeatersChanged} />
     </div>
   );
 }

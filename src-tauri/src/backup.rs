@@ -49,6 +49,12 @@ pub fn inspect(path: &Path) -> Result<BackupSummary, String> {
     let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)
         .map_err(|_| "That isn't a Radio Operations Console backup.".to_string())?;
     let not_ours = || "That isn't a Radio Operations Console backup.".to_string();
+    if crate::shared_lists::is_shared_list(&conn) {
+        return Err(
+            "That's a repeater or net list, not a backup. Import it from the Repeaters panel or the Nets tab."
+                .into(),
+        );
+    }
 
     // A non-database file fails on the first real query.
     let versions: Vec<String> = conn

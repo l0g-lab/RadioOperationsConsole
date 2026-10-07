@@ -507,6 +507,18 @@ export interface BackupSummary {
   modified: string;
 }
 
+/** What importing a repeater or net list would add, or added (shared-lists.md). */
+export interface ImportSummary {
+  total: number;
+  new: number;
+  /** Already here, or repeated in the file: left as they are. */
+  already_here: number;
+  /** Incomplete or invalid entries, skipped. */
+  unreadable: number;
+  /** RFC 3339 time the list was made. */
+  exported_at: string;
+}
+
 /** A newer release on GitHub (src-tauri/src/updates.rs). */
 export interface UpdateInfo {
   version: string;

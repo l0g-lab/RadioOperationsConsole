@@ -30,6 +30,8 @@ who attended.
 - Opening and closing scripts (planned, a separate spec) will be held on the
   listing.
 - Included in database backups ([database-backup-restore.md](database-backup-restore.md)).
+- Can be exported and imported to share with other operators, as text
+  without the link to a repeater ([shared-lists.md](shared-lists.md)).
 
 ## What a listing holds
 

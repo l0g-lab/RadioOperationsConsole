@@ -113,6 +113,43 @@ pub fn clean(mut d: RepeaterDetails) -> Result<RepeaterDetails, String> {
     Ok(d)
 }
 
+/// "146.940", or "145.2725" when a fourth decimal matters (as formatMhz in repeaters.ts).
+fn mhz(v: f64) -> String {
+    let four = format!("{v:.4}");
+    four.strip_suffix('0').map(String::from).unwrap_or(four)
+}
+
+fn tone_text(kind: &str, value: &str) -> String {
+    match kind {
+        "pl" => format!("PL {value}"),
+        "dcs" => format!("DCS {value}"),
+        _ => String::new(),
+    }
+}
+
+/// The repeater on one line (RPT-005), as formatRepeater in repeaters.ts:
+/// "146.940 -0.600 PL 100.0", "146.520 simplex".
+pub fn one_line(r: &RepeaterDetails) -> String {
+    let mut parts = vec![mhz(r.output_mhz)];
+    if r.offset_mhz == 0.0 {
+        parts.push("simplex".into());
+    } else {
+        parts.push(format!("{}{:.3}", if r.offset_mhz > 0.0 { "+" } else { "-" }, r.offset_mhz.abs()));
+    }
+    let input = tone_text(&r.tone_in_kind, &r.tone_in);
+    let output = tone_text(&r.tone_out_kind, &r.tone_out);
+    if !input.is_empty() {
+        parts.push(input.clone());
+    }
+    if !output.is_empty() && output != input {
+        parts.push(format!("{}out {output}", if input.is_empty() { "" } else { "/ " }));
+    }
+    if !r.mode.is_empty() && !r.mode.eq_ignore_ascii_case("FM") {
+        parts.push(r.mode.clone());
+    }
+    parts.join(" ")
+}
+
 const COLS: &str = "id, name, output_mhz, offset_mhz, tone_in_kind, coalesce(tone_in,''), tone_out_kind, coalesce(tone_out,''), mode, coalesce(location_label,''), location_lat, location_lon, coalesce(notes,''), coalesce(retired_at,'')";
 
 fn map(r: &rusqlite::Row) -> rusqlite::Result<Repeater> {
@@ -280,6 +317,25 @@ mod tests {
         assert_eq!(names(r.list_repeaters(true).unwrap()), ["K4UHF"]);
         r.set_repeater_retired(&uhf, false).unwrap();
         assert_eq!(r.list_repeaters(false).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn the_one_line_form_matches_the_interface() {
+        // RPT-005, as formatRepeater in repeaters.test.ts
+        assert_eq!(one_line(&clean(w4abc()).unwrap()), "146.940 -0.600 PL 100.0");
+        let mut d = clean(w4abc()).unwrap();
+        d.output_mhz = 145.2725;
+        d.offset_mhz = 0.0;
+        d.tone_in_kind = "none".into();
+        d.tone_in.clear();
+        d.tone_out_kind = "dcs".into();
+        d.tone_out = "023N".into();
+        d.mode = "DMR".into();
+        assert_eq!(one_line(&d), "145.2725 simplex out DCS 023N DMR");
+        let mut both = clean(w4abc()).unwrap();
+        both.tone_out_kind = "pl".into();
+        both.tone_out = "123.0".into();
+        assert_eq!(one_line(&both), "146.940 -0.600 PL 100.0 / out PL 123.0");
     }
 
     #[test]

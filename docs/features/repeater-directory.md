@@ -25,6 +25,7 @@ out frequency and tone.
 - A range check's repeater (`RANGE-002`) can come from the directory.
 - Locations use the shared picker ([location-resolution.md](location-resolution.md)).
 - Included in database backups ([database-backup-restore.md](database-backup-restore.md)).
+- Can be exported and imported to share with other operators ([shared-lists.md](shared-lists.md)).
 
 ## What a repeater holds
 
@@ -91,8 +92,6 @@ out frequency and tone.
 
 ## Not yet built
 
-- Importing and exporting the directory as a CHIRP-format CSV, to load an
-  existing radio programming file or spreadsheet.
 - Online repeater-directory lookup (for example, RepeaterBook), as an
   optional add-on only.
 
