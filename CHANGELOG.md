@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.5.3] - 2026-10-07
+
 ### Added
 - **macOS support.** Builds and runs natively on macOS — no platform-specific
   code changes were needed, just the build/release plumbing. Release builds
@@ -503,7 +505,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.2...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.3...HEAD
+[2.5.3]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.2...v2.5.3
 [2.5.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.1...v2.5.2
 [2.5.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.4.2...v2.5.0

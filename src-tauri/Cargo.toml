@@ -1,6 +1,6 @@
 [package]
 name = "radio_ops_console"
-version = "2.5.2"
+version = "2.5.3"
 edition = "2021"
 rust-version = "1.88"
 authors = ["l0g-lab"]
