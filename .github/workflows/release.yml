@@ -33,6 +33,7 @@ env:
 
 jobs:
   test:
+    name: Test suite
     uses: ./.github/workflows/reusable-test.yml
 
   release:

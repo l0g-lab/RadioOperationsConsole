@@ -9,6 +9,7 @@ on:
 
 jobs:
   test:
+    name: Build, test and lint (Linux)
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4

@@ -13,5 +13,8 @@ on:
       - main
 
 jobs:
+  # GitHub shows a called workflow's checks as "<this job> / <its job>", so
+  # both are named: "Test suite / Build, test and lint (Linux)".
   test:
+    name: Test suite
     uses: ./.github/workflows/reusable-test.yml
