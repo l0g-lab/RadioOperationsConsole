@@ -34,6 +34,10 @@ top. Each release's section here is also its description on the
 - **Dropdowns are the same height as the text boxes beside them,** on every
   system, so rows of fields line up. In forms, a short dropdown is at least
   as wide as a short text box.
+- **Traffic and report details wrap to a second line** on the check-in
+  roster and the spotter reports list, instead of being cut off after one,
+  without making rows taller; longer text ends in "…", with the full text on
+  hovering.
 
 ### Removed
 - "Create linked report" under the check-in roster. It only noted in the

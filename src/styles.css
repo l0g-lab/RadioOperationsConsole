@@ -3302,12 +3302,21 @@ button.online-pill-working-offline:hover {
   min-width: 0;
 }
 
+/* Traffic wraps to a second line, cut short with "…" after that (the full
+   text is on hovering). A little smaller and tighter than the row's text, so
+   two lines fit the height the Time column's two lines already give the row. */
 .checkin-row-traffic-text {
   flex: 1;
-  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  /* Never squeezed out by what's beside it (reports, Handled, Report). */
+  min-width: 8em;
+  overflow-wrap: anywhere;
+  font-size: calc(14px * var(--font-scale));
+  line-height: 1.08;
   color: var(--warning, #e8a33d);
 }
 
@@ -3321,14 +3330,21 @@ button.online-pill-working-offline:hover {
   color: var(--accent);
 }
 
-/* A SKYWARN station's reports, beside its traffic (NetRows.tsx). */
+/* A SKYWARN station's reports, beside its traffic (NetRows.tsx): secondary,
+   like the time, and only as wide as it needs. When the cell is tight it
+   gives way first, cut short with "…", so the traffic keeps the room. */
 .checkin-row-reports {
-  flex: 1;
+  flex: 0 1000 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  font-size: calc(14px * var(--font-scale));
+  color: var(--text-dim);
+}
+
+.checkin-row.selected .checkin-row-reports {
+  color: var(--on-accent);
 }
 
 .checkin-row-report {
@@ -3345,11 +3361,19 @@ button.online-pill-working-offline:hover {
 }
 
 /* A spotter report's notes, on its row (SpotterReportRoster.tsx). */
+/* Wraps to a second line like check-in traffic, cut short with "…" after
+   that (in full on hovering), within the height the Time and Hazard
+   columns' two lines already give the row. */
 .report-row-notes {
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+  font-size: calc(14px * var(--font-scale));
+  line-height: 1.08;
 }
 
 /* A spotter report's hazard: the type, with its magnitude under it. */
