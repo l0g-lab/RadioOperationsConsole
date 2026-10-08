@@ -684,7 +684,9 @@ impl Repository {
         let f = ContactDetails::field;
         self.conn.execute(
             "INSERT INTO checkins(id, activity_id, call_sign, name, qth_location, grid_square, address, checked_in_at, entered_at, operator_id, location_lat, location_lon, location_label, has_traffic, traffic, frequency, mode, rst_sent, rst_received, power, antenna, notes, station_kind, cross_street) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)",
-            params![id, activity_id, call_sign, name, qth_location, grid_square, address, at, now, operator_id, location_lat, location_lon, location_label, has_traffic, if has_traffic { traffic } else { None },
+            params![id, activity_id, call_sign, name, qth_location, grid_square, address, at, now, operator_id, location_lat, location_lon, location_label, has_traffic,
+                // A note from net control is its text, though it isn't traffic (NETOPS-060).
+                if has_traffic || f(&contact.station_kind) == Some("net_control") { traffic } else { None },
                 f(&contact.frequency), f(&contact.mode), f(&contact.rst_sent), f(&contact.rst_received), f(&contact.power), f(&contact.antenna), f(&contact.notes), f(&contact.station_kind), f(&contact.cross_street)],
         )?;
         Ok(id)
@@ -765,8 +767,10 @@ impl Repository {
     ) -> rusqlite::Result<()> {
         // Clearing "has traffic" also clears its details and handled mark.
         self.conn.execute(
-            "UPDATE checkins SET call_sign = ?1, name = ?2, qth_location = ?3, grid_square = ?4, address = ?5, location_lat = ?6, location_lon = ?7, location_label = ?8, has_traffic = ?9, traffic = ?10, traffic_handled = CASE WHEN ?9 THEN traffic_handled ELSE 0 END WHERE id = ?11",
-            params![call_sign, name, qth_location, grid_square, address, location_lat, location_lon, location_label, has_traffic, if has_traffic { traffic } else { None }, id],
+            "UPDATE checkins SET call_sign = ?1, name = ?2, qth_location = ?3, grid_square = ?4, address = ?5, location_lat = ?6, location_lon = ?7, location_label = ?8, has_traffic = ?9, \
+             traffic = CASE WHEN ?9 OR coalesce(station_kind,'') = 'net_control' THEN ?10 END, \
+             traffic_handled = CASE WHEN ?9 THEN traffic_handled ELSE 0 END WHERE id = ?11",
+            params![call_sign, name, qth_location, grid_square, address, location_lat, location_lon, location_label, has_traffic, traffic, id],
         )?;
         // No contact details given (e.g. a call-sign lookup filling in a
         // name) leaves them as they are; given, they replace what's there.
@@ -1986,6 +1990,16 @@ mod lifecycle_tests {
         assert_eq!(r.list_checkins(&id).unwrap().len(), 3, "they're still on the roster");
         assert_eq!(r.list_activities().unwrap().into_iter().find(|a| a.id == id).unwrap().record_count, 1);
         assert_eq!(r.station_history("W0LAB").unwrap().count, 0, "net control's notes aren't contacts");
+        // The note's text is kept, though it isn't traffic, and stays when corrected.
+        let note = r.list_checkins(&id).unwrap().into_iter().find(|c| c.traffic == "Switched to backup repeater").unwrap();
+        assert!(!note.has_traffic);
+        r.update_checkin(&note.id, "W0LAB", None, None, None, None, None, None, None, false, Some("Back on the main repeater"), None)
+            .unwrap();
+        assert_eq!(r.get_checkin(&note.id).unwrap().traffic, "Back on the main repeater");
+        // A station's traffic still goes when it's cleared.
+        let hail = r.list_checkins(&id).unwrap().into_iter().find(|c| c.traffic == "Hail").unwrap();
+        r.update_checkin(&hail.id, "W4ABC", None, None, None, None, None, None, None, false, Some("Hail"), None).unwrap();
+        assert_eq!(r.get_checkin(&hail.id).unwrap().traffic, "");
     }
 
     #[test]
