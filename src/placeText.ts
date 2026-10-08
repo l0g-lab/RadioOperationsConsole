@@ -134,6 +134,7 @@ export const HOW: Record<string, { words: string; approx: boolean }> = {
   street: { words: "somewhere along the street", approx: true },
   town: { words: "the town's centre", approx: true },
   region: { words: "the area's centre", approx: true },
+  not_found: { words: "couldn't be placed", approx: false },
 };
 
 /** Whether a record's point is only approximate. */
@@ -141,6 +142,8 @@ export const isApproximate = (how: string) => HOW[how]?.approx ?? false;
 
 /** "Placed by: the centre of the ZIP code — approximate", or "" when not known. */
 export function howText(how: string): string {
+  // Not on the map: the lookup after saving found nothing (LOCRES-065).
+  if (how === "not_found") return "Couldn't be placed from what was typed — select it and pick the spot on the map";
   const h = HOW[how];
   return h ? `Placed by: ${h.words}${h.approx ? " — approximate" : ""}` : "";
 }

@@ -120,6 +120,7 @@ describe("placeText — the one place resolver (LOCRES-060)", () => {
     expect(howText("town")).toBe("Placed by: the town's centre — approximate");
     expect(howText("pin")).toBe("Placed by: picked on the map");
     expect(howText("")).toBe("");
+    expect(howText("not_found")).toMatch(/^Couldn't be placed/);
   });
 
   it("says what to do when it can't be placed", async () => {

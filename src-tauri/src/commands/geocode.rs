@@ -78,8 +78,17 @@ pub fn place_checkin_later(
     tauri::async_runtime::spawn(async move {
         let state = app.state::<AppState>();
         let dir = state.datapacks_dir.clone();
-        let Lookup::Found(f) = geocode::find(&state.place_memory, &dir, &text, near_of(&state, near_lat, near_lon), true).await else {
-            return;
+        let f = match geocode::find(&state.place_memory, &dir, &text, near_of(&state, near_lat, near_lon), true).await {
+            Lookup::Found(f) => f,
+            // Nothing found: say so on the check-in, if it's still unplaced
+            // (LOCRES-065). Offline or a failed service: nothing to say yet.
+            Lookup::NotFound => {
+                if let Ok(Some(activity_id)) = state.repo.lock().unwrap().mark_checkin_not_found(&checkin_id, &text) {
+                    let _ = tauri::Emitter::emit(&app, "location-placed", &activity_id);
+                }
+                return;
+            }
+            Lookup::Offline | Lookup::Error(_) => return,
         };
         let exact = matches!(f.precision, geocode::Precision::Address | geocode::Precision::Crossing);
         if exact_only.unwrap_or(false) && !exact {
@@ -113,8 +122,15 @@ pub fn place_report_later(
     tauri::async_runtime::spawn(async move {
         let state = app.state::<AppState>();
         let dir = state.datapacks_dir.clone();
-        let Lookup::Found(f) = geocode::find(&state.place_memory, &dir, &text, near_of(&state, near_lat, near_lon), true).await else {
-            return;
+        let f = match geocode::find(&state.place_memory, &dir, &text, near_of(&state, near_lat, near_lon), true).await {
+            Lookup::Found(f) => f,
+            Lookup::NotFound => {
+                if let Ok(Some(activity_id)) = state.repo.lock().unwrap().mark_report_not_found(&report_id, &text) {
+                    let _ = tauri::Emitter::emit(&app, "location-placed", &activity_id);
+                }
+                return;
+            }
+            Lookup::Offline | Lookup::Error(_) => return,
         };
         let placed = state.repo.lock().unwrap().place_report(&report_id, &text, f.lat, f.lon, f.precision.how());
         if let Ok(Some(activity_id)) = placed {

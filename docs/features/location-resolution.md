@@ -212,6 +212,15 @@ them as it can.
   hollow, dashed dot for a station; a faded icon for a report), with a key.
   Records from before this was kept say nothing.
 
+- **LOCRES-065:** When the lookup after saving finds nothing for a check-in
+  or report that's still not on the map and still holds the text looked
+  up, it MUST be marked as couldn't be placed: a crossed-out pin beside its
+  location in the roster or reports list, and on hovering, that it couldn't
+  be placed and to pick the spot on the map. One already roughly placed (a
+  ZIP's centre) keeps its point. The mark goes when the point is placed
+  another way or the location text is corrected. A lookup that couldn't run
+  (offline, a service down) marks nothing.
+
 ## Acceptance examples
 
 ```gherkin

@@ -176,6 +176,12 @@ pub fn update_checkin(
     if let Some(how) = &location_how {
         let how = if location_lat.is_some() { how.as_str() } else { "" };
         repo.set_checkin_location_how(&checkin_id, how).map_err(|e| e.to_string())?;
+    } else if before.location_how == "not_found"
+        && (before.address != address.clone().unwrap_or_default()
+            || before.qth_location != qth_location.clone().unwrap_or_default())
+    {
+        // "Couldn't be placed" was about the old text (LOCRES-065).
+        repo.set_checkin_location_how(&checkin_id, "").map_err(|e| e.to_string())?;
     }
     let after = repo.get_checkin(&checkin_id).map_err(|e| e.to_string())?;
     let data = serde_json::json!({

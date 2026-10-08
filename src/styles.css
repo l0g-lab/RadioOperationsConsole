@@ -1127,6 +1127,11 @@ details > summary {
   color: var(--accent);
 }
 
+/* Couldn't be placed (LocationMark): crossed out, in the warning colour. */
+.checkin-row-pin.checkin-row-pin-missing {
+  color: var(--warning, #e8a33d);
+}
+
 /* The check-in form's one Location box (CheckinEntryForm.tsx). */
 .checkin-entry-location {
   flex: 1;

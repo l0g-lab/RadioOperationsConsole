@@ -910,6 +910,39 @@ impl Repository {
         Ok(Some(activity_id))
     }
 
+    /// Marks a check-in whose typed location the lookup after saving couldn't
+    /// place (LOCRES-065): only while it's still not on the map and still
+    /// holds that text. Returns its activity when it was marked.
+    pub fn mark_checkin_not_found(&self, id: &str, text: &str) -> rusqlite::Result<Option<String>> {
+        let t = text.trim();
+        let marked = self.conn.execute(
+            "UPDATE checkins SET location_how = 'not_found' WHERE id = ?1 AND location_lat IS NULL AND location_manual = 0 \
+             AND (trim(coalesce(address,'')) = ?2 OR trim(coalesce(qth_location,'')) = ?2)",
+            params![id, t],
+        )?;
+        if marked == 0 {
+            return Ok(None);
+        }
+        self.conn
+            .query_row("SELECT activity_id FROM checkins WHERE id = ?1", params![id], |r| r.get(0))
+            .map(Some)
+    }
+
+    /// The same for a spotter report's Location box.
+    pub fn mark_report_not_found(&self, id: &str, text: &str) -> rusqlite::Result<Option<String>> {
+        let marked = self.conn.execute(
+            "UPDATE spotter_reports SET location_how = 'not_found' WHERE id = ?1 AND lat IS NULL \
+             AND trim(coalesce(location_text,'')) = ?2",
+            params![id, text.trim()],
+        )?;
+        if marked == 0 {
+            return Ok(None);
+        }
+        self.conn
+            .query_row("SELECT activity_id FROM spotter_reports WHERE id = ?1", params![id], |r| r.get(0))
+            .map(Some)
+    }
+
     /// Records how a check-in's map point was arrived at (LOCRES-064).
     pub fn set_checkin_location_how(&self, id: &str, how: &str) -> rusqlite::Result<()> {
         self.conn.execute("UPDATE checkins SET location_how = ?1 WHERE id = ?2", params![how, id])?;
@@ -1923,6 +1956,34 @@ mod lifecycle_tests {
         assert_eq!(r.get_activity(&id).unwrap().activity_type, "other");
         r.update_activity(&id, "Storm Net", "directed_net", None, None).unwrap();
         assert_eq!(r.get_activity(&id).unwrap().activity_type, "directed_net");
+    }
+
+    #[test]
+    fn a_lookup_that_finds_nothing_says_so_only_while_it_still_applies() {
+        let r = repo();
+        let id = r.create_activity("Net", "skywarn", None, None).unwrap();
+        let typed = "behind the old mill";
+        let none = ContactDetails::default();
+        let c = r.create_checkin(&id, "W4ABC", None, None, None, Some(typed), None, None, None, None, false, None, &none).unwrap();
+        assert_eq!(r.mark_checkin_not_found(&c, typed).unwrap(), Some(id.clone()));
+        assert_eq!(r.get_checkin(&c).unwrap().location_how, "not_found");
+        // Already on the map (a ZIP's centre, say), or its text changed: left alone.
+        let placed = r
+            .create_checkin(&id, "W4XYZ", None, None, None, Some(typed), None, Some(25.6), Some(-80.4), None, false, None, &none)
+            .unwrap();
+        assert_eq!(r.mark_checkin_not_found(&placed, typed).unwrap(), None);
+        assert_eq!(r.mark_checkin_not_found(&c, "somewhere else").unwrap(), None);
+        // Placed by hand later: the pin wins.
+        r.set_checkin_location_coords(&c, 25.7, -80.2, None).unwrap();
+        assert_eq!(r.get_checkin(&c).unwrap().location_how, "pin");
+        assert_eq!(r.mark_checkin_not_found(&c, typed).unwrap(), None);
+
+        let rep = r
+            .create_spotter_report(&id, "2026-01-01T12:00", None, Some(typed), None, None, None, "Hail", None, None, None, None, None)
+            .unwrap();
+        assert_eq!(r.mark_report_not_found(&rep, typed).unwrap(), Some(id));
+        assert_eq!(r.get_spotter_report(&rep).unwrap().location_how, "not_found");
+        assert_eq!(r.mark_report_not_found(&rep, "elsewhere").unwrap(), None);
     }
 
     #[test]

@@ -328,6 +328,31 @@ describe("CheckinRoster as a net", () => {
     expect(api.setCheckinTrafficHandled).toHaveBeenCalledWith("t1", true, "op1");
   });
 
+  it("marks a check-in the lookup couldn't place, and says what to do (LOCRES-065)", () => {
+    render(
+      <CheckinRoster
+        activity={NET}
+        operatorId="op1"
+        onOpenExports={() => {}}
+        checkins={[
+          { ...WITH_TRAFFIC, id: "n1", call_sign: "W4LOST", address: "behind the old mill", location_how: "not_found" },
+          { ...WITH_TRAFFIC, id: "p1", call_sign: "W4ZIP", location_lat: 25.6, location_lon: -80.4, location_how: "zip" },
+        ]}
+        qrzConfigured={false}
+        offlineCallsAvailable={false}
+        selectedCheckinId={null}
+        onSelectCheckin={() => {}}
+        onCheckinsChanged={() => {}}
+        onShowMap={() => {}}
+      />
+    );
+    const lost = screen.getByLabelText("Couldn't be placed");
+    expect(lost.closest("[title]")?.getAttribute("title")).toMatch(/Not on the map\nCouldn't be placed from what was typed/);
+    // An approximate point is on the map, and its hover text says how rough.
+    const zip = screen.getAllByLabelText("On the map")[0];
+    expect(zip.closest("[title]")?.getAttribute("title")).toMatch(/Placed by: the centre of the ZIP code — approximate/);
+  });
+
   it("corrects a check-in's traffic", async () => {
     const user = userEvent.setup();
     renderNet("t1");

@@ -1,9 +1,9 @@
 import { Fragment } from "react";
 import { formatCoords } from "../../../geo";
 import { rstPair } from "../ContactFields";
-import { ClipCell, DistanceCell, DistanceHeading, TimeCell, type Place, type RowProps } from "./shared";
+import { ClipCell, DistanceCell, DistanceHeading, LocationMark, TimeCell, type Place, type RowProps } from "./shared";
+import { howText } from "../../../placeText";
 import { locationText } from "../../../checkinLocation";
-import { MapPin } from "lucide-react";
 
 /** A station log's column headings (LOG-020). */
 export function LogColumns({ distanceFrom }: { distanceFrom: Place | null }) {
@@ -62,10 +62,11 @@ export function LogRow({
       <div className={"checkin-row checkin-row-log" + (selected ? " selected" : "")} onClick={onSelect}>
         <span className="checkin-row-call">{c.call_sign}</span>
         <span className="checkin-row-name">{c.name}</span>
-        <span className="checkin-row-location" title={c.address || c.qth_location || undefined}>
-          {c.location_lat != null && c.location_lon != null && (
-            <MapPin className="checkin-row-pin" aria-label="On the map" />
-          )}
+        <span
+          className="checkin-row-location"
+          title={[c.address || c.qth_location, howText(c.location_how)].filter(Boolean).join("\n") || undefined}
+        >
+          <LocationMark placed={c.location_lat != null && c.location_lon != null} how={c.location_how} />
           <span className="checkin-row-location-text">{locationText(c)}</span>
         </span>
         <DistanceCell checkin={c} from={distanceFrom} />

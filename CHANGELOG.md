@@ -22,6 +22,10 @@ top. Each release's section here is also its description on the
 - **Type a saved place's name** ("County EOC") into any location box to put
   it there.
 
+- **Says when a location couldn't be placed.** If the lookup after saving
+  finds nothing, the check-in or report gets a crossed-out pin beside its
+  location, and hovering says to pick the spot on the map, instead of it
+  quietly staying off the map.
 - **Rough pins look rough.** Each check-in and report keeps how its map point
   was found (a pin, the street address, where the streets cross, a ZIP code's
   or town's centre…). On the maps, approximate stations are hollow, dashed

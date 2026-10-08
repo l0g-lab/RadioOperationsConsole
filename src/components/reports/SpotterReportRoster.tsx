@@ -10,8 +10,8 @@ import IcsFormDialog from "../exports/IcsFormDialog";
 import { ics213FromReport, type GeneralMessage213Input } from "../../icsForms";
 import { useVoidableList } from "../../hooks/useVoidableList";
 import SpotterReportMap from "./SpotterReportMap";
-import { MapPin, Tornado } from "lucide-react";
-import { TimeCell } from "../checkins/roster/shared";
+import { Tornado } from "lucide-react";
+import { LocationMark, TimeCell } from "../checkins/roster/shared";
 import SortToggle from "../SortToggle";
 import { sortByTime, useSortOrder } from "../../hooks/useSortOrder";
 
@@ -127,7 +127,7 @@ export default function SpotterReportRoster({
               r.location_text && `Where: ${r.location_text}`,
               r.county && `County: ${r.county}`,
               hasCoords ? `On the map: ${formatCoords(r.lat as number, r.lon as number)}` : "Not on the map",
-              hasCoords && howText(r.location_how),
+              howText(r.location_how),
             ]
               .filter(Boolean)
               .join("\n");
@@ -146,7 +146,7 @@ export default function SpotterReportRoster({
                     {r.magnitude && <span className="report-row-magnitude">{r.magnitude}</span>}
                   </span>
                   <span className="checkin-row-location report-row-location" title={whereDetails}>
-                    {hasCoords && <MapPin className="checkin-row-pin" aria-label="On the map" />}
+                    <LocationMark placed={hasCoords} how={r.location_how} />
                     <span className="checkin-row-location-text">{where || "—"}</span>
                   </span>
                   <span className="report-row-grid">

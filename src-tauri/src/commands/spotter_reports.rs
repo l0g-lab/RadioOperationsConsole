@@ -114,6 +114,9 @@ pub fn update_spotter_report(
     if let Some(how) = &location_how {
         repo.set_report_location_how(&report_id, if lat.is_some() { how } else { "" })
             .map_err(|e| e.to_string())?;
+    } else if before.location_how == "not_found" && before.location_text != location_text.clone().unwrap_or_default() {
+        // "Couldn't be placed" was about the old text (LOCRES-065).
+        repo.set_report_location_how(&report_id, "").map_err(|e| e.to_string())?;
     }
     let data = serde_json::json!({
         "before": {

@@ -1,8 +1,7 @@
 import { formatCoords } from "../../../geo";
 import { locationText } from "../../../checkinLocation";
 import type { Checkin } from "../../../types";
-import { MapPin } from "lucide-react";
-import { TimeCell, type RowProps } from "./shared";
+import { LocationMark, TimeCell, type RowProps } from "./shared";
 import { howText } from "../../../placeText";
 
 /** A net's column headings; a SKYWARN net's last column also holds its reports. */
@@ -35,7 +34,7 @@ function locationDetails(c: Checkin): string {
       ? `On the map: ${formatCoords(c.location_lat, c.location_lon)}${
           howText(c.location_how) ? `\n${howText(c.location_how)}` : c.location_manual ? " (placed by hand)" : ""
         }`
-      : "Not on the map",
+      : `Not on the map${howText(c.location_how) ? `\n${howText(c.location_how)}` : ""}`,
     c.grid_square && `Grid square: ${c.grid_square}`,
   ]
     .filter(Boolean)
@@ -67,9 +66,7 @@ export function NetRow({
       <span className="checkin-row-name">{c.name || ""}</span>
       {/* The town or address; the rest is in the tooltip (CIMAP-081). */}
       <span className="checkin-row-location" title={locationDetails(c)}>
-        {c.location_lat != null && c.location_lon != null && (
-          <MapPin className="checkin-row-pin" aria-label="On the map" />
-        )}
+        <LocationMark placed={c.location_lat != null && c.location_lon != null} how={c.location_how} />
         <span className="checkin-row-location-text">{locationText(c)}</span>
       </span>
       <span className="checkin-row-grid">{c.grid_square}</span>

@@ -1,4 +1,5 @@
 import type { Checkin } from "../../../types";
+import { MapPin, MapPinOff } from "lucide-react";
 import { formatDistance, haversineKm, kmToMiles } from "../../../geo";
 import { formatTimeLines } from "../../../utils";
 
@@ -58,4 +59,16 @@ export interface RowProps {
   checkin: Checkin;
   selected: boolean;
   onSelect: () => void;
+}
+
+/**
+ * The mark beside a location in a list: a pin when it's on the map, crossed
+ * out when the lookup after saving couldn't place it (LOCRES-065).
+ */
+export function LocationMark({ placed, how }: { placed: boolean; how: string }) {
+  if (placed) return <MapPin className="checkin-row-pin" aria-label="On the map" />;
+  if (how === "not_found") {
+    return <MapPinOff className="checkin-row-pin checkin-row-pin-missing" aria-label="Couldn't be placed" />;
+  }
+  return null;
 }
