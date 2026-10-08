@@ -6,6 +6,21 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **A fuller SKYWARN summary.** A SKYWARN net's summary, and its saved text,
+  now give the largest hail and strongest wind reported and how many reports
+  came from each county.
+- **Keep NWS alerts with a SKYWARN net.** The Reports tab lists the alerts in
+  effect at the net and in your weather area, each once; tick the ones to
+  keep. They stay with the net, even after NWS drops them, and are listed in
+  its summary with their area and when they were in effect.
+
+### Removed
+- The "Weather now" line on a SKYWARN net's Reports tab, to give the reports
+  more room. The alerts in effect are in the net's NWS alerts list, the
+  Weather tab has the conditions and radar, and the weather as the net starts
+  and ends is still recorded in its summary.
+
 ## [2.5.4] - 2026-10-07
 
 ### Added

@@ -102,6 +102,10 @@ function summary(overrides: Partial<ActivitySummary> = {}): ActivitySummary {
     relay_messages: 0,
     held_relay_messages: 0,
     unpassed_relay_messages: 0,
+    largest_hail: "",
+    strongest_wind: "",
+    counties: [],
+    alerts: [],
     weather: [],
     ...overrides,
   };
@@ -292,6 +296,32 @@ describe("activitySummaryToText", () => {
     expect(text).toContain("1 check-in");
     expect(text).toContain("Conclusion:\nGood turnout");
     expect(text.endsWith("\n")).toBe(true);
+  });
+
+  it("adds a SKYWARN net's largest hail, counties, and attached alerts", () => {
+    const alert = {
+      id: "a1",
+      nws_id: "",
+      headline: "",
+      area_desc: "",
+      severity: "",
+      effective: "",
+      ends: "",
+      attached_at: "",
+    };
+    const text = activitySummaryToText(
+      activity({ activity_type: "skywarn" }),
+      summary({
+        largest_hail: "1.00 in (Quarter) — Severe threshold",
+        counties: [{ county: "Orange", count: 2 }],
+        alerts: [
+          { ...alert, event: "Tornado Watch" },
+          { ...alert, id: "a2", event: "Tornado Warning" },
+        ],
+      })
+    );
+    expect(text).toContain("Largest hail: 1.00 in (Quarter) — Severe threshold\nBy county: Orange 2\nNWS alerts:\n  Tornado Watch\n  Tornado Warning");
+    expect(text).not.toContain("Strongest wind");
   });
 
   it("gives the weather as it started and ended, or why there's none (net-weather.md)", () => {

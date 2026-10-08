@@ -9,7 +9,7 @@ import { activityTypeLabel, isLog } from "./activityTypes";
 import { weatherLines } from "./netWeather";
 import { latLonToGridSquare } from "./grid";
 import { formatCoords } from "./geo";
-import { summaryFacts } from "./summaryFacts";
+import { stormLines, summaryFacts } from "./summaryFacts";
 import { relayStatusLabel } from "./relay";
 import { describeHistory, historyPlain } from "./historyText";
 
@@ -284,6 +284,9 @@ export function activitySummaryToText(activity: Activity, s: ActivitySummary): s
     "",
     ...summaryFacts(activity.activity_type, s).map((f) =>
       [f.text, f.detail].filter(Boolean).join(" ")
+    ),
+    ...stormLines(s).flatMap((l) =>
+      l.lines.length === 1 ? [`${l.label}: ${l.lines[0]}`] : [`${l.label}:`, ...l.lines.map((t) => `  ${t}`)]
     ),
     "",
     s.conclusion ? `Conclusion:\n${s.conclusion}` : "",

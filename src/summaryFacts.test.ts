@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summaryFacts } from "./summaryFacts";
+import { stormLines, summaryFacts } from "./summaryFacts";
 import type { ActivitySummary } from "./types";
 
 function summary(overrides: Partial<ActivitySummary> = {}): ActivitySummary {
@@ -20,6 +20,10 @@ function summary(overrides: Partial<ActivitySummary> = {}): ActivitySummary {
     relay_messages: 0,
     held_relay_messages: 0,
     unpassed_relay_messages: 0,
+    largest_hail: "",
+    strongest_wind: "",
+    counties: [],
+    alerts: [],
     weather: [],
     ...overrides,
   };
@@ -75,5 +79,42 @@ describe("summaryFacts", () => {
   it("order is always checkins, then traffic, then spotter", () => {
     const facts = summaryFacts("other", summary({ traffic_items: 1, spotter_reports: 1 }));
     expect(facts.map((f) => f.key)).toEqual(["checkins", "traffic", "spotter"]);
+  });
+});
+
+describe("stormLines (SPOT-056, SPOT-060)", () => {
+  it("adds nothing when there's nothing to say", () => {
+    expect(stormLines(summary())).toEqual([]);
+  });
+
+  it("gives the largest hail, strongest wind, reports by county, and attached alerts", () => {
+    const alert = {
+      id: "a1",
+      nws_id: "",
+      event: "Tornado Watch",
+      headline: "",
+      area_desc: "",
+      severity: "",
+      effective: "",
+      ends: "",
+      attached_at: "",
+    };
+    const lines = stormLines(
+      summary({
+        largest_hail: "1.75 in (Golf Ball)",
+        strongest_wind: "58-73 mph (Severe Storm) — Severe threshold",
+        counties: [
+          { county: "Orange", count: 3 },
+          { county: "Seminole", count: 1 },
+        ],
+        alerts: [alert, { ...alert, id: "a2", event: "Tornado Warning" }],
+      })
+    );
+    expect(lines).toEqual([
+      { key: "hail", label: "Largest hail", lines: ["1.75 in (Golf Ball)"] },
+      { key: "wind", label: "Strongest wind", lines: ["58-73 mph (Severe Storm) — Severe threshold"] },
+      { key: "counties", label: "By county", lines: ["Orange 3, Seminole 1"] },
+      { key: "alerts", label: "NWS alerts", lines: ["Tornado Watch", "Tornado Warning"] },
+    ]);
   });
 });

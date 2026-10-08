@@ -3,6 +3,7 @@ import type { Activity, ActivitySummary } from "../../types";
 import { formatDuration } from "../../export";
 import { isLog, visibleSections } from "../../activityTypes";
 import { weatherLines } from "../../netWeather";
+import { stormLines } from "../../summaryFacts";
 import { pad2 } from "../../utils";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -118,6 +119,13 @@ export function SummaryView({
           )}
         </Row>
       )}
+      {stormLines(summary).map((l) => (
+        <Row key={l.key} label={l.label}>
+          {l.lines.map((t) => (
+            <div key={t}>{t}</div>
+          ))}
+        </Row>
+      ))}
       {shown.has("relay") && (
         <Row label="Relayed messages">
           {summary.relay_messages}

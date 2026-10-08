@@ -571,6 +571,29 @@ export interface ActivitySummary {
   unpassed_relay_messages: number;
   /** The weather as it started and ended, or why there's none (start first). */
   weather: ActivityWeather[];
+  /** The largest hail and strongest wind reported, as the magnitude was given, or "". */
+  largest_hail: string;
+  strongest_wind: string;
+  /** Spotter reports by county, most numerous first. */
+  counties: { county: string; count: number }[];
+  /** The NWS alerts attached to the net, in the order they took effect (SPOT-060). */
+  alerts: ActivityAlert[];
+}
+
+/** An NWS alert attached to a net, as it was when attached (SPOT-060). */
+export interface ActivityAlert {
+  id: string;
+  /** NWS's own id for the alert. */
+  nws_id: string;
+  event: string;
+  headline: string;
+  /** The counties or zones it covers, as NWS words them. */
+  area_desc: string;
+  severity: string;
+  /** When it took effect, and when the hazard (else the message) ends; ISO. */
+  effective: string;
+  ends: string;
+  attached_at: string;
 }
 
 /** A weather station's reading: temperature, conditions, wind (km/h, as NWS gives it). */

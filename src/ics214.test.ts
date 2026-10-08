@@ -60,6 +60,10 @@ const summary = (o: Partial<ActivitySummary> = {}): ActivitySummary => ({
   relay_messages: 0,
   held_relay_messages: 0,
   unpassed_relay_messages: 0,
+  largest_hail: "",
+  strongest_wind: "",
+  counties: [],
+  alerts: [],
   weather: [],
   ...o,
 });

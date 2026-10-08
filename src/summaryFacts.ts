@@ -1,5 +1,6 @@
 import type { ActivitySummary } from "./types";
 import { visibleSections } from "./activityTypes";
+import { attachedAlertText } from "./nwsAlerts";
 
 export interface SummaryFact {
   key: string;
@@ -60,4 +61,33 @@ export function summaryFacts(type: string, s: ActivitySummary): SummaryFact[] {
     });
   }
   return facts;
+}
+
+/** A summary line after the counts: a label and one or more lines of text. */
+export interface StormLine {
+  key: string;
+  label: string;
+  lines: string[];
+}
+
+/**
+ * What a SKYWARN net's summary adds after its counts (SPOT-056, SPOT-060):
+ * the largest hail and strongest wind reported, reports by county, and the
+ * NWS alerts attached to it. Shown in the summary and in its saved text.
+ */
+export function stormLines(s: ActivitySummary): StormLine[] {
+  const out: StormLine[] = [];
+  if (s.largest_hail) out.push({ key: "hail", label: "Largest hail", lines: [s.largest_hail] });
+  if (s.strongest_wind) out.push({ key: "wind", label: "Strongest wind", lines: [s.strongest_wind] });
+  if (s.counties.length > 0) {
+    out.push({
+      key: "counties",
+      label: "By county",
+      lines: [s.counties.map((c) => `${c.county} ${c.count}`).join(", ")],
+    });
+  }
+  if (s.alerts.length > 0) {
+    out.push({ key: "alerts", label: s.alerts.length === 1 ? "NWS alert" : "NWS alerts", lines: s.alerts.map(attachedAlertText) });
+  }
+  return out;
 }

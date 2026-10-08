@@ -3323,30 +3323,53 @@ button.online-pill-working-offline:hover {
   margin-top: 2px;
 }
 
-/* A SKYWARN net's weather now, one line above its reports (WX-010). */
-.net-weather-now {
+/* The NWS alerts attached to a SKYWARN net (NetAlertsPanel.tsx). */
+.net-alert-row.weather-alert-danger {
+  --al: var(--danger, #e05252);
+}
+
+.net-alerts {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-panel);
 }
 
-.net-weather-label {
-  font-weight: 600;
+.net-alerts-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.net-alerts-header button {
+  margin-left: auto;
+}
+
+.net-alert-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 2px 0 2px 8px;
+  /* Red for a warning, amber otherwise, as on the Weather tab (.weather-alert-danger sets it). */
+  --al: var(--warning, #e8a33d);
+  border-left: 3px solid var(--al);
+}
+
+.net-alert-area {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.net-weather-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.net-weather-danger {
-  color: var(--danger, #e05252);
+.net-alerts-label {
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* An event's activities: the type icon before each, and the band chip before

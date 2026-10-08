@@ -160,6 +160,43 @@ they saw, and where.
 Other formal forms and agency-specific formats (for example a report format for
 a particular NWS office) remain unbuilt (`SCOPE-005`).
 
+## The net's summary
+
+- **SPOT-056:** A SKYWARN net's summary MUST give, after the count of reports
+  by hazard: the largest hail and the strongest wind reported (each as its
+  magnitude was given, judged by the number it starts with, so a magnitude
+  typed as words alone doesn't count), and the number of reports in each
+  county, most first. A line with nothing to say MUST be left out. Removed
+  reports MUST NOT count.
+- **SPOT-057:** The summary's saved text MUST carry the same lines, so what's
+  passed on to the NWS or the EC after the net says the same thing
+  (`EXPORT-017`).
+
+## NWS alerts attached to the net
+
+What was in effect is part of a SKYWARN net's record. The weather recorded as
+a net starts and ends (`WX-*`) already names the alerts at the net's location
+then; attaching lets net control keep the ones that mattered, including ones
+issued during the net or covering another part of the county.
+
+- **SPOT-060:** A SKYWARN net MUST let the operator attach one or more NWS
+  alerts from those in effect now at the net's location (its repeater, else
+  net control) and in the Weather tab's area. They MUST be shown as one
+  list, each alert once whether or not it's attached, with a tick to keep it
+  with the net; the alerts already attached stay on the list after NWS drops
+  them. An alert already attached MUST NOT be attached again.
+- **SPOT-061:** An attached alert MUST be kept as a copy of what NWS said
+  (its name, headline, area, severity, and when it took effect and ends),
+  since NWS drops an alert from its feed once it expires.
+- **SPOT-062:** The net's summary and its saved text MUST list the attached
+  alerts in the order they took effect, each with its area and when it was
+  in effect (local time).
+- **SPOT-063:** Attaching and removing an alert MUST be recorded in the
+  net's history, and MUST be allowed on a closed net (`LIFE-013`).
+- **SPOT-064:** Picking alerts needs the internet; working offline, attaching
+  MUST be unavailable with a reason, and the alerts already attached MUST
+  still be shown.
+
 ## Standard magnitude scales
 
 Free-text magnitude ("about baseball sized?") produces reports that are
@@ -266,10 +303,10 @@ bolted on to the Spotter Reports data model.
   unrelated to this feature.
 - Slack message formatting and physical letter/label printing — org- and
   printer-specific integrations outside this application's current scope.
-- An End-of-Action summary report combining alerts, incidents, and
-  spotter reports — worth revisiting once Incidents exists, alongside the
-  CSV/Winlink ICS-213 exports already built for check-ins
-  (`NETOPS-046`–`048`).
+- Incidents in the after-action summary. A SKYWARN net's summary already
+  gives its reports by hazard and county, the largest hail and strongest
+  wind (`SPOT-056`), and its attached NWS alerts (`SPOT-062`); adding
+  incidents to it waits until Incidents exists.
 
 ## Acceptance examples
 

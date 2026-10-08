@@ -4,9 +4,12 @@
  * statements in amber; the most serious first, with when each ends.
  */
 import type { Geometry } from "geojson";
+import type { ActivityAlert } from "./types";
 import { pad2 } from "./utils";
 
 export interface NwsAlert {
+  /** NWS's own id for the alert. */
+  id?: string;
   event?: string;
   severity?: string;
   areaDesc?: string;
@@ -14,6 +17,8 @@ export interface NwsAlert {
   description?: string;
   instruction?: string;
   effective?: string;
+  /** When the hazard itself begins, if NWS says (effective is when the message took effect). */
+  onset?: string | null;
   expires?: string;
   /** When the hazard itself ends, if NWS says (expires is when the message does). */
   ends?: string | null;
@@ -44,6 +49,39 @@ export function untilText(a: NwsAlert, now = new Date()): string {
   if (Number.isNaN(end.getTime())) return "";
   const hm = `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
   return end.toDateString() === now.toDateString() ? `until ${hm}` : `until ${WEEKDAYS[end.getDay()]} ${hm}`;
+}
+
+/** What a net keeps of an alert when it's attached (SPOT-060). */
+export function toAttachedAlert(a: NwsAlert): Omit<ActivityAlert, "id" | "attached_at"> {
+  return {
+    nws_id: a.id ?? "",
+    event: a.event ?? "Alert",
+    headline: a.headline ?? "",
+    area_desc: a.areaDesc ?? "",
+    severity: a.severity ?? "",
+    effective: a.onset || a.effective || "",
+    ends: a.ends || a.expires || "",
+  };
+}
+
+/** Local "2026-10-05 19:30", or "" for a missing time. */
+function localMinute(iso: string): string {
+  const d = new Date(iso);
+  if (!iso || Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/** "2026-10-05 19:30 to 20:15" (the end's date only when it's another day), local time. */
+export function alertSpanText(effective: string, ends: string): string {
+  const [from, to] = [localMinute(effective), localMinute(ends)];
+  if (!from) return to ? `until ${to}` : "";
+  if (!to) return `from ${from}`;
+  return `${from} to ${to.slice(0, 10) === from.slice(0, 10) ? to.slice(11) : to}`;
+}
+
+/** "Tornado Warning — Orange, Seminole — 2026-10-05 19:30 to 20:15", for the summary. */
+export function attachedAlertText(a: Pick<ActivityAlert, "event" | "area_desc" | "effective" | "ends">): string {
+  return [a.event, areaText(a.area_desc), alertSpanText(a.effective, a.ends)].filter(Boolean).join(" — ");
 }
 
 /** NWS text, hard-wrapped at ~70 columns, as paragraphs: blank lines split them, single newlines are just wrapping. */

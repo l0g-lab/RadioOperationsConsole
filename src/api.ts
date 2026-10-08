@@ -17,6 +17,7 @@ import type {
   NetListingDetails,
   Repeater,
   RepeaterDetails,
+  ActivityAlert,
   ActivitySummary,
   DeletedCounts,
   BackupSummary,
@@ -438,6 +439,19 @@ export const voidSpotterReport = (
 
 export const restoreSpotterReport = (report_id: string, operator_id: string | null) =>
   invoke<void>("restore_spotter_report", { reportId: report_id, operatorId: operator_id });
+
+/** Attaches a copy of an NWS alert to a net (SPOT-060). */
+export const attachActivityAlert = (
+  activity_id: string,
+  alert: Omit<ActivityAlert, "id" | "attached_at">,
+  operator_id: string | null
+) => invoke<ActivityAlert>("attach_activity_alert", { activityId: activity_id, alert, operatorId: operator_id });
+
+export const detachActivityAlert = (alert_id: string, operator_id: string | null) =>
+  invoke<void>("detach_activity_alert", { alertId: alert_id, operatorId: operator_id });
+
+export const listActivityAlerts = (activity_id: string) =>
+  invoke<ActivityAlert[]>("list_activity_alerts", { activityId: activity_id });
 
 export const createAuditEvent = (
   entity_type: string,

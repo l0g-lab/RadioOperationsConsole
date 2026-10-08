@@ -45,6 +45,12 @@ describe("describeHistory (AUDIT-020)", () => {
     expect(say(entry("activity", "set_event", { before: "ARRL 2026 SET", after: null }, net))).toBe(
       "Took Tuesday Net out of the event ARRL 2026 SET"
     );
+    expect(say(entry("activity", "alert_attached", { event: "Tornado Warning" }, net))).toBe(
+      "Attached the Tornado Warning to Tuesday Net"
+    );
+    expect(say(entry("activity", "alert_removed", { event: "Tornado Watch" }, net))).toBe(
+      "Took the Tornado Watch off Tuesday Net"
+    );
     expect(say(entry("activity", "change_operator", { from: "o1", to: "o2" }, net), { o1: "W0LAB", o2: "WRMN479" })).toBe(
       "Changed who runs Tuesday Net from W0LAB to WRMN479"
     );

@@ -1,5 +1,5 @@
 use super::{ensure_open, ensure_report_open, AppState};
-use crate::repo::SpotterReport;
+use crate::repo::{ActivityAlert, SpotterReport};
 use tauri::State;
 
 #[tauri::command]
@@ -186,4 +186,51 @@ pub fn restore_spotter_report(
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// What the history keeps of an attached alert, so it reads after the alert is gone.
+fn alert_data(a: &ActivityAlert) -> String {
+    serde_json::json!({
+        "event": a.event,
+        "area_desc": a.area_desc,
+        "effective": a.effective,
+        "ends": a.ends,
+    })
+    .to_string()
+}
+
+/// Attaches a copy of an NWS alert to a net (SPOT-060). Allowed on a closed
+/// net too: attaching what was in effect is part of finishing its record
+/// (LIFE-013).
+#[tauri::command]
+pub fn attach_activity_alert(
+    state: State<AppState>,
+    activity_id: String,
+    alert: ActivityAlert,
+    operator_id: Option<String>,
+) -> Result<ActivityAlert, String> {
+    let repo = state.repo.lock().unwrap();
+    repo.get_activity(&activity_id).map_err(|_| "That activity no longer exists.".to_string())?;
+    let saved = repo.attach_activity_alert(&activity_id, &alert)?;
+    repo.create_audit_event("activity", &activity_id, "alert_attached", Some(&alert_data(&saved)), operator_id.as_deref())
+        .map_err(|e| e.to_string())?;
+    Ok(saved)
+}
+
+#[tauri::command]
+pub fn detach_activity_alert(
+    state: State<AppState>,
+    alert_id: String,
+    operator_id: Option<String>,
+) -> Result<(), String> {
+    let repo = state.repo.lock().unwrap();
+    let (activity_id, alert) = repo.detach_activity_alert(&alert_id)?;
+    repo.create_audit_event("activity", &activity_id, "alert_removed", Some(&alert_data(&alert)), operator_id.as_deref())
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn list_activity_alerts(state: State<AppState>, activity_id: String) -> Result<Vec<ActivityAlert>, String> {
+    state.repo.lock().unwrap().list_activity_alerts(&activity_id).map_err(|e| e.to_string())
 }

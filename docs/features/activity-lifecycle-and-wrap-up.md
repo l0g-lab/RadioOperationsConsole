@@ -76,7 +76,8 @@ and stops later edits from quietly changing a net that is over.
   happens after the net, without reopening, each recorded in the history as
   usual: correcting a check-in or contact (Edit, including its time, its
   location, a call-sign lookup), marking traffic handled, and recording a relayed message passed,
-  tried, or not passed (and undoing such a step). Who was on the net and
+  tried, or not passed (and undoing such a step), and attaching or removing
+  a SKYWARN net's NWS alerts (`SPOT-063`). Who was on the net and
   what was reported change only by reopening (`LIFE-004`).
 - **LIFE-014:** When a check-in's call sign is corrected in Edit, the new one
   MUST be looked up, and when it's found the operator MUST be asked whether

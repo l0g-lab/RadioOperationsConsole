@@ -81,12 +81,49 @@ pub struct ActivitySummary {
     pub unpassed_relay_messages: i64,
     /// The weather as it started and ended, or why there's none (start first).
     pub weather: Vec<crate::weather::ActivityWeather>,
+    /// The largest hail and strongest wind reported, as the magnitude was
+    /// given ("1.75 in (Golf Ball)"), or "" when none was.
+    pub largest_hail: String,
+    pub strongest_wind: String,
+    /// Spotter reports by county, most numerous first (reports with no county left out).
+    pub counties: Vec<CountyCount>,
+    /// The NWS alerts attached to the net, oldest first (SPOT-060).
+    pub alerts: Vec<ActivityAlert>,
 }
 
 #[derive(Serialize, Debug, Clone)]
 pub struct HazardCount {
     pub hazard_type: String,
     pub count: i64,
+}
+
+#[derive(Serialize, Debug, Clone)]
+pub struct CountyCount {
+    pub county: String,
+    pub count: i64,
+}
+
+/// An NWS alert attached to a net, as it was when attached (SPOT-060).
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq)]
+#[serde(default)]
+pub struct ActivityAlert {
+    pub id: String,
+    pub nws_id: String,
+    pub event: String,
+    pub headline: String,
+    pub area_desc: String,
+    pub severity: String,
+    pub effective: String,
+    pub ends: String,
+    pub attached_at: String,
+}
+
+/// The leading number of a magnitude ("1.75 in (Golf Ball)" → 1.75,
+/// "58-73 mph" → 58, "90+ mph" → 90), or None for words alone.
+fn magnitude_size(m: &str) -> Option<f64> {
+    let m = m.trim_start();
+    let end = m.find(|c: char| !(c.is_ascii_digit() || c == '.')).unwrap_or(m.len());
+    m[..end].parse().ok()
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -167,6 +204,9 @@ pub struct PastContact {
     /// The contact's own frequency, else its activity's.
     pub frequency: String,
 }
+
+/// Columns `map_alert` reads, in order.
+const ALERT_COLUMNS: &str = "id, nws_id, event, headline, area_desc, severity, effective, ends, attached_at";
 
 /// Columns `map_checkin` reads, in order.
 const CHECKIN_COLUMNS: &str = "id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled, coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,''), coalesce(station_kind,''), coalesce(cross_street,''), location_manual";
@@ -588,6 +628,7 @@ impl Repository {
             "DELETE FROM spotter_reports WHERE activity_id = ?1",
             "DELETE FROM checkins WHERE activity_id = ?1",
             "DELETE FROM activity_weather WHERE activity_id = ?1",
+            "DELETE FROM activity_alerts WHERE activity_id = ?1",
             "DELETE FROM activities WHERE id = ?1",
         ] {
             tx.execute(sql, params![id]).map_err(|e| e.to_string())?;
@@ -1197,6 +1238,28 @@ impl Repository {
                     .collect()
             })
             .unwrap_or_default();
+        let counties: Vec<CountyCount> = self
+            .conn
+            .prepare("SELECT trim(county), COUNT(*) FROM spotter_reports WHERE activity_id = ?1 AND voided_at IS NULL AND trim(coalesce(county,'')) <> '' GROUP BY trim(county) COLLATE NOCASE ORDER BY COUNT(*) DESC, trim(county)")
+            .and_then(|mut st| {
+                st.query_map(params![id], |r| Ok(CountyCount { county: r.get(0)?, count: r.get(1)? }))?
+                    .collect()
+            })
+            .unwrap_or_default();
+        // The biggest of a hazard's reports, by the number its magnitude starts with.
+        let largest = |hazard: &str| -> String {
+            let magnitudes: Vec<String> = self
+                .conn
+                .prepare("SELECT magnitude FROM spotter_reports WHERE activity_id = ?1 AND voided_at IS NULL AND hazard_type = ?2 AND magnitude IS NOT NULL")
+                .and_then(|mut st| st.query_map(params![id, hazard], |r| r.get(0))?.collect())
+                .unwrap_or_default();
+            magnitudes
+                .into_iter()
+                .filter_map(|m| magnitude_size(&m).map(|n| (n, m)))
+                .max_by(|a, b| a.0.total_cmp(&b.0))
+                .map(|(_, m)| m)
+                .unwrap_or_default()
+        };
         Ok(ActivitySummary {
             state: a.state,
             opened_at: a.opened_at,
@@ -1215,6 +1278,89 @@ impl Repository {
             held_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND NOT {RELAY_HAS_OUTCOME}")),
             unpassed_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND {RELAY_LAST_OUTCOME} = 'not_passed'")),
             weather: self.list_activity_weather(id).unwrap_or_default(),
+            largest_hail: largest("Hail"),
+            strongest_wind: largest("Wind Damage"),
+            counties,
+            alerts: self.list_activity_alerts(id).unwrap_or_default(),
+        })
+    }
+
+    /// Attaches a copy of an NWS alert to an activity (SPOT-060). The same
+    /// alert attached again is refused, so a double click doesn't list it twice.
+    pub fn attach_activity_alert(&self, activity_id: &str, a: &ActivityAlert) -> Result<ActivityAlert, String> {
+        if a.event.trim().is_empty() {
+            return Err("That alert has no name.".to_string());
+        }
+        if !a.nws_id.is_empty() {
+            let already: i64 = self
+                .conn
+                .query_row(
+                    "SELECT COUNT(*) FROM activity_alerts WHERE activity_id = ?1 AND nws_id = ?2",
+                    params![activity_id, a.nws_id],
+                    |r| r.get(0),
+                )
+                .map_err(|e| e.to_string())?;
+            if already > 0 {
+                return Err("That alert is already attached.".to_string());
+            }
+        }
+        let saved = ActivityAlert { id: Uuid::new_v4().to_string(), attached_at: Utc::now().to_rfc3339(), ..a.clone() };
+        self.conn
+            .execute(
+                "INSERT INTO activity_alerts(id, activity_id, nws_id, event, headline, area_desc, severity, effective, ends, attached_at) \
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+                params![
+                    saved.id,
+                    activity_id,
+                    saved.nws_id,
+                    saved.event.trim(),
+                    saved.headline,
+                    saved.area_desc,
+                    saved.severity,
+                    saved.effective,
+                    saved.ends,
+                    saved.attached_at
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+        Ok(saved)
+    }
+
+    /// Takes an attached alert off its activity, returning it and its activity's id.
+    pub fn detach_activity_alert(&self, alert_id: &str) -> Result<(String, ActivityAlert), String> {
+        let found = self
+            .conn
+            .query_row(
+                &format!("SELECT activity_id, {ALERT_COLUMNS} FROM activity_alerts WHERE id = ?1"),
+                params![alert_id],
+                |r| Ok((r.get::<_, String>(0)?, Self::map_alert(r, 1)?)),
+            )
+            .map_err(|_| "That alert is no longer attached.".to_string())?;
+        self.conn
+            .execute("DELETE FROM activity_alerts WHERE id = ?1", params![alert_id])
+            .map_err(|e| e.to_string())?;
+        Ok(found)
+    }
+
+    pub fn list_activity_alerts(&self, activity_id: &str) -> rusqlite::Result<Vec<ActivityAlert>> {
+        let mut st = self.conn.prepare(&format!(
+            "SELECT {ALERT_COLUMNS} FROM activity_alerts WHERE activity_id = ?1 ORDER BY coalesce(nullif(effective,''), attached_at), attached_at"
+        ))?;
+        let rows = st.query_map(params![activity_id], |r| Self::map_alert(r, 0))?;
+        rows.collect()
+    }
+
+    fn map_alert(r: &rusqlite::Row, from: usize) -> rusqlite::Result<ActivityAlert> {
+        Ok(ActivityAlert {
+            id: r.get(from)?,
+            nws_id: r.get(from + 1)?,
+            event: r.get(from + 2)?,
+            headline: r.get(from + 3)?,
+            area_desc: r.get(from + 4)?,
+            severity: r.get(from + 5)?,
+            effective: r.get(from + 6)?,
+            ends: r.get(from + 7)?,
+            attached_at: r.get(from + 8)?,
         })
     }
 
@@ -1702,6 +1848,71 @@ mod lifecycle_tests {
         assert_eq!(r.get_activity(&id).unwrap().activity_type, "other");
         r.update_activity(&id, "Storm Net", "directed_net", None, None).unwrap();
         assert_eq!(r.get_activity(&id).unwrap().activity_type, "directed_net");
+    }
+
+    #[test]
+    fn summary_gives_the_largest_hail_strongest_wind_and_reports_by_county() {
+        let r = repo();
+        let id = r.create_activity("Storm Net", "skywarn", None, None).unwrap();
+        let s = r.activity_summary(&id).unwrap();
+        assert_eq!((s.largest_hail.as_str(), s.strongest_wind.as_str()), ("", ""));
+        assert!(s.counties.is_empty());
+
+        let report = |hazard: &str, magnitude: Option<&str>, county: Option<&str>| {
+            r.create_spotter_report(&id, "2026-01-01T12:00", county, None, None, None, None, hazard, magnitude, None, None, None, None)
+                .unwrap()
+        };
+        report("Hail", Some("0.75 in (Penny)"), Some("Orange"));
+        report("Hail", Some("1.75 in (Golf Ball)"), Some("orange "));
+        report("Hail", Some("about the size of a pea"), Some("Seminole"));
+        let gone = report("Hail", Some("4.50 in (Grapefruit)"), Some("Lake"));
+        r.void_spotter_report(&gone, None).unwrap();
+        report("Wind Damage", Some("58-73 mph (Severe Storm) — Severe threshold"), None);
+        report("Wind Damage", Some("90+ mph (Destructive Wind)"), Some(""));
+        report("Wind Damage", Some("8-12 mph (Gentle Breeze)"), Some("Seminole"));
+        report("Tornado", Some("Funnel cloud (no ground contact)"), Some("Orange"));
+
+        let s = r.activity_summary(&id).unwrap();
+        assert_eq!(s.largest_hail, "1.75 in (Golf Ball)", "a removed report doesn't count");
+        assert_eq!(s.strongest_wind, "90+ mph (Destructive Wind)");
+        let counties: Vec<_> = s.counties.iter().map(|c| (c.county.to_lowercase(), c.count)).collect();
+        assert_eq!(counties, [("orange".to_string(), 3), ("seminole".to_string(), 2)]);
+    }
+
+    #[test]
+    fn alerts_are_attached_once_removed_and_deleted_with_the_activity() {
+        let r = repo();
+        let id = r.create_activity("Storm Net", "skywarn", None, None).unwrap();
+        let warning = ActivityAlert {
+            nws_id: "urn:oid:2.49.0.1.840.0.abc".into(),
+            event: "Tornado Warning".into(),
+            area_desc: "Orange, FL; Seminole, FL".into(),
+            effective: "2026-10-05T23:30:00+00:00".into(),
+            ends: "2026-10-06T00:15:00+00:00".into(),
+            ..Default::default()
+        };
+        let watch = ActivityAlert {
+            nws_id: "urn:oid:2.49.0.1.840.0.def".into(),
+            event: "Tornado Watch".into(),
+            effective: "2026-10-05T20:00:00+00:00".into(),
+            ..Default::default()
+        };
+        let w = r.attach_activity_alert(&id, &warning).unwrap();
+        r.attach_activity_alert(&id, &watch).unwrap();
+        assert!(r.attach_activity_alert(&id, &warning).unwrap_err().contains("already attached"));
+        assert!(r.attach_activity_alert(&id, &ActivityAlert::default()).is_err(), "an alert needs a name");
+
+        let events: Vec<_> = r.activity_summary(&id).unwrap().alerts.into_iter().map(|a| a.event).collect();
+        assert_eq!(events, ["Tornado Watch", "Tornado Warning"], "in the order they took effect");
+
+        let (from, removed) = r.detach_activity_alert(&w.id).unwrap();
+        assert_eq!((from.as_str(), removed.event.as_str()), (id.as_str(), "Tornado Warning"));
+        assert!(r.detach_activity_alert(&w.id).is_err());
+        assert_eq!(r.list_activity_alerts(&id).unwrap().len(), 1);
+
+        r.delete_activity_permanently(&id, None).unwrap();
+        let left: i64 = r.conn.query_row("SELECT COUNT(*) FROM activity_alerts", [], |x| x.get(0)).unwrap();
+        assert_eq!(left, 0);
     }
 
 }

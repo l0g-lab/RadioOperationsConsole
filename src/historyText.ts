@@ -179,6 +179,10 @@ export function describeHistory(e: HistoryEntry, operatorName: (id: string) => s
             .map(([n, w]) => `${n} ${w}${Number(n) === 1 ? "" : "s"}`);
           return ["Deleted ", net, counts.length ? ` and its ${counts.join(", ")}` : ""];
         }
+        case "alert_attached":
+          return ["Attached the ", { name: str(d.event) || "NWS alert" }, " to ", net];
+        case "alert_removed":
+          return ["Took the ", { name: str(d.event) || "NWS alert" }, " off ", net];
         case "activity_entry":
           return ["Noted in ", net, e.data && !e.data.startsWith("{") ? `: ${e.data}` : ""];
       }

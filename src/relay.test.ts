@@ -110,6 +110,10 @@ describe("relay summaries", () => {
     relay_messages: 5,
     held_relay_messages: 1,
     unpassed_relay_messages: 1,
+    largest_hail: "",
+    strongest_wind: "",
+    counties: [],
+    alerts: [],
     weather: [],
   };
 
