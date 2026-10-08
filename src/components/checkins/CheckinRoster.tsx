@@ -214,7 +214,7 @@ export default function CheckinRoster({
         selectedCheckin.has_traffic,
         selectedCheckin.traffic || null
       );
-      if (placed) placeCheckinLater(selectedCheckin.id, text, { lookUp: placed.lookUp, keepGrid: !!grid }, distanceFrom);
+      if (placed) placeCheckinLater(selectedCheckin.id, text, { lookUp: placed.lookUp, keepGrid: !!grid, lookUpExactOnly: placed.lookUpExactOnly }, distanceFrom);
       setCheckinLookupStatus("found");
       onCheckinsChanged();
     } catch (err) {

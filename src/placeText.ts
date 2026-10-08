@@ -10,7 +10,9 @@
  *  3. a grid square typed on its own (its centre, approximate);
  *  4. a mile marker (offline road data);
  *  5. a saved place, typed by name ("EOC");
- *  6. the station's exact point from a call-sign lookup (QRZ);
+ *  6. the station's exact point from a call-sign lookup (QRZ) — unless its
+ *     street address matches a house, which wins: QRZ's point can be an old
+ *     or rough one (LOCRES-062);
  *  7. a place already looked up, remembered (works offline);
  *  8. when waiting for it, the online lookup (geocode.rs);
  *  9. a ZIP code's centre, else the station's grid square (approximate).
@@ -54,6 +56,11 @@ export interface Placement {
   note: string;
   /** Not placed exactly offline: worth looking up online once saved (LOCRES-050). */
   lookUp: boolean;
+  /**
+   * Already placed (QRZ's point): the lookup after saving should move it only
+   * to a matched house or corner, never to a vaguer street or town.
+   */
+  lookUpExactOnly: boolean;
 }
 
 /** What a call-sign lookup knows about where a station is. */
@@ -125,6 +132,7 @@ export async function placeText(text: string, opts: PlaceOptions): Promise<Place
     approx: false,
     note,
     lookUp: false,
+    lookUpExactOnly: false,
     ...extra,
   });
   const fromFound = (f: FoundPlace, source: PlaceSource, said: string) => {
@@ -157,21 +165,38 @@ export async function placeText(text: string, opts: PlaceOptions): Promise<Place
     }
   }
 
-  const station = opts.station;
-  if (station?.exact) return at(station.exact.lat, station.exact.lon, "qrz", "QRZ's exact point for this station");
-
-  if (typed) {
-    const remembered = await api.recallPlace(typed, near).catch(() => null);
-    if (remembered) return fromFound(remembered, "remembered", "looked up before");
-
-    if (opts.online === "wait" && canLookUpOnline()) {
-      const found = await api.geocodeLocation(typed, near).catch((e) => {
-        if (e !== ERR_OFFLINE) throw e;
-        return null;
-      });
-      if (found) return fromFound(found, "online", "found online");
+  // The online search, when someone is waiting for it. A failure isn't the
+  // end: what can be placed offline still is.
+  let searchFailed: string | null = null;
+  const search = async () => {
+    if (!typed || opts.online !== "wait" || !canLookUpOnline()) return null;
+    try {
+      return await api.geocodeLocation(typed, near);
+    } catch (e) {
+      if (e !== ERR_OFFLINE) searchFailed = String(e);
+      return null;
     }
+  };
+  const remembered = typed ? await api.recallPlace(typed, near).catch(() => null) : null;
+
+  const station = opts.station;
+  if (station?.exact) {
+    // A street address that matches a house beats QRZ's point (LOCRES-062).
+    const house = hasHouseNumber(typed);
+    if (house) {
+      if (remembered?.precision === "address") return fromFound(remembered, "remembered", "looked up before");
+      const found = await search();
+      if (found?.precision === "address") return fromFound(found, "online", "found online");
+    }
+    return at(station.exact.lat, station.exact.lon, "qrz", "QRZ's point for this station", {
+      lookUp: house && opts.online === "later",
+      lookUpExactOnly: true,
+    });
   }
+
+  if (remembered) return fromFound(remembered, "remembered", "looked up before");
+  const found = await search();
+  if (found) return fromFound(found, "online", "found online");
 
   // Nothing exact offline: worth an online lookup once saved.
   const lookUp = opts.online === "later" && !!typed;
@@ -202,12 +227,20 @@ export async function placeText(text: string, opts: PlaceOptions): Promise<Place
     manual: false,
     approx: false,
     lookUp,
+    lookUpExactOnly: false,
     note: !typed
       ? ""
       : later
         ? "looked up online once saved — or pick it on the map"
-        : opts.online === "wait" && canLookUpOnline()
-          ? "not found — try adding the town, or pick it on the map"
-          : "can't be placed offline — pick it on the map",
+        : searchFailed
+          ? `the online search failed (${searchFailed}) — try again, or pick it on the map`
+          : opts.online === "wait" && canLookUpOnline()
+            ? "not found — try adding the town, or pick it on the map"
+            : "can't be placed offline — pick it on the map",
   };
+}
+
+/** A street address starting with a house number ("9296 SW 183rd Ter, …"). */
+export function hasHouseNumber(text: string): boolean {
+  return /^\d+[A-Za-z]?\s+[A-Za-z]/.test(text.trim());
 }

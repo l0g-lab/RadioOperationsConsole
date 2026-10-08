@@ -46,6 +46,8 @@ export interface CheckinLocation {
   lookUp: boolean;
   /** The grid square came from the call-sign lookup, so a lookup leaves it. */
   keepGrid: boolean;
+  /** Placed at QRZ's point: the lookup after saving moves it only to a matched house or corner. */
+  lookUpExactOnly: boolean;
 }
 
 /**
@@ -87,6 +89,7 @@ export async function resolveCheckinLocation(
     note: p.note,
     lookUp: p.lookUp,
     keepGrid: fromLookup && !!lookup.grid,
+    lookUpExactOnly: p.lookUpExactOnly,
   };
 }
 
@@ -98,11 +101,11 @@ export async function resolveCheckinLocation(
 export function placeCheckinLater(
   checkinId: string,
   text: string,
-  loc: Pick<CheckinLocation, "lookUp" | "keepGrid">,
+  loc: Pick<CheckinLocation, "lookUp" | "keepGrid"> & { lookUpExactOnly?: boolean },
   near: { lat: number; lon: number } | null
 ) {
   if (!loc.lookUp || !canLookUpOnline()) return;
-  api.placeCheckinLater(checkinId, text.trim(), near, !loc.keepGrid).catch(() => {});
+  api.placeCheckinLater(checkinId, text.trim(), near, !loc.keepGrid, !!loc.lookUpExactOnly).catch(() => {});
 }
 
 /** The same for a spotter report's Location box. */

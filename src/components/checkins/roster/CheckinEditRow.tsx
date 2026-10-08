@@ -105,7 +105,7 @@ export function CheckinEditRow({
     // A changed location not placed exactly here is looked up online once saved.
     let later: CheckinLocation | null = null;
     // Or the corrected call sign's address, the same way.
-    let replacedLater: { text: string; lookUp: boolean; keepGrid: boolean } | null = null;
+    let replacedLater: { text: string; lookUp: boolean; keepGrid: boolean; lookUpExactOnly: boolean } | null = null;
     // A changed location is sorted again, as when checking in. A spot placed by
     // hand is never moved by it (CIMAP-003); an automatic one follows, or stays
     // put if the new text can't be placed.
@@ -142,7 +142,7 @@ export function CheckinEditRow({
         locationLat = p.lat;
         locationLon = p.lon;
         locationLabel = p.lat != null ? qth || address || p.label : null;
-        replacedLater = { text, lookUp: p.lookUp, keepGrid: !!grid };
+        replacedLater = { text, lookUp: p.lookUp, keepGrid: !!grid, lookUpExactOnly: p.lookUpExactOnly };
       }
     }
     if (replace && name.trim() === checkin.name.trim()) savedName = replace.name || null;

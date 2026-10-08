@@ -528,7 +528,9 @@ export const placeCheckinLater = (
   checkin_id: string,
   text: string,
   near: { lat: number; lon: number } | null,
-  replace_grid: boolean
+  replace_grid: boolean,
+  /** Move it only to a matched house or corner (it's already at QRZ's point). */
+  exact_only = false
 ) =>
   invoke<void>("place_checkin_later", {
     checkinId: checkin_id,
@@ -536,6 +538,7 @@ export const placeCheckinLater = (
     nearLat: near?.lat ?? null,
     nearLon: near?.lon ?? null,
     replaceGrid: replace_grid,
+    exactOnly: exact_only,
   });
 
 /** The same for a spotter report. */

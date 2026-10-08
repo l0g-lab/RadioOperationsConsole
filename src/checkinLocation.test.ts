@@ -68,7 +68,7 @@ describe("the check-in Location box (CIMAP-080)", () => {
     const near = { lat: 28.5, lon: -81.3, label: "the repeater" };
     const r = await resolveCheckinLocation("Colonial Dr & Alafaya Tr 32817");
     placeCheckinLater("c1", " Colonial Dr & Alafaya Tr 32817 ", r, near);
-    expect(api.placeCheckinLater).toHaveBeenCalledWith("c1", "Colonial Dr & Alafaya Tr 32817", near, true);
+    expect(api.placeCheckinLater).toHaveBeenCalledWith("c1", "Colonial Dr & Alafaya Tr 32817", near, true, false);
     vi.mocked(api.placeCheckinLater).mockClear();
     placeCheckinLater("c1", "28.5, -81.3", await resolveCheckinLocation("28.5, -81.3"), near);
     initWorkOffline(true);

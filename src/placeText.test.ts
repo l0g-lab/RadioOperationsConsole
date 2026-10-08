@@ -81,6 +81,31 @@ describe("placeText — the one place resolver (LOCRES-060)", () => {
     expect(rough).toMatchObject({ source: "station_grid", approx: true, lookUp: true });
   });
 
+  it("prefers a street address that matches a house over QRZ's point, which can be old or rough (LOCRES-062)", async () => {
+    const station = { qth: "Palmetto Bay, FL", grid: "EL95to", exact: { lat: 25.6033, lon: -80.3767 } };
+    const address = "9296 SW 183rd Ter, Palmetto Bay, FL 33157";
+    vi.mocked(api.geocodeLocation).mockResolvedValue({ ...corner, precision: "address", lat: 25.5992, lon: -80.3418 });
+    expect(await placeText(address, { station, online: "wait" })).toMatchObject({ source: "online", lat: 25.5992 });
+    // Only the street, not the house: QRZ's point stays.
+    vi.mocked(api.geocodeLocation).mockResolvedValue({ ...corner, precision: "street" });
+    expect(await placeText(address, { station, online: "wait" })).toMatchObject({ source: "qrz", lat: 25.6033 });
+    // Saving: QRZ's point now, checked against the house once saved, moved only for a match.
+    vi.mocked(api.geocodeLocation).mockClear();
+    const saving = await placeText(address, { station, online: "later" });
+    expect(saving).toMatchObject({ source: "qrz", lookUp: true, lookUpExactOnly: true });
+    expect(api.geocodeLocation).not.toHaveBeenCalled();
+    // A town alone isn't checked: QRZ's point is better than a town's centre.
+    expect(await placeText("Palmetto Bay, FL", { station, online: "later" })).toMatchObject({ source: "qrz", lookUp: false });
+  });
+
+  it("still places what it can offline when the online search fails", async () => {
+    vi.mocked(api.geocodeLocation).mockRejectedValue("map search HTTP error: 503");
+    const p = await placeText("somewhere 33177", { online: "wait" });
+    expect(p).toMatchObject({ source: "zip", approx: true });
+    const none = await placeText("somewhere", { online: "wait" });
+    expect(none.note).toMatch(/online search failed \(map search HTTP error: 503\)/);
+  });
+
   it("says what to do when it can't be placed", async () => {
     initWorkOffline(true);
     expect((await placeText("Behind the fire station", { online: "wait" })).note).toBe(

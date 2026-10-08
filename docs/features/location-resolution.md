@@ -174,6 +174,14 @@ them as it can.
   name, an address, a town, a cross street), look near the net when it's
   opened for one, and say when the pin is only roughly placed.
 
+- **LOCRES-062:** QRZ's point for a station can be old (a past address
+  still set on QRZ) or rough, so a street address with a house number that
+  matches a house MUST win over it. Where someone is waiting, the address
+  is looked up first; when saving, the station is placed at QRZ's point at
+  once and moved after saving only if the address matches a house or a
+  corner, never to a vaguer street or town. Without a house number (a town
+  alone), QRZ's point stands.
+
 ## Acceptance examples
 
 ```gherkin

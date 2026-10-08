@@ -19,6 +19,9 @@ top. Each release's section here is also its description on the
   it there.
 
 ### Changed
+- **A station's street address beats QRZ's point** when the address matches
+  a house. QRZ's point can be an old address still set on QRZ, or a rough
+  one, and could put a station kilometres away.
 - **Every location box works the same way.** The check-in and report
   Location boxes, the map picker's search (net control, operators, repeaters,
   saved places, the APRS area), and the weather area all take the same

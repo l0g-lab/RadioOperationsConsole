@@ -57,7 +57,8 @@ fn label_for(text: &str, f: &Found) -> String {
 /// on the map when found (LOCRES-050), so saving never waits on the internet.
 /// Left alone if it was placed by hand or its location changed meanwhile.
 /// `replace_grid`: the grid square came from the old point, not a call-sign
-/// lookup, so it follows the new one.
+/// lookup, so it follows the new one. `exact_only`: it's already at QRZ's
+/// point, so only a matched house or corner moves it (LOCRES-062).
 #[tauri::command]
 pub fn place_checkin_later(
     app: AppHandle,
@@ -66,6 +67,7 @@ pub fn place_checkin_later(
     near_lat: Option<f64>,
     near_lon: Option<f64>,
     replace_grid: bool,
+    exact_only: Option<bool>,
 ) {
     tauri::async_runtime::spawn(async move {
         let state = app.state::<AppState>();
@@ -73,6 +75,10 @@ pub fn place_checkin_later(
         let Lookup::Found(f) = geocode::find(&state.place_cache, &dir, &text, near(near_lat, near_lon)).await else {
             return;
         };
+        let exact = matches!(f.precision, geocode::Precision::Address | geocode::Precision::Crossing);
+        if exact_only.unwrap_or(false) && !exact {
+            return;
+        }
         let grid = replace_grid.then(|| geocode::grid_square(f.lat, f.lon));
         let placed = state
             .repo
