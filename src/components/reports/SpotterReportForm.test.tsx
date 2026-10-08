@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Checkin } from "../../types";
 
 vi.mock("../../api", () => ({
+  listPlaces: vi.fn(() => Promise.resolve([])),
+  recallPlace: vi.fn(() => Promise.resolve(null)),
   createSpotterReport: vi.fn(() => Promise.resolve("r1")),
   updateSpotterReport: vi.fn(),
   setCheckinTrafficHandled: vi.fn(() => Promise.resolve()),

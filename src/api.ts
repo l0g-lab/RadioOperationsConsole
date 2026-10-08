@@ -33,7 +33,7 @@ import type {
   Checkin,
   ContactDetails,
   DataPackInfo,
-  GeocodeResult,
+  FoundPlace,
   MileMarkerHit,
   Operator,
   QrzLookupResponse,
@@ -85,8 +85,8 @@ export const updateOperator = (
 export const createOperator = (display_name: string, call_sign: string | null) =>
   invoke<string>("create_operator", { displayName: display_name, callSign: call_sign });
 
-export const setOperatorLocation = (operator_id: string, query: string) =>
-  invoke<Operator>("set_operator_location", { operatorId: operator_id, query });
+export const clearOperatorLocation = (operator_id: string) =>
+  invoke<Operator>("clear_operator_location", { operatorId: operator_id });
 
 export const setOperatorLocationCoords = (
   operator_id: string,
@@ -154,8 +154,8 @@ export const updateActivity = (
     operatorId: operator_id,
   });
 
-export const setActivityLocation = (activity_id: string, query: string) =>
-  invoke<Activity>("set_activity_location", { activityId: activity_id, query });
+export const clearActivityLocation = (activity_id: string) =>
+  invoke<Activity>("clear_activity_location", { activityId: activity_id });
 
 export const setActivityLocationCoords = (
   activity_id: string,
@@ -482,8 +482,7 @@ export const saveSettings = (settings: AppSettings) =>
 /** "Work offline" from the header (UX-020): saved, and enforced by the backend. */
 export const setWorkOffline = (on: boolean) => invoke<void>("set_work_offline", { on });
 
-export const setWeatherArea = (query: string) =>
-  invoke<AppSettings>("set_weather_area", { query });
+export const clearWeatherArea = () => invoke<AppSettings>("clear_weather_area");
 
 export const setWeatherAreaCoords = (lat: number, lon: number, label: string | null) =>
   invoke<AppSettings>("set_weather_area_coords", { lat, lon, label });
@@ -543,8 +542,13 @@ export const placeCheckinLater = (
 export const placeReportLater = (report_id: string, text: string, near: { lat: number; lon: number } | null) =>
   invoke<void>("place_report_later", { reportId: report_id, text, nearLat: near?.lat ?? null, nearLon: near?.lon ?? null });
 
-export const geocodeLocation = (query: string) =>
-  invoke<GeocodeResult | null>("geocode_location", { query });
+/** Online lookup, waited for (LOCRES-051–LOCRES-053); placeText.ts's last resort. */
+export const geocodeLocation = (query: string, near: { lat: number; lon: number } | null = null) =>
+  invoke<FoundPlace | null>("geocode_location", { query, nearLat: near?.lat ?? null, nearLon: near?.lon ?? null });
+
+/** A place already looked up, from memory: no network, so it answers offline (LOCRES-055). */
+export const recallPlace = (text: string, near: { lat: number; lon: number } | null) =>
+  invoke<FoundPlace | null>("recall_place", { text, nearLat: near?.lat ?? null, nearLon: near?.lon ?? null });
 
 // Offline data packs (mile-marker road data, etc.): listing and resolving
 // are local; updating downloads fresh data and needs internet.

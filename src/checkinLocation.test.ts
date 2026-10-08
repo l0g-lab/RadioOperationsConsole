@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./api", () => ({
+  listPlaces: vi.fn(() => Promise.resolve([])),
+  recallPlace: vi.fn(() => Promise.resolve(null)),
   resolveMileMarker: vi.fn(),
   geocodeLocation: vi.fn(),
   placeCheckinLater: vi.fn(() => Promise.resolve()),
@@ -49,7 +51,7 @@ describe("the check-in Location box (CIMAP-080)", () => {
   });
 
   it("never waits on the internet: a cross street gets a ZIP's centre now, and is looked up once saved (LOCRES-050)", async () => {
-    const r = await resolveCheckinLocation("Colonial Dr & Alafaya Tr 32817", { online: true });
+    const r = await resolveCheckinLocation("Colonial Dr & Alafaya Tr 32817");
     expect(r).toMatchObject({ placedBy: "zip", approx: true, lookUp: true, keepGrid: false });
     expect(r.note).toMatch(/looked up exactly online once saved/);
     expect(api.geocodeLocation).not.toHaveBeenCalled();

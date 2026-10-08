@@ -1,5 +1,4 @@
-use super::{AppState, ERR_OFFLINE};
-use crate::connectors;
+use super::AppState;
 use crate::range_check;
 use crate::repo::{Activity, ActivitySummary, DeletedCounts};
 use tauri::State;
@@ -83,54 +82,15 @@ pub fn update_activity(
     Ok(())
 }
 
-/// Resolves free-text into a per-activity location that takes precedence
-/// over the operating operator's own default location on the check-in map
-/// (CIMAP-060) — an operator may run this activity from a different site
-/// than their usual QTH. Mirrors `set_operator_location`; an empty query
-/// clears it, restoring the fallback to the operator's location.
+/// Clears an activity's own location, restoring the fallback to its
+/// operator's (CIMAP-060). Setting one goes through the shared place resolver
+/// (placeText.ts, LOCRES-060) and `set_activity_location_coords`.
 #[tauri::command]
-pub async fn set_activity_location(
-    state: State<'_, AppState>,
-    activity_id: String,
-    query: String,
-) -> Result<Activity, String> {
-    let trimmed = query.trim();
-
-    if trimmed.is_empty() {
-        let repo = state.repo.lock().unwrap();
-        repo.set_activity_location(&activity_id, None, None, None)
-            .map_err(|e| e.to_string())?;
-        drop(repo);
-        return state
-            .repo
-            .lock()
-            .unwrap()
-            .get_activity(&activity_id)
-            .map_err(|e| e.to_string());
-    }
-
-    match connectors::geocode_location(trimmed).await {
-        connectors::GeocodeOutcome::Found(r) => {
-            let label = r.display_name.unwrap_or_else(|| trimmed.to_string());
-            state
-                .repo
-                .lock()
-                .unwrap()
-                .set_activity_location(&activity_id, Some(&label), Some(r.lat), Some(r.lon))
-                .map_err(|e| e.to_string())?;
-            state
-                .repo
-                .lock()
-                .unwrap()
-                .get_activity(&activity_id)
-                .map_err(|e| e.to_string())
-        }
-        connectors::GeocodeOutcome::NotFound => {
-            Err("No location found matching that text.".to_string())
-        }
-        connectors::GeocodeOutcome::Offline => Err(ERR_OFFLINE.to_string()),
-        connectors::GeocodeOutcome::Error(e) => Err(e),
-    }
+pub fn clear_activity_location(state: State<'_, AppState>, activity_id: String) -> Result<Activity, String> {
+    let repo = state.repo.lock().unwrap();
+    repo.set_activity_location(&activity_id, None, None, None)
+        .map_err(|e| e.to_string())?;
+    repo.get_activity(&activity_id).map_err(|e| e.to_string())
 }
 
 /// Sets an activity's location directly from known coordinates — a map

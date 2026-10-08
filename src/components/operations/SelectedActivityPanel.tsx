@@ -152,7 +152,7 @@ export default function SelectedActivityPanel({
             editLocation.label || null
           );
         } else {
-          await api.setActivityLocation(focusedActivity.id, "");
+          await api.clearActivityLocation(focusedActivity.id);
         }
       }
       const eventId = isLog(editType) ? "" : draft.eventId;

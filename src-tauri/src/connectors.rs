@@ -1,7 +1,6 @@
 use crate::net::{client, is_offline_error, USER_AGENT};
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
-use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::error::Error;
@@ -9,7 +8,6 @@ use std::time::Duration;
 
 const QRZ_AGENT: &str = concat!("RadioOpsConsole", env!("CARGO_PKG_VERSION"));
 const QRZ_BASE_URL: &str = "https://xmldata.qrz.com/xml/current/";
-const NOMINATIM_URL: &str = "https://nominatim.openstreetmap.org/search";
 // Online connectors here are conveniences, not dependencies (VISION-002/005):
 // fail fast when offline rather than hanging the caller (QRZ-031, CIMAP-022).
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
@@ -350,10 +348,6 @@ mod work_offline_tests {
             block_on(qrz_lookup("key", "W1AW")),
             QrzLookupOutcome::Offline
         ));
-        assert!(matches!(
-            block_on(geocode_location("Orlando, FL")),
-            GeocodeOutcome::Offline
-        ));
         crate::net::set_work_offline(false);
     }
 }
@@ -436,85 +430,4 @@ mod qrz_tests {
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
-pub struct GeocodeResult {
-    pub lat: f64,
-    pub lon: f64,
-    pub display_name: Option<String>,
-}
 
-pub enum GeocodeOutcome {
-    Found(GeocodeResult),
-    NotFound,
-    /// See `QrzLookupOutcome::Offline`.
-    Offline,
-    Error(String),
-}
-
-/// Resolves free-text location/address into coordinates via the public
-/// OpenStreetMap Nominatim search API (CIMAP-011). No API key: it's the
-/// fallback path when a check-in has no grid square, and CIMAP-040 requires
-/// this to work without operator configuration.
-///
-/// Restricted to the US (`countrycodes=us`): this application's domain is
-/// US ham radio operations (NEXRAD stations, US zip codes throughout), and
-/// a short numeric query like a 5-digit zip code is otherwise ambiguous —
-/// many countries use similarly-formatted postal codes, and an unrestricted
-/// search can resolve a US zip to a same-numbered location elsewhere.
-pub async fn geocode_location(query: &str) -> GeocodeOutcome {
-    if crate::net::working_offline() {
-        return GeocodeOutcome::Offline;
-    }
-    let client = match http_client() {
-        Ok(c) => c,
-        Err(e) => return GeocodeOutcome::Error(e.to_string()),
-    };
-    let resp = match client
-        .get(NOMINATIM_URL)
-        .query(&[
-            ("q", query),
-            ("format", "json"),
-            ("limit", "1"),
-            ("countrycodes", "us"),
-        ])
-        .header("User-Agent", USER_AGENT)
-        .send()
-        .await
-    {
-        Ok(r) => r,
-        Err(e) if is_offline_error(&e) => return GeocodeOutcome::Offline,
-        Err(e) => return GeocodeOutcome::Error(e.to_string()),
-    };
-    if !resp.status().is_success() {
-        return GeocodeOutcome::Error(format!("geocoding HTTP error: {}", resp.status()));
-    }
-    let body: Value = match resp.json().await {
-        Ok(b) => b,
-        Err(e) if is_offline_error(&e) => return GeocodeOutcome::Offline,
-        Err(e) => return GeocodeOutcome::Error(e.to_string()),
-    };
-    let first = match body.as_array().and_then(|a| a.first()) {
-        Some(v) => v,
-        None => return GeocodeOutcome::NotFound,
-    };
-    let lat = first
-        .get("lat")
-        .and_then(Value::as_str)
-        .and_then(|s| s.parse::<f64>().ok());
-    let lon = first
-        .get("lon")
-        .and_then(Value::as_str)
-        .and_then(|s| s.parse::<f64>().ok());
-    let display_name = first
-        .get("display_name")
-        .and_then(Value::as_str)
-        .map(String::from);
-    match (lat, lon) {
-        (Some(lat), Some(lon)) => GeocodeOutcome::Found(GeocodeResult {
-            lat,
-            lon,
-            display_name,
-        }),
-        _ => GeocodeOutcome::Error("geocoding response missing coordinates".to_string()),
-    }
-}

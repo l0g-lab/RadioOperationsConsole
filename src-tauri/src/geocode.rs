@@ -758,6 +758,13 @@ async fn find_crossing(a: &Street, b: &Street, place: Option<&str>, near: Option
     Ok(corner(&points, Some(centre)).map(|p| found(p, "overpass")))
 }
 
+/// A place already looked up, without going online: works offline
+/// (LOCRES-055). None when it was never found, or never asked.
+pub fn recall(cache: &Mutex<Cache>, text: &str, near: Option<(f64, f64)>) -> Option<Found> {
+    let now = chrono::Utc::now().timestamp();
+    cache.lock().unwrap().get(&cache_key(text.trim(), near), now).flatten()
+}
+
 /// Places typed text: a cross street, else a search near the net, then
 /// anywhere. Remembered either way (`cache`, kept in `dir`).
 pub async fn find(cache: &Mutex<Cache>, dir: &Path, text: &str, near: Option<(f64, f64)>) -> Lookup {
@@ -765,13 +772,14 @@ pub async fn find(cache: &Mutex<Cache>, dir: &Path, text: &str, near: Option<(f6
     if text.is_empty() {
         return Lookup::NotFound;
     }
-    if crate::net::working_offline() {
-        return Lookup::Offline;
-    }
     let key = cache_key(text, near);
     let now = chrono::Utc::now().timestamp();
+    // Remembered places answer offline too.
     if let Some(hit) = cache.lock().unwrap().get(&key, now) {
         return hit.map(Lookup::Found).unwrap_or(Lookup::NotFound);
+    }
+    if crate::net::working_offline() {
+        return Lookup::Offline;
     }
     // Whether every service gave a real answer: only then is the result kept
     // (a miss, or a fallback, could do better once a busy server answers).
@@ -982,6 +990,10 @@ mod tests {
         println!("remembered: {:.3}s {}", t.elapsed().as_secs_f64(), matches!(again, Lookup::Found(_)));
     }
 
+    fn found_at(lat: f64) -> Found {
+        Found { lat, lon: -80.4, precision: Precision::Crossing, label: "x".into(), source: "nominatim".into() }
+    }
+
     #[test]
     fn found_places_are_kept_and_misses_kept_a_day() {
         let found = Found { lat: 1.0, lon: 2.0, precision: Precision::Crossing, label: "x".into(), source: "nominatim".into() };
@@ -993,6 +1005,11 @@ mod tests {
         assert_eq!(c.get("miss", 3600), Some(None));
         assert_eq!(c.get("miss", MISS_KEPT_SECS + 1), None);
         assert_eq!(c.get("never", 0), None);
+        let m = Mutex::new(c);
+        assert!(recall(&m, " Hit ", None).is_some(), "found however it's typed");
+        assert!(recall(&m, "miss", None).is_none());
+        m.lock().unwrap().put(cache_key("sw 152 st & sw 137 ave", None), Some(found_at(25.6)), 0);
+        assert_eq!(recall(&m, "SW 152 St & SW 137 Ave", None).map(|f| f.lat), Some(25.6));
         // Near another net, the same words are another search.
         assert_ne!(cache_key("Main St & 5th", Some((25.6, -80.4))), cache_key("main st & 5th", Some((28.5, -81.4))));
         assert_eq!(cache_key("Main St & 5th", Some((25.61, -80.41))), cache_key("main st & 5th", Some((25.6, -80.4))));

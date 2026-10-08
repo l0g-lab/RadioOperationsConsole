@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../api", () => ({
+  listPlaces: vi.fn(() => Promise.resolve([])),
+  recallPlace: vi.fn(() => Promise.resolve(null)),
   resolveMileMarker: vi.fn(),
   createCheckin: vi.fn(),
   stationHistory: vi.fn(() => Promise.resolve({ count: 0, last: null })),

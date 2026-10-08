@@ -4,6 +4,7 @@ import type { AppSettings, CurrentWeather } from "../../types";
 import { ERR_OFFLINE } from "../../types";
 import { offlineMessage, useWorkOffline } from "../../workOffline";
 import { pad2 } from "../../utils";
+import { placeText } from "../../placeText";
 import RadarMap, { RADAR_REFRESH_MS } from "../weather/RadarMap";
 import LocationPicker from "../LocationPicker";
 import {
@@ -180,13 +181,19 @@ function AreaEditor({
     }
   }
 
+  // Placed like every other location box (LOCRES-060): coordinates, a grid
+  // square, a saved place, a place looked up before, then the online search.
   const setByName = () =>
     run(
-      () => api.setWeatherArea(query),
+      async () => {
+        const p = await placeText(query, { online: "wait" });
+        if (p.lat == null || p.lon == null) throw p.note;
+        return api.setWeatherAreaCoords(p.lat, p.lon, p.label ?? query.trim());
+      },
       (e) =>
         e === ERR_OFFLINE
           ? offlineMessage("Can't look that place up without an internet connection — pick it on the map instead.")
-          : String(e)
+          : String(e).charAt(0).toUpperCase() + String(e).slice(1) + "."
     );
 
   return (
@@ -212,7 +219,7 @@ function AreaEditor({
           <MapPin className="button-icon" /> Map
         </button>
         {isSet && (
-          <button onClick={() => run(() => api.setWeatherArea(""), String)} disabled={busy}>
+          <button onClick={() => run(() => api.clearWeatherArea(), String)} disabled={busy}>
             Clear
           </button>
         )}

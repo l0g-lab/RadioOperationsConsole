@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity, Checkin } from "../../types";
 import { QRZ_ERR_NOT_CONFIGURED, ERR_OFFLINE } from "../../types";
-import { resolveOfflineLocationAsync } from "../../locationResolution";
+import { placeText } from "../../placeText";
+import { placeCheckinLater } from "../../checkinLocation";
 import {
   callSignService,
   GMRS_FILE_MISSING,
@@ -178,21 +179,25 @@ export default function CheckinRoster({
       let locationLon = selectedCheckin.location_lon;
       let locationLabel = selectedCheckin.location_label || null;
       // An automatic location is worked out again from what the lookup found,
-      // which may be better (QRZ's exact point instead of a ZIP's center). One
-      // placed by hand is kept.
-      if (locationLat == null || locationLon == null || !selectedCheckin.location_manual) {
-        const resolved = await resolveOfflineLocationAsync({
-          qrzLat: result.exact_lat,
-          qrzLon: result.exact_lon,
-          gridSquare: grid,
-          address,
-          qthLocation: qth,
-        });
-        if (resolved) {
-          locationLat = resolved.lat;
-          locationLon = resolved.lon;
-          locationLabel = qth || address || resolved.sourceText;
-        }
+      // by the shared resolver (LOCRES-060), which may do better (QRZ's exact
+      // point instead of a ZIP's centre). One placed by hand is kept.
+      const text = address || qth || "";
+      const automatic = locationLat == null || locationLon == null || !selectedCheckin.location_manual;
+      const placed = automatic
+        ? await placeText(text, {
+            station: {
+              qth,
+              grid,
+              exact: result.exact_lat != null && result.exact_lon != null ? { lat: result.exact_lat, lon: result.exact_lon } : null,
+            },
+            near: distanceFrom,
+            online: "later",
+          })
+        : null;
+      if (placed && placed.lat != null && placed.lon != null) {
+        locationLat = placed.lat;
+        locationLon = placed.lon;
+        locationLabel = qth || address || placed.label;
       }
 
       await api.updateCheckin(
@@ -209,6 +214,7 @@ export default function CheckinRoster({
         selectedCheckin.has_traffic,
         selectedCheckin.traffic || null
       );
+      if (placed) placeCheckinLater(selectedCheckin.id, text, { lookUp: placed.lookUp, keepGrid: !!grid }, distanceFrom);
       setCheckinLookupStatus("found");
       onCheckinsChanged();
     } catch (err) {
@@ -459,6 +465,7 @@ export default function CheckinRoster({
       {showLocationPicker && selectedCheckin && (
         <LocationPicker
           title={`Location — ${selectedCheckin.call_sign}`}
+          near={distanceFrom}
           initialLat={selectedCheckin.location_lat}
           initialLon={selectedCheckin.location_lon}
           initialLabel={selectedCheckin.location_label}

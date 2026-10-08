@@ -9,7 +9,6 @@ import {
 } from "../../types";
 import { formatContactTime, parseContactTime } from "../../utils";
 import {
-  canLookUpOnline,
   placeReportLater,
   resolveCheckinLocation,
   type CheckinLocation,
@@ -137,7 +136,7 @@ export default function SpotterReportForm({
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
-      resolveCheckinLocation(locationText, { pin, online: canLookUpOnline() }).then((r) => {
+      resolveCheckinLocation(locationText, { pin, near }).then((r) => {
         if (!cancelled) setPreview(r.note ? r : null);
       });
     }, 250);
@@ -279,7 +278,7 @@ export default function SpotterReportForm({
     let where = { lat, lon };
     let later: CheckinLocation | null = null;
     if (!pin && locationText.trim()) {
-      later = await resolveCheckinLocation(locationText, { online: canLookUpOnline() });
+      later = await resolveCheckinLocation(locationText, { near });
       where = { lat: later.lat, lon: later.lon };
     }
     const [lat2, lon2] = [where.lat, where.lon];
@@ -592,6 +591,7 @@ export default function SpotterReportForm({
       {showPicker && (
         <LocationPicker
           title="Spotter Report Location"
+          near={near}
           initialLat={lat}
           initialLon={lon}
           initialLabel={locationText}

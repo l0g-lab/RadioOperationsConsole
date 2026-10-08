@@ -12,10 +12,19 @@ top. Each release's section here is also its description on the
   Douglas Rd". The app works out where the two streets cross, near your
   net's repeater (else net control), or near a town if you type one.
 - **Looked-up places are remembered,** so the same address or corner is
-  looked up online once; the next check-in from it is placed at once. They're
-  listed in Settings under Offline data, where they can be cleared.
+  looked up online once; the next check-in from it is placed at once, even
+  offline. They're listed in Settings under Offline data, where they can be
+  cleared.
+- **Type a saved place's name** ("County EOC") into any location box to put
+  it there.
 
 ### Changed
+- **Every location box works the same way.** The check-in and report
+  Location boxes, the map picker's search (net control, operators, repeaters,
+  saved places, the APRS area), and the weather area all take the same
+  things: an address, a cross street, a town or ZIP, coordinates in any
+  format, a grid square, a mile marker, or a saved place's name. The same
+  text lands in the same place wherever it's typed.
 - **Saving never waits on the internet to place a location.** A check-in or
   spotter report is saved at once and lands on the map a few seconds later,
   when the online lookup finds it.

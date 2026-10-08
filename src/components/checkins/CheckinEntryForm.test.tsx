@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { QrzLookupResponse } from "../../types";
 
 vi.mock("../../api", () => ({
+  listPlaces: vi.fn(() => Promise.resolve([])),
+  recallPlace: vi.fn(() => Promise.resolve(null)),
   resolveMileMarker: vi.fn(() => Promise.resolve(null)),
   createCheckin: vi.fn(),
   geocodeLocation: vi.fn(() => Promise.resolve(null)),

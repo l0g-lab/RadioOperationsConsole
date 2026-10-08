@@ -1,5 +1,4 @@
 use super::{AppState, ERR_OFFLINE};
-use crate::connectors;
 use crate::geocode::{self, Found, Lookup};
 use tauri::{AppHandle, Manager, State};
 
@@ -17,14 +16,26 @@ pub async fn geocode_location(
     query: String,
     near_lat: Option<f64>,
     near_lon: Option<f64>,
-) -> Result<Option<connectors::GeocodeResult>, String> {
+) -> Result<Option<Found>, String> {
     let dir = state.datapacks_dir.clone();
     match geocode::find(&state.place_cache, &dir, &query, near(near_lat, near_lon)).await {
-        Lookup::Found(f) => Ok(Some(connectors::GeocodeResult { lat: f.lat, lon: f.lon, display_name: Some(f.label) })),
+        Lookup::Found(f) => Ok(Some(f)),
         Lookup::NotFound => Ok(None),
         Lookup::Offline => Err(ERR_OFFLINE.to_string()),
         Lookup::Error(e) => Err(e),
     }
+}
+
+/// A place already looked up, from memory only: no network, so it answers
+/// offline (LOCRES-055). For the shared place resolver (placeText.ts).
+#[tauri::command]
+pub fn recall_place(
+    state: State<'_, AppState>,
+    text: String,
+    near_lat: Option<f64>,
+    near_lon: Option<f64>,
+) -> Option<Found> {
+    geocode::recall(&state.place_cache, &text, near(near_lat, near_lon))
 }
 
 /// The map popup's words for a place found online: the typed text, and how

@@ -2,14 +2,13 @@ import { useState } from "react";
 import * as api from "../../../api";
 import type { Activity, Checkin, QrzLookupResponse } from "../../../types";
 import {
-  canLookUpOnline,
   placeCheckinLater,
   resolveCheckinLocation,
   type CheckinLocation,
 } from "../../../checkinLocation";
 import type { MapPoint } from "../../../mapPoints";
 import { lookupCallsign, sourceLabels, type CallsignSource } from "../../../callsignLookup";
-import { resolveOfflineLocationAsync } from "../../../locationResolution";
+import { placeText } from "../../../placeText";
 import { formatContactTime, parseContactTime } from "../../../utils";
 import {
   contactTimeError,
@@ -105,11 +104,13 @@ export function CheckinEditRow({
     let pinned: { lat: number; lon: number; label: string | null } | null = null;
     // A changed location not placed exactly here is looked up online once saved.
     let later: CheckinLocation | null = null;
+    // Or the corrected call sign's address, the same way.
+    let replacedLater: { text: string; lookUp: boolean; keepGrid: boolean } | null = null;
     // A changed location is sorted again, as when checking in. A spot placed by
     // hand is never moved by it (CIMAP-003); an automatic one follows, or stays
     // put if the new text can't be placed.
     if (location.trim() !== startLocation.trim()) {
-      const r = await resolveCheckinLocation(location, { online: canLookUpOnline() });
+      const r = await resolveCheckinLocation(location, { near });
       later = checkin.location_manual ? null : r;
       address = r.address;
       qth = r.qth;
@@ -128,16 +129,20 @@ export function CheckinEditRow({
       grid = replace.grid_square;
       address = replace.address;
       if (!checkin.location_manual) {
-        const r = await resolveOfflineLocationAsync({
-          qrzLat: replace.exact_lat,
-          qrzLon: replace.exact_lon,
-          gridSquare: grid,
-          address,
-          qthLocation: qth,
+        const text = address || qth || "";
+        const p = await placeText(text, {
+          station: {
+            qth,
+            grid,
+            exact: replace.exact_lat != null && replace.exact_lon != null ? { lat: replace.exact_lat, lon: replace.exact_lon } : null,
+          },
+          near,
+          online: "later",
         });
-        locationLat = r?.lat ?? null;
-        locationLon = r?.lon ?? null;
-        locationLabel = r ? qth || address || r.sourceText : null;
+        locationLat = p.lat;
+        locationLon = p.lon;
+        locationLabel = p.lat != null ? qth || address || p.label : null;
+        replacedLater = { text, lookUp: p.lookUp, keepGrid: !!grid };
       }
     }
     if (replace && name.trim() === checkin.name.trim()) savedName = replace.name || null;
@@ -162,6 +167,7 @@ export function CheckinEditRow({
     // Typed coordinates or a mile marker: placed by hand.
     if (pinned) await api.setCheckinLocationCoords(checkin.id, pinned.lat, pinned.lon, pinned.label);
     else if (later) placeCheckinLater(checkin.id, location, later, near);
+    else if (replacedLater) placeCheckinLater(checkin.id, replacedLater.text, replacedLater, near);
     onSaved();
   }
 

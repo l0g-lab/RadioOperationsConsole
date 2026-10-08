@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { EXPAND_EVENT } from "../map/expandControl";
 import * as api from "../api";
-import { ERR_OFFLINE, type Place } from "../types";
+import type { Place } from "../types";
+import { placeText } from "../placeText";
 import { formatAxis, getCoordFormat, parseAxis, type CoordFormat } from "../geo";
 import { DEFAULT_CENTER, DEFAULT_ZOOM, createBaseMap } from "../map/baseMap";
 import { MapPin } from "lucide-react";
@@ -25,6 +26,8 @@ interface Props {
   startAt?: { lat: number; lon: number } | null;
   /** Shown under the search instead of the usual how-to. */
   hint?: string;
+  /** Where the net is, so a search looks near it first (LOCRES-053); else `startAt`. */
+  near?: { lat: number; lon: number } | null;
 }
 
 const PIN_ZOOM = 12;
@@ -54,6 +57,7 @@ export default function LocationPicker({
   mapOnly = false,
   startAt = null,
   hint,
+  near = null,
 }: Props) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -203,41 +207,30 @@ export default function LocationPicker({
     setSearching(true);
     setError(null);
     setNote(null);
-    // Map-only: a search just takes the map there; the pin is still clicked.
-    const goTo = (lat: number, lon: number) => {
-      mapRef.current?.setView([lat, lon], Math.max(mapRef.current.getZoom(), 16));
-      setNote("Map moved there — now click the exact spot.");
-    };
     try {
-      // "mile marker 182 on turnpike" and the like resolve locally, from
-      // the offline road data — no internet needed — before falling back to
-      // the online address/place search.
-      const mile = await api.resolveMileMarker(trimmed).catch(() => null);
-      if (mile && mapOnly) {
-        goTo(mile.lat, mile.lon);
-        return;
-      }
-      if (mile) {
-        placePin(mile.lat, mile.lon, true);
-        setLabel(mile.label);
-        setNote("Estimated from road data — nudge the pin if you know it's off.");
-        return;
-      }
-      const result = await api.geocodeLocation(trimmed);
-      if (result && mapOnly) {
-        goTo(result.lat, result.lon);
-      } else if (result) {
-        placePin(result.lat, result.lon, true);
-        setLabel(result.display_name || trimmed);
+      // The same resolver as every other location box (LOCRES-060): typed
+      // coordinates, a grid square, a mile marker, a saved place's name, a
+      // place looked up before, then the online search.
+      const p = await placeText(trimmed, { near: near ?? startAt, online: "wait" });
+      if (p.lat == null || p.lon == null) {
+        setError(p.note.charAt(0).toUpperCase() + p.note.slice(1) + ".");
+      } else if (mapOnly) {
+        // Map-only: a search just takes the map there; the pin is still clicked.
+        mapRef.current?.setView([p.lat, p.lon], Math.max(mapRef.current.getZoom(), 16));
+        setNote("Map moved there — now click the exact spot.");
       } else {
-        setError("No location found matching that text.");
+        placePin(p.lat, p.lon, true);
+        setLabel(p.label ?? trimmed);
+        setNote(
+          p.source === "mile_marker"
+            ? "Estimated from road data — nudge the pin if you know it's off."
+            : p.approx
+              ? `Roughly placed (${p.note}) — nudge the pin if you know better.`
+              : null
+        );
       }
     } catch (e) {
-      setError(
-        e === ERR_OFFLINE
-          ? "Can't search for that without an internet connection. Try the map or GPS coordinates instead."
-          : String(e)
-      );
+      setError(String(e));
     } finally {
       setSearching(false);
     }
@@ -271,7 +264,7 @@ export default function LocationPicker({
 
         <div className="location-picker-search">
           <input
-            placeholder="Search by zip, city/state, address, or e.g. mile marker 182 on turnpike"
+            placeholder="Address, cross street, town, ZIP, coordinates, mile marker, or a saved place"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {

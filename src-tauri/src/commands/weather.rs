@@ -1,47 +1,22 @@
-use super::{persist_settings, AppSettings, AppState, ERR_OFFLINE};
+use super::{persist_settings, AppSettings, AppState};
 use crate::connectors;
 use chrono::Utc;
 use serde_json::Value;
 use tauri::State;
 
-/// Resolves free-text (zip code, city/state, address, landmark) into the
-/// persisted weather area of interest used to scope NWS alert fetches
-/// (NWSA-001-006). Passing an empty/whitespace-only query clears the area
-/// and reverts to fetching all active alerts (NWSA-005).
+/// Clears the weather area, so alerts and the forecast ask for one again
+/// (NWSA-005). Setting it goes through the shared place resolver
+/// (placeText.ts, LOCRES-060) and `set_weather_area_coords`.
 #[tauri::command]
-pub async fn set_weather_area(
-    state: State<'_, AppState>,
-    query: String,
-) -> Result<AppSettings, String> {
-    let trimmed = query.trim();
+pub fn clear_weather_area(state: State<'_, AppState>) -> Result<AppSettings, String> {
     let mut settings = state.settings.lock().unwrap().clone();
-
-    if trimmed.is_empty() {
-        settings.weather_area_query = String::new();
-        settings.weather_area_label = String::new();
-        settings.weather_area_lat = None;
-        settings.weather_area_lon = None;
-        settings.weather_area_resolved_at = None;
-        persist_settings(&state, &settings)?;
-        return Ok(settings);
-    }
-
-    match connectors::geocode_location(trimmed).await {
-        connectors::GeocodeOutcome::Found(r) => {
-            settings.weather_area_query = trimmed.to_string();
-            settings.weather_area_label = r.display_name.unwrap_or_else(|| trimmed.to_string());
-            settings.weather_area_lat = Some(r.lat);
-            settings.weather_area_lon = Some(r.lon);
-            settings.weather_area_resolved_at = Some(Utc::now().to_rfc3339());
-            persist_settings(&state, &settings)?;
-            Ok(settings)
-        }
-        connectors::GeocodeOutcome::NotFound => {
-            Err("No location found matching that text.".to_string())
-        }
-        connectors::GeocodeOutcome::Offline => Err(ERR_OFFLINE.to_string()),
-        connectors::GeocodeOutcome::Error(e) => Err(e),
-    }
+    settings.weather_area_query = String::new();
+    settings.weather_area_label = String::new();
+    settings.weather_area_lat = None;
+    settings.weather_area_lon = None;
+    settings.weather_area_resolved_at = None;
+    persist_settings(&state, &settings)?;
+    Ok(settings)
 }
 
 /// Sets the weather area of interest directly from known coordinates — a

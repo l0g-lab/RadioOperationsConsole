@@ -9,7 +9,6 @@ import {
   type CallsignSource,
 } from "../../callsignLookup";
 import {
-  canLookUpOnline,
   placeCheckinLater,
   resolveCheckinLocation,
   type CheckinLocation,
@@ -131,7 +130,7 @@ export default function CheckinEntryForm({
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
-      resolveCheckinLocation(location, { lookup: lookupLoc, pin, online: canLookUpOnline() }).then((r) => {
+      resolveCheckinLocation(location, { lookup: lookupLoc, pin, near }).then((r) => {
         if (!cancelled) setPreview(r.note ? r : null);
       });
     }, 250);
@@ -271,7 +270,7 @@ export default function CheckinEntryForm({
     const loc = await resolveCheckinLocation(location, {
       lookup: lookupLoc,
       pin,
-      online: canLookUpOnline(),
+      near,
     });
     const id = await api.createCheckin(
       activityId,
@@ -498,6 +497,7 @@ export default function CheckinEntryForm({
       {showPicker && (
         <LocationPicker
           title={`Location — ${callSign.trim().toUpperCase() || "new check-in"}`}
+          near={near}
           initialLat={pin?.lat ?? preview?.lat ?? null}
           initialLon={pin?.lon ?? preview?.lon ?? null}
           initialLabel={pin?.label ?? location}

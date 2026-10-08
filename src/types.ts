@@ -470,10 +470,17 @@ export interface MileMarkerHit {
   mile: number;
 }
 
-export interface GeocodeResult {
+/** How exact a place found online is (geocode.rs `Precision`). */
+export type FoundPrecision = "address" | "crossing" | "street" | "town" | "region";
+
+/** A place looked up online, or remembered from an earlier lookup (geocode.rs `Found`). */
+export interface FoundPlace {
   lat: number;
   lon: number;
-  display_name: string | null;
+  precision: FoundPrecision;
+  /** What was found, as map data names it. */
+  label: string;
+  source: string;
 }
 
 /** Stable error sentinels from the QRZ and geocoding commands (see commands.rs). */

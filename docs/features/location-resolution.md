@@ -27,17 +27,28 @@ stored, shown, and typed, so every feature agrees.
 
 ## Resolution order
 
-- **LOCRES-001:** The application MUST use one shared resolver, in this order,
-  taking the first that produces a point:
-  1. coordinates already known (typed, or a pin the operator placed);
-  2. the exact point QRZ holds for the station, when QRZ's own position came
+- **LOCRES-001:** The application MUST use one shared resolver
+  (`LOCRES-060`), in this order, taking the first that produces a point:
+  1. a spot picked on the map;
+  2. typed coordinates, in any of the formats of `LOCRES-030`;
+  3. a grid square typed on its own (its centre, approximate);
+  4. a mile marker, from the offline road data;
+  5. a saved place, typed by its name (`PLACE-001`), ignoring case;
+  6. the exact point QRZ holds for the station, when QRZ's own position came
      from a geocode or the station's own entry rather than a rounded grid
      square or ZIP;
-  3. the centroid of a ZIP code found in the address or QTH text, from a
-     table bundled with the application;
-  4. the center of a grid square, by Maidenhead math.
-- **LOCRES-002:** The shared resolver MUST NOT make network requests. Online
-  lookup is a separate step, run after saving for what the resolver couldn't
+  7. a place already looked up online, remembered (`LOCRES-055`), which
+     works offline;
+  8. where someone is waiting for the answer (a search box), the online
+     lookup (`LOCRES-051`–`LOCRES-054`);
+  9. the centroid of a ZIP code found in the text, from a table bundled
+     with the application, else the centre of the station's grid square
+     (approximate).
+  A spot picked on the map, typed coordinates, a mile marker, and a saved
+  place are placed by hand (`CIMAP-003`).
+- **LOCRES-002:** Where something is being saved (a check-in, a spotter
+  report), the resolver MUST NOT make network requests: it places what it
+  can offline, and the online lookup runs after saving for what it couldn't
   place exactly (`LOCRES-050`).
 - **LOCRES-003:** Each resolved point SHOULD carry how it was derived (typed,
   QRZ, ZIP, grid) so the interface can present estimates as estimates.
@@ -147,6 +158,21 @@ them as it can.
 - **LOCRES-056:** Reading what's typed, matching street names, and working
   out where streets cross MUST NOT need the network, so downloaded street
   data can use them offline later.
+
+## One resolver everywhere
+
+- **LOCRES-060:** Every place in the application where a location is typed
+  or looked up MUST place it through the one resolver of `LOCRES-001`, so
+  the same text lands in the same place wherever it's entered: the check-in
+  and spotter report Location boxes and their edit rows, a call-sign lookup
+  filling in a station, a new operator's location from their call sign, the
+  map picker's search (`CIMAP-073`: net control, operators, repeaters,
+  saved places, the APRS-IS area, a check-in's or report's spot), and the
+  weather area. Screens MUST NOT look places up by any other path.
+- **LOCRES-061:** The map picker's search MUST accept everything a Location
+  box does (coordinates, a grid square, a mile marker, a saved place's
+  name, an address, a town, a cross street), look near the net when it's
+  opened for one, and say when the pin is only roughly placed.
 
 ## Acceptance examples
 

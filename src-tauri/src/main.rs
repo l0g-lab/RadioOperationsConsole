@@ -53,7 +53,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::list_operators,
             commands::create_operator,
-            commands::set_operator_location,
+            commands::clear_operator_location,
             commands::set_operator_location_coords,
             commands::list_activities,
             commands::create_activity,
@@ -62,7 +62,7 @@ fn main() {
             commands::close_activity,
             commands::reopen_activity,
             commands::activity_summary,
-            commands::set_activity_location,
+            commands::clear_activity_location,
             commands::set_activity_location_coords,
             commands::list_repeaters,
             commands::save_repeater,
@@ -127,7 +127,7 @@ fn main() {
             commands::get_settings,
             commands::save_settings,
             commands::set_work_offline,
-            commands::set_weather_area,
+            commands::clear_weather_area,
             commands::set_weather_area_coords,
             commands::fetch_nws_alerts,
             commands::fetch_nws_forecast,
@@ -161,6 +161,7 @@ fn main() {
             commands::check_qrz_login,
             commands::geocode_location,
             commands::place_checkin_later,
+            commands::recall_place,
             commands::place_report_later,
         ])
         .run(tauri::generate_context!())

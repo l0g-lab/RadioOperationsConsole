@@ -1,6 +1,6 @@
 import * as api from "./api";
 import { lookupCallsign } from "./callsignLookup";
-import { canLookUpOnline, placeCheckinLater, resolveCheckinLocation } from "./checkinLocation";
+import { placeCheckinLater, resolveCheckinLocation } from "./checkinLocation";
 import type { MapPoint } from "./mapPoints";
 
 /**
@@ -32,7 +32,7 @@ export async function checkInCallSign(
           exact: found.exact_lat != null && found.exact_lon != null ? { lat: found.exact_lat, lon: found.exact_lon } : null,
         }
       : null,
-    online: canLookUpOnline(),
+    near,
   });
   const id = await api.createCheckin(
     activityId,

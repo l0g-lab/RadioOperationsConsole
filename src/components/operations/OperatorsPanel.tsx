@@ -3,7 +3,7 @@ import * as api from "../../api";
 import { lookupCallsign } from "../../callsignLookup";
 import type { Operator, OperatorUsage } from "../../types";
 import LocationPicker from "../LocationPicker";
-import { resolveOfflineLocationAsync } from "../../locationResolution";
+import { placeText } from "../../placeText";
 import { MapPin, Pencil, Star, UserMinus, Users } from "lucide-react";
 
 interface Props {
@@ -156,28 +156,19 @@ export default function OperatorsPanel({
       const qth = result.qth_location?.trim() || null;
       const label = qth || address || "";
 
-      // Offline first (ZIP centroid, then grid square — see
-      // locationResolution.ts), online geocoding only as a fallback when
-      // neither offline method has anything to work with.
-      const offline = await resolveOfflineLocationAsync({
-        qrzLat: result.exact_lat,
-        qrzLon: result.exact_lon,
-        gridSquare: grid,
-        address,
-        qthLocation: qth,
+      // The shared resolver (LOCRES-060): QRZ's exact point, a place looked
+      // up before, the online search, then a ZIP's or the grid square's centre.
+      const p = await placeText(address || qth || "", {
+        station: {
+          qth,
+          grid,
+          exact: result.exact_lat != null && result.exact_lon != null ? { lat: result.exact_lat, lon: result.exact_lon } : null,
+        },
+        online: "wait",
       });
-      if (offline) {
-        await api.setOperatorLocationCoords(id, offline.lat, offline.lon, label || offline.sourceText);
+      if (p.lat != null && p.lon != null) {
+        await api.setOperatorLocationCoords(id, p.lat, p.lon, label || p.label || "");
         onOperatorsChanged();
-      } else {
-        const query = address || qth;
-        if (query) {
-          const geo = await api.geocodeLocation(query);
-          if (geo) {
-            await api.setOperatorLocationCoords(id, geo.lat, geo.lon, geo.display_name || query);
-            onOperatorsChanged();
-          }
-        }
       }
     } catch {
       // Offline, not configured, or no match — leave location unset.
@@ -189,7 +180,7 @@ export default function OperatorsPanel({
   async function handleClearOperatorLocation(operatorId: string) {
     setLocationError(null);
     try {
-      await api.setOperatorLocation(operatorId, "");
+      await api.clearOperatorLocation(operatorId);
       onOperatorsChanged();
     } catch (e) {
       setLocationError(String(e));

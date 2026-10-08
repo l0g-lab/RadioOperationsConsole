@@ -1,5 +1,4 @@
-use super::{AppState, ERR_OFFLINE};
-use crate::connectors;
+use super::AppState;
 use crate::repo::Operator;
 use tauri::State;
 
@@ -123,55 +122,14 @@ pub fn create_operator(
         .map_err(|e| e.to_string())
 }
 
-/// Resolves free-text (zip code, city/state, address, landmark) into the
-/// persisted directory/QTH location for an operator profile
-/// (CIMAP-060/061), the same way `set_weather_area` resolves the weather
-/// area of interest. Passing an empty/whitespace-only query clears it.
+/// Clears an operator's location. Setting one goes through the shared place
+/// resolver (placeText.ts, LOCRES-060) and `set_operator_location_coords`.
 #[tauri::command]
-pub async fn set_operator_location(
-    state: State<'_, AppState>,
-    operator_id: String,
-    query: String,
-) -> Result<Operator, String> {
-    let trimmed = query.trim();
-
-    if trimmed.is_empty() {
-        state
-            .repo
-            .lock()
-            .unwrap()
-            .set_operator_location(&operator_id, None, None, None)
-            .map_err(|e| e.to_string())?;
-        return state
-            .repo
-            .lock()
-            .unwrap()
-            .get_operator(&operator_id)
-            .map_err(|e| e.to_string());
-    }
-
-    match connectors::geocode_location(trimmed).await {
-        connectors::GeocodeOutcome::Found(r) => {
-            let label = r.display_name.unwrap_or_else(|| trimmed.to_string());
-            state
-                .repo
-                .lock()
-                .unwrap()
-                .set_operator_location(&operator_id, Some(&label), Some(r.lat), Some(r.lon))
-                .map_err(|e| e.to_string())?;
-            state
-                .repo
-                .lock()
-                .unwrap()
-                .get_operator(&operator_id)
-                .map_err(|e| e.to_string())
-        }
-        connectors::GeocodeOutcome::NotFound => {
-            Err("No location found matching that text.".to_string())
-        }
-        connectors::GeocodeOutcome::Offline => Err(ERR_OFFLINE.to_string()),
-        connectors::GeocodeOutcome::Error(e) => Err(e),
-    }
+pub fn clear_operator_location(state: State<'_, AppState>, operator_id: String) -> Result<Operator, String> {
+    let repo = state.repo.lock().unwrap();
+    repo.set_operator_location(&operator_id, None, None, None)
+        .map_err(|e| e.to_string())?;
+    repo.get_operator(&operator_id).map_err(|e| e.to_string())
 }
 
 /// Sets an operator's location directly from known coordinates — a map

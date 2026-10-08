@@ -245,9 +245,10 @@ is — useful for propagation and coverage awareness during a net.
   from net control to the repeater is solid and a different color.
 - **CIMAP-073:** Setting either the operator's default location or an
   activity's location MUST support three entry methods, since a site may
-  not have a zip code, address, or grid square known offhand: free-text
-  search (existing geocoding path), clicking/dragging a pin directly on a
-  map, and typing exact GPS coordinates (decimal degrees). All three MUST
+  not have a zip code, address, or grid square known offhand: a search
+  placed by the shared resolver (`LOCRES-060`, `LOCRES-061`),
+  clicking/dragging a pin directly on a map, and typing exact GPS
+  coordinates. All three MUST
   end up setting the same underlying lat/lon, so whichever method was used
   last is authoritative.
 - **CIMAP-071:** The basemap MUST be the standard OpenStreetMap tile style

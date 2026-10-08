@@ -24,7 +24,11 @@ export interface LocationInputs {
 }
 
 /**
- * The one offline-first location resolution order used everywhere in this
+ * The approximate end of the shared place resolver (placeText.ts, LOCRES-060):
+ * a ZIP code's centre, else a grid square's. Only placeText calls it; every
+ * location box goes through placeText, not here.
+ *
+ * Originally the one offline-first location resolution order used everywhere in this
  * app, so every feature that needs "text -> coordinates" agrees on the same
  * answer instead of each reimplementing its own priority (this used to be
  * ZIP-then-grid in the check-in map but grid-then-nothing in QRZ operator
