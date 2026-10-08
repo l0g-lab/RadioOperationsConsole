@@ -35,6 +35,12 @@ top. Each release's section here is also its description on the
 - **Saving never waits on the internet to place a location.** A check-in or
   spotter report is saved at once and lands on the map a few seconds later,
   when the online lookup finds it.
+- **Locations are read the way people write them:** "N.W. 27th Ave",
+  "21 st ave", "US-1", "sw 40 st (bird rd)", "corner of …", and bare numbers
+  like "152 and 137" all work, and an apartment or unit number or a PO box
+  no longer stops an address being found. Search boxes no longer wait up to
+  half a minute on the slowest map service, and with no net location,
+  searches start from your weather area instead of the whole country.
 - **More accurate pins.** Shorthand like "13700 sw 152 st" is read as
   "Southwest 152nd Street" (it used to land on the wrong street), places are
   searched near your net first (a bare "Main St & 5th" no longer lands in

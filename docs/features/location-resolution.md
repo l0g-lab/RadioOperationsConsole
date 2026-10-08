@@ -133,19 +133,29 @@ them as it can.
   directions ("sw" → Southwest), street types ("st", "ave", "rd", "ter", and
   so on), and a number before a street type as an ordinal ("152 st",
   "152st" → 152nd Street). A house number or highway number ("US 1") stays a
-  number.
+  number. It MUST also be read the way people write it: periods dropped
+  ("N.W."), an ordinal ending typed apart joined on ("21 st ave", "2 nd"),
+  a highway prefix run into its number pulled apart ("I95", "US-1"), notes
+  in brackets and leading words ("corner of") dropped, a unit ("Apt 4",
+  "#4") and a PO box dropped (they keep a place from being found), and
+  what follows a comma read as the town and state (never a street type:
+  "Hartford, CT"; "St" before a town's name is Saint). If the tidied text
+  finds nothing, the text as typed MUST be tried too.
 - **LOCRES-052:** Two streets joined by "&", "and", "@", "at", or "/" are a
   cross street, with an optional town after the second (after a comma, or
   after its street type). It MUST be placed where the streets cross: from
   the two streets' shapes, worked out on this computer, looking again
   closer to where the streets look likely to meet when a long street's
-  crossing piece didn't come back; then, if that finds nothing, by asking
-  Overpass; then by a plain search. Street names match whichever way map
-  data spells them, including alternate names ("Douglas Road" for
-  "Southwest 37th Avenue"). A numbered street said without a type is a
-  Street before any other type of the same number.
+  crossing piece didn't come back; then, if that finds nothing and nobody
+  is waiting (a lookup after saving), by asking Overpass, which can take
+  half a minute; then by a plain search. Street names match whichever way
+  map data spells them, including alternate names ("Douglas Road" for
+  "Southwest 37th Avenue") and highway numbers ("US 1"). A bare number is a
+  numbered street ("152 and 137"), and one said without a type is a Street
+  before any other type of the same number.
 - **LOCRES-053:** Searches MUST stay near the net first: within 40 km of its
-  repeater, else net control, or of a typed town; then anywhere in the US.
+  repeater, else net control, or of a typed town, or, with neither, of the
+  weather area; then anywhere in the US.
   Without a town or a net location a cross street isn't searched for, since
   a street name alone matches across the country.
 - **LOCRES-054:** A found place MUST say how exact it is: an address or a

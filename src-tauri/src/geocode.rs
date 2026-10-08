@@ -83,21 +83,68 @@ fn ordinal(n: u32) -> String {
     format!("{n}{suffix}")
 }
 
-/// Splits typed text into lower-case words, keeping commas. A direction run
-/// into a number is pulled apart ("sw184st" → "sw", "184st"), and so is a
-/// number run into a type ("184st" → "184", "st") unless it's a real ordinal
-/// ("152nd", "21st" stay whole).
+/// Typed text tidied before it's read: notes in brackets ("sw 40 st (bird
+/// rd)") and leading words ("corner of …") dropped, so they aren't taken for
+/// part of a street.
+fn tidy(text: &str) -> String {
+    let mut out = String::new();
+    let mut depth = 0;
+    for c in text.chars() {
+        match c {
+            '(' => depth += 1,
+            ')' => depth = (depth - 1).max(0),
+            _ if depth == 0 => out.push(c),
+            _ => {}
+        }
+    }
+    let t = out.trim_start();
+    for lead in ["the corner of ", "corner of ", "the intersection of ", "intersection of ", "near "] {
+        if t.len() > lead.len() && t[..lead.len()].eq_ignore_ascii_case(lead) {
+            return t[lead.len()..].to_string();
+        }
+    }
+    t.to_string()
+}
+
+/// Highway prefixes run into their number ("i95", "us-1", "sr-826").
+const ROUTE_PREFIXES: [&str; 6] = ["i", "us", "sr", "cr", "fl", "hwy"];
+/// Words for the unit within a building: the word and the one after it are
+/// dropped, since map data places the building, and a unit stops it matching.
+const UNIT_WORDS: [&str; 10] = ["apt", "apartment", "unit", "ste", "suite", "lot", "trlr", "bldg", "rm", "room"];
+
+/// Splits typed text into lower-case words, keeping commas, and tidies them:
+/// periods dropped from words ("N.W." → "nw"); a direction or a highway
+/// prefix run into a number pulled apart ("sw184st" → "sw", "184st"; "i95",
+/// "us-1" → "i", "95"); a number run into a type pulled apart ("184st" →
+/// "184", "st") unless it's a real ordinal ("152nd", "21st" stay whole); an
+/// ordinal ending typed apart joined on ("2 nd" → "2nd", "21 st ave" →
+/// "21st ave"); and a unit ("Apt 4", "#4") or a PO box dropped.
 fn words(text: &str) -> Vec<String> {
-    let mut out = Vec::new();
-    for raw in text.replace(',', " , ").split_whitespace() {
-        let mut w = raw.trim_matches(|c: char| c == '.' || c == ';').to_lowercase();
+    let mut out: Vec<String> = Vec::new();
+    for raw in tidy(text).replace(',', " , ").split_whitespace() {
+        let mut w = raw.trim_matches(|c: char| matches!(c, '.' | ';' | ':')).to_lowercase();
+        if !w.chars().any(|c| c.is_ascii_digit()) {
+            w = w.replace('.', "");
+        }
         if w.is_empty() {
             continue;
+        }
+        // "us-1", "i-95": a highway number.
+        if let Some((pre, num)) = w.split_once('-') {
+            if ROUTE_PREFIXES.contains(&pre) && !num.is_empty() && num.chars().all(|c| c.is_ascii_digit()) {
+                out.push(pre.to_string());
+                out.push(num.to_string());
+                continue;
+            }
         }
         if let Some(i) = w.find(|c: char| c.is_ascii_digit()).filter(|&i| i > 0) {
             if directional(&w[..i]).is_some() {
                 out.push(w[..i].to_string());
                 w = w[i..].to_string();
+            } else if ROUTE_PREFIXES.contains(&&w[..i]) && w[i..].chars().all(|c| c.is_ascii_digit()) {
+                out.push(w[..i].to_string());
+                out.push(w[i..].to_string());
+                continue;
             }
         }
         let digits: String = w.chars().take_while(|c| c.is_ascii_digit()).collect();
@@ -114,7 +161,43 @@ fn words(text: &str) -> Vec<String> {
             out.push(w);
         }
     }
-    out
+    // Second pass: units and PO boxes out, ordinal endings joined on.
+    let mut tidy: Vec<String> = Vec::new();
+    let mut i = 0;
+    while i < out.len() {
+        let w = &out[i];
+        let next = out.get(i + 1).map(String::as_str);
+        if w.starts_with('#') {
+            // "#4", or "#" then "4".
+            i += if w == "#" { 2 } else { 1 };
+            continue;
+        }
+        if UNIT_WORDS.contains(&w.as_str()) && next.is_some_and(|n| n != ",") {
+            i += 2;
+            continue;
+        }
+        if w == "po" && next == Some("box") {
+            i += if out.get(i + 2).is_some_and(|n| n != ",") { 3 } else { 2 };
+            continue;
+        }
+        if w.chars().all(|c| c.is_ascii_digit()) {
+            let after = out.get(i + 2).map(String::as_str);
+            let joins = match next {
+                Some("nd" | "rd" | "th") => true,
+                // "21 st ave" is 21st Avenue; "152 st" alone is 152nd Street.
+                Some("st") => after.is_some_and(|a| street_type(a).is_some()),
+                _ => false,
+            };
+            if joins {
+                tidy.push(format!("{w}{}", next.unwrap_or("")));
+                i += 2;
+                continue;
+            }
+        }
+        tidy.push(w.clone());
+        i += 1;
+    }
+    tidy
 }
 
 /// A street as map data names it: "sw 152 st" → "Southwest 152nd Street".
@@ -128,18 +211,26 @@ pub struct Street {
 
 /// Puts a run of words into map-data form. A number before a street type
 /// becomes an ordinal ("152 st" → "152nd Street"); a number that isn't (a
-/// house number, "US 1") stays as it is.
-fn canonical(words: &[String]) -> (String, bool) {
+/// house number, "US 1") stays as it is. "St" before a name at the start is
+/// Saint ("St Augustine"). For a town (`place`), nothing is a street type:
+/// "Hartford CT" stays Connecticut.
+fn canonical_as(words: &[String], place: bool) -> (String, bool) {
     let mut out: Vec<String> = Vec::new();
     let mut typed = false;
     for (i, w) in words.iter().enumerate() {
-        let next_is_type = words.get(i + 1).is_some_and(|n| street_type(n).is_some());
-        if let Some(t) = street_type(w).filter(|_| i > 0) {
+        let next = words.get(i + 1);
+        let next_is_type = next.is_some_and(|n| street_type(n).is_some());
+        let saint = i == 0
+            && w == "st"
+            && next.is_some_and(|n| n.chars().all(|c| c.is_ascii_alphabetic()) && street_type(n).is_none() && directional(n).is_none());
+        if saint {
+            out.push("Saint".to_string());
+        } else if let Some(t) = street_type(w).filter(|_| i > 0 && !place) {
             out.push(t.to_string());
             typed = true;
-        } else if let Some(d) = directional(w) {
+        } else if let Some(d) = directional(w).filter(|_| !place || i == 0) {
             out.push(d.to_string());
-        } else if w.chars().all(|c| c.is_ascii_digit()) && next_is_type {
+        } else if w.chars().all(|c| c.is_ascii_digit()) && next_is_type && !place {
             out.push(ordinal(w.parse().unwrap_or(0)));
         } else if w.len() <= 2 && w.chars().all(|c| c.is_ascii_alphabetic()) {
             // State abbreviations and initials: "fl" → "FL".
@@ -152,11 +243,21 @@ fn canonical(words: &[String]) -> (String, bool) {
     (out.join(" "), typed)
 }
 
+fn canonical(words: &[String]) -> (String, bool) {
+    canonical_as(words, false)
+}
+
 /// Normalizes a whole typed location for a map search ("13700 sw 152 st
-/// miami fl" → "13700 Southwest 152nd Street Miami FL").
+/// miami fl" → "13700 Southwest 152nd Street Miami FL"). What follows a
+/// comma is the town and state ("…, St Petersburg, FL").
 pub fn normalize(text: &str) -> String {
-    let w: Vec<String> = words(text).into_iter().filter(|w| w != ",").collect();
-    canonical(&w).0
+    let w = words(text);
+    w.split(|x| x == ",")
+        .filter(|seg| !seg.is_empty())
+        .enumerate()
+        .map(|(i, seg)| canonical_as(seg, i > 0).0)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// Whether a street name starts with a direction ("Southwest 137th Avenue").
@@ -226,13 +327,21 @@ pub fn parse(text: &str) -> Query {
         return Query::Text(normalize(text));
     }
     let street = |words: &[String]| {
-        let (name, typed) = canonical(words);
+        // A bare number is a numbered street: "152 and 137" → 152nd, 137th.
+        let mut words = words.to_vec();
+        let named: Vec<usize> = (0..words.len()).filter(|&i| directional(&words[i]).is_none()).collect();
+        if let [only] = named[..] {
+            if words[only].chars().all(|c| c.is_ascii_digit()) {
+                words[only] = ordinal(words[only].parse().unwrap_or(0));
+            }
+        }
+        let (name, typed) = canonical(&words);
         Street { name, typed }
     };
     Query::Crossing {
         a: street(&first),
         b: street(&second),
-        place: (!place.is_empty()).then(|| canonical(&place).0),
+        place: (!place.is_empty()).then(|| canonical_as(&place, true).0),
     }
 }
 
@@ -815,7 +924,7 @@ async fn overpass_corner(a: &Street, b: &Street, centre: (f64, f64), km: f64) ->
     let around = format!("around:{:.0},{:.5},{:.5}", km * 1000.0, centre.0, centre.1);
     let ways = |s: &Street, var: &str| {
         let pat = overpass_pattern(s).replace('"', "\\\"");
-        let each: String = ["name", "alt_name", "official_name", "old_name"]
+        let each: String = ["name", "alt_name", "official_name", "old_name", "ref"]
             .iter()
             .map(|k| format!("way({around})[\"highway\"][\"{k}\"~\"{pat}\",i];"))
             .collect();
@@ -868,6 +977,7 @@ async fn find_crossing(
     b: &Street,
     place: Option<&str>,
     near: Option<(f64, f64)>,
+    patient: bool,
 ) -> Result<Option<Found>, Lookup> {
     let (centre, km) = match place {
         Some(p) => match search(p, near.map(|n| (n, 150.0))).await? {
@@ -914,6 +1024,10 @@ async fn find_crossing(
             }
         }
     }
+    // Overpass can take half a minute: only when nobody's waiting.
+    if !patient {
+        return Err(Lookup::Error("Overpass not asked while someone waits".into()));
+    }
     let points = overpass_corner(a, b, centre, km).await?;
     Ok(corner(&points, Some(centre)).map(|p| found(p, format!("{} & {}", a.name, b.name), "overpass")))
 }
@@ -930,8 +1044,10 @@ pub fn recall(memory: &Mutex<Memory>, text: &str, near: Option<(f64, f64)>) -> O
 }
 
 /// Places typed text: a cross street, else a search near the net, then
-/// anywhere. Remembered either way (`memory`, kept in `dir`).
-pub async fn find(memory: &Mutex<Memory>, dir: &Path, text: &str, near: Option<(f64, f64)>) -> Lookup {
+/// anywhere; the text as typed if the tidied form finds nothing. Remembered
+/// either way (`memory`, kept in `dir`). `patient`: nobody is waiting (a
+/// lookup after saving), so the slow Overpass may be asked too.
+pub async fn find(memory: &Mutex<Memory>, dir: &Path, text: &str, near: Option<(f64, f64)>, patient: bool) -> Lookup {
     let text = text.trim();
     if text.is_empty() {
         return Lookup::NotFound;
@@ -959,7 +1075,7 @@ pub async fn find(memory: &Mutex<Memory>, dir: &Path, text: &str, near: Option<(
     let mut definite = true;
     let result = async {
         if let Query::Crossing { a, b, place } = parse(text) {
-            match find_crossing(memory, &a, &b, place.as_deref(), near).await {
+            match find_crossing(memory, &a, &b, place.as_deref(), near, patient).await {
                 Ok(Some(f)) => return Ok(Some(f)),
                 Ok(None) => {}
                 Err(Lookup::Offline) => return Err(Lookup::Offline),
@@ -967,13 +1083,24 @@ pub async fn find(memory: &Mutex<Memory>, dir: &Path, text: &str, near: Option<(
                 Err(_) => definite = false,
             }
         }
-        let q = normalize(text);
-        if let Some(n) = near {
-            if let Some((f, _)) = search(&q, Some((n, NEAR_NET_KM))).await? {
+        // The tidied text, then as typed in case tidying misread it; near the
+        // net first each time.
+        let tidied = normalize(text);
+        let mut tries = vec![tidied.clone()];
+        if !tidied.eq_ignore_ascii_case(text) {
+            tries.push(text.to_string());
+        }
+        for q in &tries {
+            if let Some(n) = near {
+                if let Some((f, _)) = search(q, Some((n, NEAR_NET_KM))).await? {
+                    return Ok(Some(f));
+                }
+            }
+            if let Some((f, _)) = search(q, None).await? {
                 return Ok(Some(f));
             }
         }
-        Ok(search(&q, None).await?.map(|(f, _)| f))
+        Ok(None)
     }
     .await;
     let mut m = memory.lock().unwrap();
@@ -1005,8 +1132,10 @@ mod tests {
         assert_eq!(normalize("sw 152st"), "Southwest 152nd Street");
         assert_eq!(normalize("sw184st"), "Southwest 184th Street");
         assert_eq!(normalize("NW7AVE"), "Northwest 7th Avenue");
-        // Only a direction is split off a number: a word that isn't stays whole.
-        assert_eq!(normalize("i95"), "I95");
+        // A highway number run into its prefix is pulled apart; other words stay whole.
+        assert_eq!(normalize("i95"), "I 95");
+        assert_eq!(normalize("US-1"), "US 1");
+        assert_eq!(normalize("abc123"), "Abc123");
         assert_eq!(normalize("NW 21st Ter"), "Northwest 21st Terrace");
         assert_eq!(normalize("w 1 ave"), "West 1st Avenue");
         assert_eq!(normalize("Old Cutler Rd."), "Old Cutler Road");
@@ -1017,6 +1146,27 @@ mod tests {
         assert_eq!(ordinal(112), "112th");
         assert_eq!(ordinal(152), "152nd");
         assert_eq!(ordinal(23), "23rd");
+    }
+
+    #[test]
+    fn typed_text_is_tidied_the_way_people_write_it() {
+        // Periods, ordinal endings typed apart.
+        assert_eq!(normalize("N.W. 27th Ave"), "Northwest 27th Avenue");
+        assert_eq!(normalize("21 st ave"), "21st Avenue");
+        assert_eq!(normalize("2 nd ave"), "2nd Avenue");
+        assert_eq!(normalize("152 st"), "152nd Street", "a lone st is still Street");
+        // After a comma it's the town and state.
+        assert_eq!(normalize("Hartford, CT"), "Hartford, CT");
+        assert_eq!(normalize("123 Main St, St Petersburg, FL"), "123 Main Street, Saint Petersburg, FL");
+        assert_eq!(normalize("St Augustine FL"), "Saint Augustine FL");
+        // Units and PO boxes aren't places.
+        assert_eq!(
+            normalize("9296 SW 183rd Ter Apt 4, Palmetto Bay, FL 33157"),
+            "9296 Southwest 183rd Terrace, Palmetto Bay, FL 33157"
+        );
+        assert_eq!(normalize("12 Main St #4, Miami"), "12 Main Street, Miami");
+        assert_eq!(normalize("PO BOX 298832, Pembroke Pines, FL 33029"), "Pembroke Pines, FL 33029");
+        assert_eq!(normalize("P.O. Box 12, Miami"), "Miami");
     }
 
     #[test]
@@ -1047,6 +1197,27 @@ mod tests {
             crossing("Coral Way", "Douglas Road", Some("Coral Gables"))
         );
         assert_eq!(parse("Main St / 5th Ave"), crossing("Main Street", "5th Avenue", None));
+        // Notes in brackets and leading words dropped; highways; bare numbers.
+        assert_eq!(
+            parse("sw 40 st (bird rd) & sw 87 ave"),
+            crossing("Southwest 40th Street", "Southwest 87th Avenue", None)
+        );
+        assert_eq!(
+            parse("corner of sw 152 st and sw 137 ave"),
+            crossing("Southwest 152nd Street", "Southwest 137th Avenue", None)
+        );
+        assert_eq!(
+            parse("US-1 & sw 152 st"),
+            Query::Crossing { a: st("US 1", false), b: st("Southwest 152nd Street", true), place: None }
+        );
+        assert_eq!(
+            parse("152 and 137"),
+            Query::Crossing { a: st("152nd", false), b: st("137th", false), place: None }
+        );
+        assert_eq!(
+            parse("N.W. 27th Ave & N.W. 151st St, Opa-locka"),
+            crossing("Northwest 27th Avenue", "Northwest 151st Street", Some("Opa-locka"))
+        );
         // No street type on the second: the town starts after its number.
         assert_eq!(
             parse("nw 27 ave and nw 151st miami fl"),
@@ -1154,6 +1325,15 @@ mod tests {
             "sw184st  and sw112ave miami fl",
             "sw 152st & 137ave miami fl",
             "nw 27 ave and nw 151st miami fl",
+            "N.W. 27th Ave & N.W. 151st St",
+            "US 1 & SW 152 St",
+            "Kendall Dr & SW 117 Ave",
+            "Biscayne Blvd & NE 79th",
+            "sw 40 st (bird rd) & sw 87 ave",
+            "corner of sw 117 ave and sw 88 st",
+            "152 and 137",
+            "9296 SW 183rd Ter Apt 4, Palmetto Bay, FL 33157",
+            "PO BOX 298832, Pembroke Pines, FL 33029",
             "Coral Way & Douglas Rd, Miami",
             "old cutler rd & coral reef dr",
             "13700 sw 152 st miami fl",
@@ -1161,7 +1341,7 @@ mod tests {
             "Winter Park",
         ] {
             let t = Instant::now();
-            let r = tauri::async_runtime::block_on(find(&cache, &dir, text, near));
+            let r = tauri::async_runtime::block_on(find(&cache, &dir, text, near, true));
             let say = match r {
                 Lookup::Found(f) => format!("{:.5},{:.5} {:?} via {} — {}", f.lat, f.lon, f.precision, f.source, f.label),
                 Lookup::NotFound => "not found".into(),
@@ -1171,7 +1351,7 @@ mod tests {
             println!("{text:34} {:5.1}s  {say}", t.elapsed().as_secs_f64());
         }
         let t = Instant::now();
-        let again = tauri::async_runtime::block_on(find(&cache, &dir, "SW 152 St & SW 137 Ave, Miami FL", near));
+        let again = tauri::async_runtime::block_on(find(&cache, &dir, "SW 152 St & SW 137 Ave, Miami FL", near, true));
         println!("remembered: {:.3}s {}", t.elapsed().as_secs_f64(), matches!(again, Lookup::Found(_)));
         // A crossing never asked, of two streets already fetched: worked out here.
         crate::net::set_work_offline(true);
