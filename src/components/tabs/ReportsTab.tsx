@@ -5,6 +5,8 @@ import SpotterReportForm from "../reports/SpotterReportForm";
 import SpotterReportRoster from "../reports/SpotterReportRoster";
 import NetAlertsPanel from "../reports/NetAlertsPanel";
 import ClosedBanner from "../lifecycle/ClosedBanner";
+import { useLocationPlaced } from "../../checkinLocation";
+import { repeaterPoint } from "../../mapPoints";
 import NotStartedBanner from "../lifecycle/NotStartedBanner";
 
 interface Props {
@@ -55,6 +57,17 @@ export default function ReportsTab({
 
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
   const editingReport = reports.find((r) => r.id === editingReportId) ?? null;
+  // Typed places are looked up near the net: its repeater, else net control.
+  const near =
+    repeaterPoint(focusedActivity) ??
+    (focusedActivity?.location_lat != null && focusedActivity.location_lon != null
+      ? { lat: focusedActivity.location_lat, lon: focusedActivity.location_lon, label: "net control" }
+      : null);
+  // A report or check-in looked up after saving has been put on the map.
+  useLocationPlaced(selectedActivityId, () => {
+    refreshReports();
+    refreshCheckins();
+  });
 
   function refreshReports() {
     if (!selectedActivityId) return Promise.resolve();
@@ -125,6 +138,7 @@ export default function ReportsTab({
               editingReport={editingReport}
               startFrom={startFrom}
               qrzConfigured={qrzConfigured}
+              near={near}
               onSaved={async (newId) => {
                 // Saving may have logged the reporter as a new check-in.
                 await Promise.all([refreshReports(), refreshCheckins()]);

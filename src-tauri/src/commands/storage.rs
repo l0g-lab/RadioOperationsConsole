@@ -52,6 +52,9 @@ pub fn clear_storage(state: State<'_, AppState>, id: String) -> Result<Vec<Stora
         "road-data" => {
             *state.route_packs.lock().unwrap() = crate::datapacks::load_all(&datapacks);
         }
+        "looked-up-places" => {
+            *state.place_cache.lock().unwrap() = crate::geocode::Cache::default();
+        }
         _ => {}
     }
     Ok(storage::usage(&dirs))

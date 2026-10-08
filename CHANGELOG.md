@@ -6,6 +6,25 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **Cross streets are placed on the map,** typed the way people say them:
+  "sw 152st & sw 137ave miami fl", "sw 152 st and sw 137 ave", "Coral Way &
+  Douglas Rd". The app works out where the two streets cross, near your
+  net's repeater (else net control), or near a town if you type one.
+- **Looked-up places are remembered,** so the same address or corner is
+  looked up online once; the next check-in from it is placed at once. They're
+  listed in Settings under Offline data, where they can be cleared.
+
+### Changed
+- **Saving never waits on the internet to place a location.** A check-in or
+  spotter report is saved at once and lands on the map a few seconds later,
+  when the online lookup finds it.
+- **More accurate pins.** Shorthand like "13700 sw 152 st" is read as
+  "Southwest 152nd Street" (it used to land on the wrong street), places are
+  searched near your net first (a bare "Main St & 5th" no longer lands in
+  another state), and a town's or street's rough centre is marked
+  approximate on the map.
+
 ## [2.6.0] - 2026-10-07
 
 ### Added

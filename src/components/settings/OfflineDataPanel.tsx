@@ -191,7 +191,7 @@ export default function OfflineDataPanel() {
       </div>
       <StoragePanel
         key={storageKey}
-        only={["road-data", "map-tiles", "partial-downloads", "restore-copies"]}
+        only={["road-data", "looked-up-places", "map-tiles", "partial-downloads", "restore-copies"]}
         onCleared={() => {
           // Clearing road updates goes back to the built-in copies.
           api.listDataPacks().then(setPacks).catch(() => {});

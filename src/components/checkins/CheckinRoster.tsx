@@ -359,6 +359,7 @@ export default function CheckinRoster({
                     operatorId={operatorId}
                     log={log}
                     qrzConfigured={qrzConfigured}
+                    near={distanceFrom}
                     onSaved={finishEdit}
                     onCancel={cancelEdit}
                   />

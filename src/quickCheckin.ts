@@ -1,7 +1,7 @@
 import * as api from "./api";
 import { lookupCallsign } from "./callsignLookup";
-import { resolveCheckinLocation } from "./checkinLocation";
-import { isWorkingOffline } from "./workOffline";
+import { canLookUpOnline, placeCheckinLater, resolveCheckinLocation } from "./checkinLocation";
+import type { MapPoint } from "./mapPoints";
 
 /**
  * Checks a station in by call sign alone, as the check-in form would with
@@ -15,7 +15,9 @@ export async function checkInCallSign(
   operatorId: string | null,
   qrzConfigured: boolean,
   /** What they called in, as the line's traffic. */
-  traffic: string | null = null
+  traffic: string | null = null,
+  /** Where the net is: an address not placed exactly is looked up near it. */
+  near: MapPoint | null = null
 ): Promise<string> {
   const call = callSign.trim().toUpperCase();
   const outcome = await lookupCallsign(call, qrzConfigured).catch(() => null);
@@ -30,9 +32,9 @@ export async function checkInCallSign(
           exact: found.exact_lat != null && found.exact_lon != null ? { lat: found.exact_lat, lon: found.exact_lon } : null,
         }
       : null,
-    online: navigator.onLine && !isWorkingOffline(),
+    online: canLookUpOnline(),
   });
-  return api.createCheckin(
+  const id = await api.createCheckin(
     activityId,
     call,
     found?.name || null,
@@ -48,4 +50,6 @@ export async function checkInCallSign(
     null,
     loc.manual
   );
+  placeCheckinLater(id, text, loc, near);
+  return id;
 }

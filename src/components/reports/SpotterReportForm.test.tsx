@@ -152,7 +152,7 @@ describe("SpotterReportForm", () => {
     expect(screen.getByText(/Saving checks in N4QQQ too/)).toBeInTheDocument();
     await fillRequired(user);
     await user.click(screen.getByRole("button", { name: "Save report" }));
-    expect(checkInCallSign).toHaveBeenCalledWith("a1", "N4QQQ", "op1", false, expect.stringMatching(/^Hail /));
+    expect(checkInCallSign).toHaveBeenCalledWith("a1", "N4QQQ", "op1", false, expect.stringMatching(/^Hail /), null);
     expect(api.setCheckinTrafficHandled).not.toHaveBeenCalled();
     const args = vi.mocked(api.createSpotterReport).mock.calls[0];
     expect([args[6], args[11]]).toEqual(["N4QQQ", "new-checkin"]);

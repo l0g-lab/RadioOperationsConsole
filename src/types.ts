@@ -655,6 +655,7 @@ export type StorageItemId =
   | "callsigns-amateur"
   | "callsigns-gmrs"
   | "road-data"
+  | "looked-up-places"
   | "partial-downloads"
   | "restore-copies";
 

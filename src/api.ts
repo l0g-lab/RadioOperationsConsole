@@ -524,6 +524,25 @@ export const lookupQrzCallsign = (call_sign: string) =>
 /** Tries the saved QRZ username and password; rejects with QRZ's reason (or "offline"). */
 export const checkQrzLogin = () => invoke<void>("check_qrz_login");
 
+/** Looks a typed check-in location up online after saving, near the net (LOCRES-050). */
+export const placeCheckinLater = (
+  checkin_id: string,
+  text: string,
+  near: { lat: number; lon: number } | null,
+  replace_grid: boolean
+) =>
+  invoke<void>("place_checkin_later", {
+    checkinId: checkin_id,
+    text,
+    nearLat: near?.lat ?? null,
+    nearLon: near?.lon ?? null,
+    replaceGrid: replace_grid,
+  });
+
+/** The same for a spotter report. */
+export const placeReportLater = (report_id: string, text: string, near: { lat: number; lon: number } | null) =>
+  invoke<void>("place_report_later", { reportId: report_id, text, nearLat: near?.lat ?? null, nearLon: near?.lon ?? null });
+
 export const geocodeLocation = (query: string) =>
   invoke<GeocodeResult | null>("geocode_location", { query });
 

@@ -848,6 +848,60 @@ impl Repository {
         Ok(())
     }
 
+    /// Puts a check-in on the map from an online lookup of `text`, unless it
+    /// was placed by hand or its location isn't `text` any more (corrected
+    /// while the lookup ran). Returns its activity when it was placed.
+    pub fn place_checkin(
+        &self,
+        id: &str,
+        text: &str,
+        lat: f64,
+        lon: f64,
+        label: &str,
+        grid: Option<&str>,
+    ) -> rusqlite::Result<Option<String>> {
+        let row: Option<(String, String, String, bool)> = self
+            .conn
+            .query_row(
+                "SELECT activity_id, coalesce(address,''), coalesce(qth_location,''), location_manual FROM checkins WHERE id = ?1",
+                params![id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            )
+            .ok();
+        let Some((activity_id, address, qth, manual)) = row else { return Ok(None) };
+        let t = text.trim();
+        if manual || (address.trim() != t && qth.trim() != t) {
+            return Ok(None);
+        }
+        self.conn.execute(
+            "UPDATE checkins SET location_lat = ?1, location_lon = ?2, location_label = ?3, \
+             grid_square = coalesce(?4, grid_square) WHERE id = ?5",
+            params![lat, lon, label, grid, id],
+        )?;
+        Ok(Some(activity_id))
+    }
+
+    /// The same for a spotter report: placed unless its Location box changed.
+    pub fn place_report(&self, id: &str, text: &str, lat: f64, lon: f64) -> rusqlite::Result<Option<String>> {
+        let row: Option<(String, String)> = self
+            .conn
+            .query_row(
+                "SELECT activity_id, coalesce(location_text,'') FROM spotter_reports WHERE id = ?1",
+                params![id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .ok();
+        let Some((activity_id, location)) = row else { return Ok(None) };
+        if location.trim() != text.trim() {
+            return Ok(None);
+        }
+        self.conn.execute(
+            "UPDATE spotter_reports SET lat = ?1, lon = ?2 WHERE id = ?3",
+            params![lat, lon, id],
+        )?;
+        Ok(Some(activity_id))
+    }
+
     /// Records that a new check-in's location was placed by hand.
     pub fn mark_checkin_location_manual(&self, id: &str) -> rusqlite::Result<()> {
         self.conn.execute("UPDATE checkins SET location_manual = 1 WHERE id = ?1", params![id])?;
@@ -1848,6 +1902,36 @@ mod lifecycle_tests {
         assert_eq!(r.get_activity(&id).unwrap().activity_type, "other");
         r.update_activity(&id, "Storm Net", "directed_net", None, None).unwrap();
         assert_eq!(r.get_activity(&id).unwrap().activity_type, "directed_net");
+    }
+
+    #[test]
+    fn a_lookup_places_only_what_still_needs_it() {
+        let r = repo();
+        let id = r.create_activity("Net", "skywarn", None, None).unwrap();
+        let typed = "sw 152 st & sw 137 ave";
+        let c = r
+            .create_checkin(&id, "W4ABC", None, None, Some("EL95"), Some(typed), None, None, None, None, false, None, &ContactDetails::default())
+            .unwrap();
+        assert_eq!(r.place_checkin(&c, typed, 25.6262, -80.4145, typed, Some("EL95tp")).unwrap(), Some(id.clone()));
+        let got = r.get_checkin(&c).unwrap();
+        assert_eq!((got.location_lat, got.location_lon, got.grid_square.as_str()), (Some(25.6262), Some(-80.4145), "EL95tp"));
+        assert!(!got.location_manual, "a lookup isn't placing by hand");
+        // A grid square from a call-sign lookup stays.
+        r.place_checkin(&c, typed, 25.0, -80.0, typed, None).unwrap();
+        assert_eq!(r.get_checkin(&c).unwrap().grid_square, "EL95tp");
+        // Corrected while the lookup ran, or placed by hand: left alone.
+        assert_eq!(r.place_checkin(&c, "somewhere else", 1.0, 1.0, "x", None).unwrap(), None);
+        r.set_checkin_location_coords(&c, 25.7, -80.2, Some("pin")).unwrap();
+        assert_eq!(r.place_checkin(&c, typed, 1.0, 1.0, "x", None).unwrap(), None);
+        assert_eq!(r.get_checkin(&c).unwrap().location_lat, Some(25.7));
+
+        let rep = r
+            .create_spotter_report(&id, "2026-01-01T12:00", None, Some(typed), None, None, None, "Hail", None, None, None, None, None)
+            .unwrap();
+        assert_eq!(r.place_report(&rep, typed, 25.6, -80.4).unwrap(), Some(id));
+        assert_eq!(r.get_spotter_report(&rep).unwrap().lat, Some(25.6));
+        assert_eq!(r.place_report(&rep, "elsewhere", 1.0, 1.0).unwrap(), None);
+        assert_eq!(r.place_checkin("missing", typed, 1.0, 1.0, "x", None).unwrap(), None);
     }
 
     #[test]

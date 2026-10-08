@@ -41,8 +41,8 @@ list each kept thing once.
 
 - **SET-030:** Everything kept for offline use MUST be in one list — the
   amateur and GMRS call-sign files, the mile-marker roads (each road listed
-  under *Show roads*), road updates, map tiles, unfinished downloads, and
-  safety copies — each on one row with its icon, its status and size (when
+  under *Show roads*), road updates, looked-up places, map tiles, unfinished
+  downloads, and safety copies — each on one row with its icon, its status and size (when
   downloaded or updated, how big), and its buttons (Download, Update, Remove or
   Clear), then the total of everything (`STORE-001`–`STORE-002`).
 

@@ -8,8 +8,14 @@ import {
   sourceLabels,
   type CallsignSource,
 } from "../../callsignLookup";
-import { resolveCheckinLocation, type CheckinLocation, type LookupLocation } from "../../checkinLocation";
-import { isWorkingOffline } from "../../workOffline";
+import {
+  canLookUpOnline,
+  placeCheckinLater,
+  resolveCheckinLocation,
+  type CheckinLocation,
+  type LookupLocation,
+} from "../../checkinLocation";
+import type { MapPoint } from "../../mapPoints";
 import { hintWidth } from "../hintWidth";
 import LocationPicker from "../LocationPicker";
 import { MapPin } from "lucide-react";
@@ -52,6 +58,8 @@ interface Props {
   rangeCheck?: boolean;
   /** The repeater's location, where the range check's map opens. */
   repeater?: { lat: number; lon: number } | null;
+  /** Where the net is (its repeater, else net control): typed places are looked up near it. */
+  near?: MapPoint | null;
 }
 
 type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
@@ -82,6 +90,7 @@ export default function CheckinEntryForm({
   activityFrequency = "",
   rangeCheck = false,
   repeater = null,
+  near = null,
 }: Props) {
   const [callSign, setCallSign] = useState("");
   const [name, setName] = useState("");
@@ -122,7 +131,7 @@ export default function CheckinEntryForm({
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
-      resolveCheckinLocation(location, { lookup: lookupLoc, pin }).then((r) => {
+      resolveCheckinLocation(location, { lookup: lookupLoc, pin, online: canLookUpOnline() }).then((r) => {
         if (!cancelled) setPreview(r.note ? r : null);
       });
     }, 250);
@@ -257,12 +266,12 @@ export default function CheckinEntryForm({
       return;
     }
     setContactSaveRefused(false);
-    // Sorted into address, QTH, grid square and map position; the online map
-    // search is tried only when connected (CIMAP-080).
+    // Sorted into address, QTH, grid square and map position (CIMAP-080);
+    // what can't be placed exactly offline is looked up online once saved.
     const loc = await resolveCheckinLocation(location, {
       lookup: lookupLoc,
       pin,
-      online: navigator.onLine && !isWorkingOffline(),
+      online: canLookUpOnline(),
     });
     const id = await api.createCheckin(
       activityId,
@@ -282,6 +291,7 @@ export default function CheckinEntryForm({
       // Picked on the map, typed coordinates, or a mile marker.
       loc.manual
     );
+    placeCheckinLater(id, location, loc, near);
     // The station setup carries over to the next contact.
     setContact(nextContact(contact));
     setTraffic("");
@@ -428,9 +438,7 @@ export default function CheckinEntryForm({
       {!rangeCheck && preview && (
         <p className={"settings-hint checkin-entry-hint" + (preview.lat == null ? " checkin-location-unplaced" : "")}>
           Map:{" "}
-          {preview.lat == null && navigator.onLine && !isWorkingOffline()
-            ? "looked up online when you save — or pick it on the map"
-            : preview.note}
+          {preview.note}
           {preview.grid ? ` · grid ${preview.grid}` : ""}
         </p>
       )}

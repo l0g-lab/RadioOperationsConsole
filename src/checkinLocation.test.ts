@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("./api", () => ({
   resolveMileMarker: vi.fn(),
   geocodeLocation: vi.fn(),
+  placeCheckinLater: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("./locationResolution", () => ({
   // ZIP 32817's centre, for any text with that ZIP in it.
@@ -12,7 +13,8 @@ vi.mock("./locationResolution", () => ({
 }));
 
 import * as api from "./api";
-import { asGridSquare, resolveCheckinLocation } from "./checkinLocation";
+import { asGridSquare, placeCheckinLater, resolveCheckinLocation } from "./checkinLocation";
+import { initWorkOffline } from "./workOffline";
 
 describe("the check-in Location box (CIMAP-080)", () => {
   beforeEach(() => {
@@ -46,14 +48,31 @@ describe("the check-in Location box (CIMAP-080)", () => {
     expect(r).toMatchObject({ lat: 28.7, placedBy: "pin", manual: true, label: "Field site" });
   });
 
-  it("looks a cross street up online only when connected, else uses a ZIP's centre", async () => {
-    vi.mocked(api.geocodeLocation).mockResolvedValue({ lat: 28.55, lon: -81.21, display_name: null });
-    const offline = await resolveCheckinLocation("Colonial Dr & Alafaya Tr 32817");
-    expect(offline).toMatchObject({ placedBy: "zip", approx: true });
+  it("never waits on the internet: a cross street gets a ZIP's centre now, and is looked up once saved (LOCRES-050)", async () => {
+    const r = await resolveCheckinLocation("Colonial Dr & Alafaya Tr 32817", { online: true });
+    expect(r).toMatchObject({ placedBy: "zip", approx: true, lookUp: true, keepGrid: false });
+    expect(r.note).toMatch(/looked up exactly online once saved/);
     expect(api.geocodeLocation).not.toHaveBeenCalled();
+    // Placed exactly here: nothing to look up.
+    expect((await resolveCheckinLocation("28.5, -81.3")).lookUp).toBe(false);
+    // A call-sign lookup's grid square stays when the point is looked up.
+    const fromLookup = await resolveCheckinLocation("Oviedo, FL", {
+      lookup: { text: "Oviedo, FL", qth: "Oviedo, FL", grid: "EL98hp", exact: null },
+    });
+    expect(fromLookup).toMatchObject({ lookUp: true, keepGrid: true, grid: "EL98hp" });
+  });
 
-    const online = await resolveCheckinLocation("Colonial Dr & Alafaya Tr 32817", { online: true });
-    expect(online).toMatchObject({ placedBy: "online", lat: 28.55, approx: false, manual: false });
+  it("looks up after saving only when connected and needed", async () => {
+    const near = { lat: 28.5, lon: -81.3, label: "the repeater" };
+    const r = await resolveCheckinLocation("Colonial Dr & Alafaya Tr 32817");
+    placeCheckinLater("c1", " Colonial Dr & Alafaya Tr 32817 ", r, near);
+    expect(api.placeCheckinLater).toHaveBeenCalledWith("c1", "Colonial Dr & Alafaya Tr 32817", near, true);
+    vi.mocked(api.placeCheckinLater).mockClear();
+    placeCheckinLater("c1", "28.5, -81.3", await resolveCheckinLocation("28.5, -81.3"), near);
+    initWorkOffline(true);
+    placeCheckinLater("c1", "Colonial Dr", r, near);
+    initWorkOffline(false);
+    expect(api.placeCheckinLater).not.toHaveBeenCalled();
   });
 
   it("says when it can't be placed", async () => {

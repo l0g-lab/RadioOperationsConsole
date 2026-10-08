@@ -8,8 +8,13 @@ import {
   WIND_DAMAGE_GUIDE,
 } from "../../types";
 import { formatContactTime, parseContactTime } from "../../utils";
-import { resolveCheckinLocation, type CheckinLocation } from "../../checkinLocation";
-import { isWorkingOffline } from "../../workOffline";
+import {
+  canLookUpOnline,
+  placeReportLater,
+  resolveCheckinLocation,
+  type CheckinLocation,
+} from "../../checkinLocation";
+import type { MapPoint } from "../../mapPoints";
 import { callSignService } from "../../callsignLookup";
 import { checkInCallSign } from "../../quickCheckin";
 import LocationPicker from "../LocationPicker";
@@ -31,6 +36,8 @@ interface Props {
   startFrom?: { checkin: Checkin; n: number } | null;
   /** For looking up a reporter checked in from here (SPOT-025). */
   qrzConfigured?: boolean;
+  /** Where the net is: typed places are looked up near it once saved (LOCRES-050). */
+  near?: MapPoint | null;
   onSaved: (newId?: string) => void;
   onCancelEdit: () => void;
 }
@@ -100,6 +107,7 @@ export default function SpotterReportForm({
   editingReport,
   startFrom = null,
   qrzConfigured = false,
+  near = null,
   onSaved,
   onCancelEdit,
 }: Props) {
@@ -129,7 +137,7 @@ export default function SpotterReportForm({
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
-      resolveCheckinLocation(locationText, { pin }).then((r) => {
+      resolveCheckinLocation(locationText, { pin, online: canLookUpOnline() }).then((r) => {
         if (!cancelled) setPreview(r.note ? r : null);
       });
     }, 250);
@@ -266,11 +274,13 @@ export default function SpotterReportForm({
     setError(null);
     const reportedAt = time.kind === "ok" ? time.iso : new Date().toISOString();
     // A point picked on the map stays; otherwise the Location box is placed
-    // as for a check-in (coordinates, mile marker, online search, ZIP).
+    // as for a check-in (coordinates, mile marker, ZIP), and what isn't
+    // placed exactly is looked up online once saved (LOCRES-050).
     let where = { lat, lon };
+    let later: CheckinLocation | null = null;
     if (!pin && locationText.trim()) {
-      const r = await resolveCheckinLocation(locationText, { online: navigator.onLine && !isWorkingOffline() });
-      where = { lat: r.lat, lon: r.lon };
+      later = await resolveCheckinLocation(locationText, { online: canLookUpOnline() });
+      where = { lat: later.lat, lon: later.lon };
     }
     const [lat2, lon2] = [where.lat, where.lon];
     if (editingReport) {
@@ -289,6 +299,7 @@ export default function SpotterReportForm({
         checkinId,
         operatorId
       );
+      if (later) placeReportLater(editingReport.id, locationText, later, near);
       resetForm();
       onSaved();
     } else {
@@ -318,7 +329,7 @@ export default function SpotterReportForm({
                 null,
                 onRoster.location_manual
               )
-            : await checkInCallSign(activityId, who, operatorId, qrzConfigured, traffic);
+            : await checkInCallSign(activityId, who, operatorId, qrzConfigured, traffic, near);
           // Open, like any traffic, until ticked Handled once it's passed on.
         }
         const id = await api.createSpotterReport(
@@ -336,6 +347,7 @@ export default function SpotterReportForm({
           linkTo,
           operatorId
         );
+        if (later) placeReportLater(id, locationText, later, near);
         resetForm();
         onSaved(id);
       } catch (e) {
@@ -552,9 +564,7 @@ export default function SpotterReportForm({
           {preview && (
             <p className={"settings-hint activity-form-note" + (preview.lat == null ? " checkin-location-unplaced" : "")}>
               Map:{" "}
-              {preview.lat == null && navigator.onLine && !isWorkingOffline()
-                ? "looked up online when you save — or pick it on the map"
-                : preview.note}
+              {preview.note}
               {preview.grid ? ` · grid ${preview.grid}` : ""}
             </p>
           )}

@@ -1,10 +1,15 @@
 import { useState } from "react";
 import * as api from "../../../api";
 import type { Activity, Checkin, QrzLookupResponse } from "../../../types";
-import { resolveCheckinLocation } from "../../../checkinLocation";
+import {
+  canLookUpOnline,
+  placeCheckinLater,
+  resolveCheckinLocation,
+  type CheckinLocation,
+} from "../../../checkinLocation";
+import type { MapPoint } from "../../../mapPoints";
 import { lookupCallsign, sourceLabels, type CallsignSource } from "../../../callsignLookup";
 import { resolveOfflineLocationAsync } from "../../../locationResolution";
-import { isWorkingOffline } from "../../../workOffline";
 import { formatContactTime, parseContactTime } from "../../../utils";
 import {
   contactTimeError,
@@ -35,6 +40,7 @@ export function CheckinEditRow({
   operatorId,
   log,
   qrzConfigured,
+  near = null,
   onSaved,
   onCancel,
 }: {
@@ -44,6 +50,8 @@ export function CheckinEditRow({
   /** A station log: contact details instead of traffic. */
   log: boolean;
   qrzConfigured: boolean;
+  /** Where the net is: a changed location is looked up near it once saved. */
+  near?: MapPoint | null;
   onSaved: () => void;
   onCancel: () => void;
 }) {
@@ -95,11 +103,14 @@ export function CheckinEditRow({
     let locationLon = checkin.location_lon;
     let locationLabel = checkin.location_label || null;
     let pinned: { lat: number; lon: number; label: string | null } | null = null;
+    // A changed location not placed exactly here is looked up online once saved.
+    let later: CheckinLocation | null = null;
     // A changed location is sorted again, as when checking in. A spot placed by
     // hand is never moved by it (CIMAP-003); an automatic one follows, or stays
     // put if the new text can't be placed.
     if (location.trim() !== startLocation.trim()) {
-      const r = await resolveCheckinLocation(location, { online: navigator.onLine && !isWorkingOffline() });
+      const r = await resolveCheckinLocation(location, { online: canLookUpOnline() });
+      later = checkin.location_manual ? null : r;
       address = r.address;
       qth = r.qth;
       if (r.manual && r.lat != null && r.lon != null) {
@@ -150,6 +161,7 @@ export function CheckinEditRow({
     );
     // Typed coordinates or a mile marker: placed by hand.
     if (pinned) await api.setCheckinLocationCoords(checkin.id, pinned.lat, pinned.lon, pinned.label);
+    else if (later) placeCheckinLater(checkin.id, location, later, near);
     onSaved();
   }
 

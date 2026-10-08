@@ -10,6 +10,7 @@ import NotStartedBanner from "../lifecycle/NotStartedBanner";
 import ClosedBanner from "../lifecycle/ClosedBanner";
 import { isLog, isRangeCheck, isRelay, isSkywarn } from "../../activityTypes";
 import RelayWorkspace from "../relay/RelayWorkspace";
+import { useLocationPlaced } from "../../checkinLocation";
 
 interface Props {
   activities: Activity[];
@@ -81,6 +82,11 @@ export default function CheckinsTab({
       .then(setCheckins)
       .catch(() => setCheckins([]));
   }
+
+  // A check-in looked up after saving has been put on the map.
+  useLocationPlaced(selectedActivityId, () => {
+    refreshCheckins();
+  });
 
   useEffect(() => {
     if (selectedActivityId) {
@@ -217,6 +223,7 @@ export default function CheckinsTab({
               activityFrequency={focusedActivity.frequency}
               rangeCheck={rangeCheck}
               repeater={repeater}
+              near={distanceFrom}
             />
           )}
 

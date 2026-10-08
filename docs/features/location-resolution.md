@@ -37,8 +37,8 @@ stored, shown, and typed, so every feature agrees.
      table bundled with the application;
   4. the center of a grid square, by Maidenhead math.
 - **LOCRES-002:** The shared resolver MUST NOT make network requests. Online
-  geocoding is a separate, explicit add-on the caller chooses to attempt when
-  the resolver finds nothing.
+  lookup is a separate step, run after saving for what the resolver couldn't
+  place exactly (`LOCRES-050`).
 - **LOCRES-003:** Each resolved point SHOULD carry how it was derived (typed,
   QRZ, ZIP, grid) so the interface can present estimates as estimates.
 - **LOCRES-004:** The bundled ZIP table MUST load lazily and be cached after
@@ -101,6 +101,52 @@ stored, shown, and typed, so every feature agrees.
   same map picker used elsewhere, in addition to text entry.
 - **LOCRES-041:** The APRS-IS area last used SHOULD be remembered across tab
   switches.
+
+## Looking places up online
+
+Typed locations (an address, a town, a cross street such as "sw 152st & sw
+137ave miami fl") that can't be placed exactly offline are looked up online.
+The free map services this uses are shared, so the lookup asks as little of
+them as it can.
+
+- **LOCRES-050:** A check-in's or spotter report's typed location that isn't
+  placed exactly offline (by a pin, coordinates, a mile marker, a typed grid
+  square, or QRZ's exact point) MUST be looked up online after it's saved,
+  never before: saving MUST NOT wait on the internet. Until then it keeps
+  any offline estimate (a ZIP centre). When found, it MUST be placed and the
+  roster or reports list refreshed, unless meanwhile it was placed by hand
+  or its location was changed. A grid square from a call-sign lookup stays;
+  one worked out from the old point follows the new one. Nothing is looked
+  up offline, or while typing.
+- **LOCRES-051:** Shorthand MUST be read as map data names streets:
+  directions ("sw" → Southwest), street types ("st", "ave", "rd", "ter", and
+  so on), and a number before a street type as an ordinal ("152 st",
+  "152st" → 152nd Street). A house number or highway number ("US 1") stays a
+  number.
+- **LOCRES-052:** Two streets joined by "&", "and", "@", "at", or "/" are a
+  cross street, with an optional town after the second (after a comma, or
+  after its street type). It MUST be placed where the streets cross: from
+  the two streets' shapes, worked out on this computer, looking again
+  closer to where the streets look likely to meet when a long street's
+  crossing piece didn't come back; then, if that finds nothing, by asking
+  Overpass; then by a plain search. Street names match whichever way map
+  data spells them, including alternate names ("Douglas Road" for
+  "Southwest 37th Avenue").
+- **LOCRES-053:** Searches MUST stay near the net first: within 40 km of its
+  repeater, else net control, or of a typed town; then anywhere in the US.
+  Without a town or a net location a cross street isn't searched for, since
+  a street name alone matches across the country.
+- **LOCRES-054:** A found place MUST say how exact it is: an address or a
+  cross street is exact; somewhere along a street, a town's centre, or an
+  area's centre is approximate, and its map label MUST say so.
+- **LOCRES-055:** The lookup MUST ask Nominatim at most once a second, and
+  remember what it found until cleared in Settings → Storage ("Looked-up
+  places"), so the same address or corner is asked once. A place not found
+  MUST be remembered for a day, and nothing when a service failed to answer
+  (it's asked again next time).
+- **LOCRES-056:** Reading what's typed, matching street names, and working
+  out where streets cross MUST NOT need the network, so downloaded street
+  data can use them offline later.
 
 ## Acceptance examples
 

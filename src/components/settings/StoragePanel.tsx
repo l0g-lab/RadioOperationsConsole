@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "../../api";
 import { clearTileCache, tileCacheUsage } from "../../offlineTileLayer";
 import type { StorageItem, StorageItemId } from "../../types";
-import { ArchiveRestore, BookUser, Download, Map as MapIcon, Milestone, type LucideIcon } from "lucide-react";
+import { ArchiveRestore, BookUser, Download, Map as MapIcon, MapPin, Milestone, type LucideIcon } from "lucide-react";
 
 type RowId = StorageItemId | "map-tiles";
 
@@ -49,6 +49,15 @@ const ROWS: RowDef[] = [
     unit: ["road", "roads"],
     about: "Mile-marker roads you've updated from the Florida DOT.",
     consequence: "Mile-marker lookup goes back to the copy built into the app, which may be older.",
+  },
+  {
+    id: "looked-up-places",
+    icon: MapPin,
+    label: "Looked-up places",
+    unit: ["file", "files"],
+    about:
+      "Addresses, towns and cross streets already found online, so each is looked up once and the next check-in from the same place is placed at once.",
+    consequence: "Places will be looked up online again as they're entered.",
   },
   {
     id: "partial-downloads",

@@ -5,8 +5,12 @@
  * keeps (address, QTH, grid square, map position), so nothing is lost while
  * the form asks for one thing.
  */
+import { useEffect } from "react";
+import { listen } from "@tauri-apps/api/event";
 import * as api from "./api";
 import { parseCoords } from "./geo";
+import type { MapPoint } from "./mapPoints";
+import { isWorkingOffline } from "./workOffline";
 import { gridSquareToLatLon, latLonToGridSquare } from "./grid";
 import { resolveOfflineLocationAsync } from "./locationResolution";
 
@@ -25,7 +29,6 @@ export type PlacedBy =
   | "coords" // typed GPS coordinates
   | "mile_marker"
   | "qrz" // the call-sign lookup's exact point
-  | "online" // the online map search
   | "zip" // a ZIP code's centre
   | "grid" // a grid square's centre
   | null;
@@ -45,6 +48,13 @@ export interface CheckinLocation {
   approx: boolean;
   /** Where it lands, in words, e.g. "the centre of ZIP 32817". */
   note: string;
+  /**
+   * The typed text should be looked up online once saved (LOCRES-050): nothing
+   * placed it exactly here. `placeLater` does it when connected.
+   */
+  lookUp: boolean;
+  /** The grid square came from the call-sign lookup, so a lookup leaves it. */
+  keepGrid: boolean;
 }
 
 /** A Maidenhead grid square typed on its own, e.g. "EL98" or "el98hm". */
@@ -60,17 +70,22 @@ const NOTES: Record<Exclude<PlacedBy, null>, string> = {
   coords: "the coordinates typed",
   mile_marker: "the mile marker",
   qrz: "QRZ's exact point for this station",
-  online: "found by the online map search",
   zip: "the centre of the ZIP code — approximate",
   grid: "the centre of the grid square — approximate",
 };
 
+/** Connected, and not working offline: online lookups can run. */
+export const canLookUpOnline = () => navigator.onLine && !isWorkingOffline();
+
 /**
  * Sorts the Location box into a check-in's fields. Best first: a pin dropped
  * on the map; typed coordinates; a mile marker; a grid square typed on its own;
- * the lookup's exact point (if the box still holds what it found); the online
- * map search (only when `online`); a ZIP code's centre; the lookup's grid
- * square. A grid square is worked out from the position when there isn't one.
+ * the lookup's exact point (if the box still holds what it found); a ZIP
+ * code's centre; the lookup's grid square. A grid square is worked out from
+ * the position when there isn't one. All offline: anything not placed
+ * exactly is marked `lookUp`, to be looked up online after saving
+ * (`placeLater`), so saving never waits on the internet. `online` only
+ * changes what the note says.
  */
 export async function resolveCheckinLocation(
   text: string,
@@ -90,6 +105,8 @@ export async function resolveCheckinLocation(
   const base = {
     address: typed && !asGridSquare(typed) && !parseCoords(typed) ? typed : null,
     qth: fromLookup ? lookup.qth : null,
+    lookUp: false,
+    keepGrid: fromLookup && !!lookup.grid,
   };
   const place = (
     lat: number,
@@ -127,10 +144,9 @@ export async function resolveCheckinLocation(
 
   if (fromLookup && lookup.exact) return place(lookup.exact.lat, lookup.exact.lon, "qrz");
 
-  if (online && typed) {
-    const found = await api.geocodeLocation(typed).catch(() => null);
-    if (found) return place(found.lat, found.lon, "online");
-  }
+  // From here on it's looked up online after saving, when connected.
+  base.lookUp = !!typed;
+  const later = online ? " — looked up exactly online once saved" : "";
 
   const offline = await resolveOfflineLocationAsync({
     address: typed || null,
@@ -138,11 +154,13 @@ export async function resolveCheckinLocation(
     gridSquare: fromLookup ? lookup.grid : null,
   });
   if (offline?.source === "zip_centroid") {
-    return place(offline.lat, offline.lon, "zip", { note: `the centre of ZIP ${offline.sourceText} — approximate` });
+    return place(offline.lat, offline.lon, "zip", {
+      note: `the centre of ZIP ${offline.sourceText} — approximate${later}`,
+    });
   }
   if (offline?.source === "grid_square") {
     return place(offline.lat, offline.lon, "grid", {
-      note: `the centre of grid square ${offline.sourceText} — approximate`,
+      note: `the centre of grid square ${offline.sourceText} — approximate${later}`,
     });
   }
 
@@ -157,10 +175,45 @@ export async function resolveCheckinLocation(
     approx: false,
     note: typed
       ? online
-        ? "not found — pick it on the map"
-        : "can't be placed offline — pick it on the map, or it's looked up when you're online"
+        ? "looked up online once saved — or pick it on the map"
+        : "can't be placed offline — pick it on the map"
       : "",
   };
+}
+
+/**
+ * After saving: looks a check-in's typed location up online in the
+ * background, near the net (LOCRES-050). The roster updates when it lands
+ * (`useLocationPlaced`). Nothing to do when it was placed exactly, or offline.
+ */
+export function placeCheckinLater(checkinId: string, text: string, loc: CheckinLocation, near: MapPoint | null) {
+  if (!loc.lookUp || !canLookUpOnline()) return;
+  api.placeCheckinLater(checkinId, text.trim(), near, !loc.keepGrid).catch(() => {});
+}
+
+/** The same for a spotter report's Location box. */
+export function placeReportLater(reportId: string, text: string, loc: CheckinLocation, near: MapPoint | null) {
+  if (!loc.lookUp || !canLookUpOnline()) return;
+  api.placeReportLater(reportId, text.trim(), near).catch(() => {});
+}
+
+/** Calls `onPlaced` when a background lookup puts one of this activity's entries on the map. */
+export function useLocationPlaced(activityId: string | null, onPlaced: () => void) {
+  useEffect(() => {
+    if (!activityId) return;
+    let unlisten: (() => void) | null = null;
+    let gone = false;
+    listen<string>("location-placed", (e) => {
+      if (e.payload === activityId) onPlaced();
+    })
+      .then((u) => (gone ? u() : (unlisten = u)))
+      .catch(() => {});
+    return () => {
+      gone = true;
+      unlisten?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityId]);
 }
 
 /** The roster's Location: the town or QTH, else the address, else the map label. */

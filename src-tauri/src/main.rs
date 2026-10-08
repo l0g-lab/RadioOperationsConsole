@@ -8,6 +8,7 @@ mod connectors;
 mod datapacks;
 mod db;
 mod events;
+mod geocode;
 mod ics214;
 mod relay;
 mod net;
@@ -159,6 +160,8 @@ fn main() {
             commands::lookup_qrz_callsign,
             commands::check_qrz_login,
             commands::geocode_location,
+            commands::place_checkin_later,
+            commands::place_report_later,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

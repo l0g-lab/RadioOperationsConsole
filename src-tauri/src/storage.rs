@@ -1,5 +1,6 @@
 //! What the application keeps on this computer besides its records, and
 //! clearing it (STORE-001–STORE-007): the call-sign files, updated road data,
+//! places looked up online,
 //! unfinished downloads, and "before restore" safety copies. The map tile
 //! cache lives in the webview and is measured and cleared there.
 
@@ -24,10 +25,11 @@ pub struct Dirs<'a> {
     pub restore_copies: &'a Path,
 }
 
-pub const ITEM_IDS: [&str; 5] = [
+pub const ITEM_IDS: [&str; 6] = [
     "callsigns-amateur",
     "callsigns-gmrs",
     "road-data",
+    "looked-up-places",
     "partial-downloads",
     "restore-copies",
 ];
@@ -53,6 +55,7 @@ fn files_for(id: &str, dirs: &Dirs) -> Option<Vec<PathBuf>> {
             .iter()
             .flat_map(|d| existing(dirs.datapacks.join(format!("{}.json", d.id))))
             .collect(),
+        "looked-up-places" => existing(dirs.datapacks.join(crate::geocode::CACHE_FILE)),
         "partial-downloads" => names_in(dirs.datapacks, |n| {
             n.ends_with(".part") || n.ends_with(".part.meta")
         }),

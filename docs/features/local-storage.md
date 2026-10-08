@@ -25,8 +25,9 @@ handing the computer to someone else.
 
 - **STORE-001:** Settings MUST list what the application keeps on this computer
   beyond its records — cached map tiles, the amateur and GMRS call-sign files,
-  updated mile-marker road data, unfinished downloads, and "before restore"
-  safety copies — in the one Offline data list (`SET-030`), each once.
+  updated mile-marker road data, places looked up online (`LOCRES-055`),
+  unfinished downloads, and "before restore" safety copies — in the one
+  Offline data list (`SET-030`), each once.
 - **STORE-002:** Each item MUST show its size and how many files or tiles it
   holds, and the list MUST show the total of everything. An item with nothing
   stored is left out, except map tiles (which say "Nothing stored"); the

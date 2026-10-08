@@ -98,8 +98,9 @@ fallback for check-ins that have location text but no grid square.
   a grid square, or GPS coordinates, and on saving sort it into the check-in's
   separate fields (`QRZ-027`), best first: a spot picked on the map; typed
   coordinates; a mile marker; a grid square typed on its own; the lookup's
-  exact point (if the box still holds what the lookup found); the online map
-  search, only when online; a ZIP code's centre; the lookup's grid square.
+  exact point (if the box still holds what the lookup found); a ZIP code's
+  centre; the lookup's grid square. What isn't placed exactly is looked up
+  online once saved (`LOCRES-050`–`LOCRES-055`).
   When there's no grid square, it MUST be worked out from the map position.
   A line under the box MUST say where the station will land, or that it
   can't be placed and how to place it. A spot picked on the map, typed
