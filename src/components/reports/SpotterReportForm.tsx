@@ -55,6 +55,7 @@ export function reporterSuggestions(typed: string, checkins: Checkin[]): Checkin
   if (!t) return [];
   const stations = new Map<string, Checkin>();
   for (const c of checkins) {
+    if (c.station_kind === "net_control") continue;
     const call = c.call_sign.toUpperCase();
     if (!stations.has(call)) stations.set(call, c);
   }
@@ -71,6 +72,7 @@ export function reporterSuggestions(typed: string, checkins: Checkin[]): Checkin
 export function linkedCheckin(reporter: string, checkins: Checkin[]): Checkin | null {
   const r = reporter.trim().toUpperCase();
   if (!r) return null;
+  checkins = checkins.filter((c) => c.station_kind !== "net_control");
   return (
     checkins.find((c) => c.call_sign.toUpperCase() === r) ??
     checkins.find((c) => checkinLabel(c).toUpperCase() === r) ??

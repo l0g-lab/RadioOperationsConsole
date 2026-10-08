@@ -224,6 +224,7 @@ export default function CheckinsTab({
               rangeCheck={rangeCheck}
               repeater={repeater}
               near={distanceFrom}
+              netControlCall={focusedOperator?.call_sign ?? ""}
             />
           )}
 

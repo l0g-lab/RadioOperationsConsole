@@ -162,8 +162,9 @@ export function CheckinEditRow({
       locationLat,
       locationLon,
       locationLabel,
-      // Anything entered as traffic means the station has traffic.
-      traffic.trim() !== "",
+      // Anything entered as traffic means the station has traffic; a note
+      // from net control is only a note (NETOPS-060).
+      checkin.station_kind !== "net_control" && traffic.trim() !== "",
       traffic.trim() || null,
       log ? toContactDetails(contact) : null,
       !log && at.trim() !== startAt && atParsed.kind === "ok" ? atParsed.iso : null,

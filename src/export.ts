@@ -218,7 +218,7 @@ export function checkinsToCsv(checkins: Checkin[]): string {
       c.power,
       c.antenna,
       c.notes,
-      c.station_kind ? stationKindLabel(c.station_kind) : "",
+      c.station_kind === "net_control" ? "Net control" : c.station_kind ? stationKindLabel(c.station_kind) : "",
       c.cross_street,
     ]);
   }

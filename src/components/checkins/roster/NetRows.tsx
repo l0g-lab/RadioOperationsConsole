@@ -60,6 +60,23 @@ export function NetRow({
   /** Takes a report from this station (SKYWARN, while the net is open). */
   onReport?: () => void;
 }) {
+  // A note from net control (NETOPS-060): the note, not traffic or a station.
+  if (c.station_kind === "net_control") {
+    return (
+      <div className={"checkin-row checkin-row-ncs" + (selected ? " selected" : "")} onClick={onSelect}>
+        <span className="checkin-row-call">{c.call_sign}</span>
+        <span className="checkin-row-name checkin-row-ncs-label">Net control</span>
+        <span />
+        <span />
+        <TimeCell at={c.checked_in_at} />
+        <span className="checkin-row-traffic">
+          <span className="checkin-row-ncs-note" title={c.traffic || undefined}>
+            {c.traffic}
+          </span>
+        </span>
+      </div>
+    );
+  }
   return (
     <div className={"checkin-row" + (selected ? " selected" : "")} onClick={onSelect}>
       <span className="checkin-row-call">{c.call_sign}</span>

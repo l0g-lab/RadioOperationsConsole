@@ -22,6 +22,12 @@ top. Each release's section here is also its description on the
 - **Type a saved place's name** ("County EOC") into any location box to put
   it there.
 
+- **Notes from net control.** On a net, type into Traffic with no call sign
+  and press Enter ("Save note") to log a note from net control: a bulletin
+  read, a warning issued, a switch to a backup repeater. It's a line on the
+  roster and the ICS 309 at the time it's saved, from your call sign with To
+  left blank, but it isn't counted as a check-in or a station and never
+  needs Handled.
 - **Says when a location couldn't be placed.** If the lookup after saving
   finds nothing, the check-in or report gets a crossed-out pin beside its
   location, and hovering says to pick the spot on the map, instead of it

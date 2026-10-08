@@ -3377,6 +3377,29 @@ button.online-pill-working-offline:hover {
   font-size: calc(12px * var(--font-scale));
 }
 
+/* A note from net control (NetRows.tsx, NETOPS-060): plain text, not traffic. */
+.checkin-row-ncs-label {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.checkin-row-ncs-note {
+  flex: 1;
+  min-width: 8em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+  font-size: calc(14px * var(--font-scale));
+  line-height: 1.08;
+}
+
+.checkin-entry-note-hint {
+  align-self: center;
+}
+
 .checkin-row-traffic .traffic-handled {
   flex-shrink: 0;
   margin: 0;

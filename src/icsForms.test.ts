@@ -155,6 +155,14 @@ describe("comms309Entries", () => {
     expect(entries[0].at).toBeLessThan(entries[1].at);
   });
 
+  it("a note from net control is its own line, from net control with To left blank (NETOPS-060)", () => {
+    const [entry] = comms309Entries(
+      [checkin({ call_sign: "w0lab", station_kind: "net_control", has_traffic: false, traffic: "Switched to backup repeater" })],
+      "K4NCS"
+    );
+    expect([entry.from, entry.to, entry.message]).toEqual(["W0LAB", "", "Switched to backup repeater"]);
+  });
+
   it("skips a check-in with an unparseable time rather than throwing", () => {
     const entries = comms309Entries([checkin({ checked_in_at: "not a date" })], "K4NCS");
     expect(entries).toHaveLength(0);

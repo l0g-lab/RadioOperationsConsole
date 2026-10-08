@@ -59,6 +59,8 @@ interface Props {
   repeater?: { lat: number; lon: number } | null;
   /** Where the net is (its repeater, else net control): typed places are looked up near it. */
   near?: MapPoint | null;
+  /** Net control's call sign: a note with no call sign is logged from it (NETOPS-060). */
+  netControlCall?: string;
 }
 
 type QrzStatus = "idle" | "loading" | "found" | "not_found" | "missing_file" | "error";
@@ -90,6 +92,7 @@ export default function CheckinEntryForm({
   rangeCheck = false,
   repeater = null,
   near = null,
+  netControlCall = "",
 }: Props) {
   const [callSign, setCallSign] = useState("");
   const [name, setName] = useState("");
@@ -256,9 +259,42 @@ export default function CheckinEntryForm({
     autoFilledRef.current = null;
   }
 
+  // On a net, traffic with no call sign is a note from net control (NETOPS-060).
+  const noteFromNetControl = !log && !rangeCheck && !callSign.trim() && !!traffic.trim();
+  const ncsCall = netControlCall.trim().toUpperCase() || "NET CONTROL";
+
+  /**
+   * Logs a note from net control: a line of its own on the roster and the
+   * ICS 309, at the time it's saved, that isn't a check-in, a station, or
+   * traffic to pass (NETOPS-060).
+   */
+  async function saveNetControlNote() {
+    const id = await api.createCheckin(
+      activityId,
+      ncsCall,
+      null,
+      null,
+      null,
+      null,
+      operatorId,
+      null,
+      null,
+      null,
+      false,
+      traffic.trim(),
+      { station_kind: "net_control" }
+    );
+    setTraffic("");
+    onSaved(id);
+    if (rapidEntryMode) callSignRef.current?.focus();
+  }
+
   async function handleSaveCheckin() {
     const call = callSign.trim();
-    if (!call) return;
+    if (!call) {
+      if (noteFromNetControl) await saveNetControlNote();
+      return;
+    }
     if (rangeCheck) return saveRangeReport(call);
     if (log && contactTimeError(contact)) {
       setContactSaveRefused(true);
@@ -403,7 +439,9 @@ export default function CheckinEntryForm({
             }}
           />
         </div>
-        <button onClick={handleSaveCheckin}>{log ? "Save contact" : "Save check-in"}</button>
+        <button onClick={handleSaveCheckin}>
+          {log ? "Save contact" : noteFromNetControl ? "Save note" : "Save check-in"}
+        </button>
       </div>
       {!rangeCheck && (
         <div className="checkin-entry-row checkin-entry-row-secondary">
@@ -486,7 +524,13 @@ export default function CheckinEntryForm({
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSaveCheckin();
             }}
+            title="What the station has to pass. With no call sign, a note from net control for the log."
           />
+          {noteFromNetControl && (
+            <span className="settings-hint checkin-entry-note-hint" role="status">
+              No call sign: saving logs this as a note from net control ({ncsCall}).
+            </span>
+          )}
         </div>
       )}
       {qrzStatus === "found" && lookupSource !== "qrz" && fileLacksStreet && (

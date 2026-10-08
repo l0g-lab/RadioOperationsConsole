@@ -294,4 +294,37 @@ describe("CheckinEntryForm traffic", { timeout: 10_000 }, () => {
     await user.type(call, "K4ABC{Enter}");
     expect(vi.mocked(api.createCheckin).mock.calls[1].slice(10, 12)).toEqual([false, null]);
   });
+
+  it("logs a note from net control when there's no call sign (NETOPS-060)", async () => {
+    const user = userEvent.setup();
+    render(
+      <CheckinEntryForm
+        activityId="a1"
+        operatorId="op1"
+        qrzConfigured={true}
+        offlineCallsAvailable={false}
+        rapidEntryMode={false}
+        focusCallSignSignal={0}
+        onSaved={() => {}}
+        netControlCall="w0lab"
+      />
+    );
+    const traffic = screen.getByLabelText("Traffic");
+    await user.type(traffic, "Tornado warning issued for Miami-Dade");
+    expect(screen.getByText(/saving logs this as a note from net control \(W0LAB\)/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save note" })).toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    const args = vi.mocked(api.createCheckin).mock.calls[0];
+    // From net control, not traffic to pass, marked as net control's own.
+    expect([args[1], args[10], args[11], args[12]]).toEqual([
+      "W0LAB",
+      false,
+      "Tornado warning issued for Miami-Dade",
+      { station_kind: "net_control" },
+    ]);
+    expect(traffic).toHaveValue("");
+    // Nothing typed at all: nothing saved.
+    await user.click(screen.getByRole("button", { name: "Save check-in" }));
+    expect(api.createCheckin).toHaveBeenCalledTimes(1);
+  });
 });

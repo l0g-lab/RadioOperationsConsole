@@ -208,6 +208,10 @@ pub struct PastContact {
     pub frequency: String,
 }
 
+/// Leaves out net control's own lines (notes logged with no station,
+/// NETOPS-060): they're not check-ins, stations, or traffic.
+const STATIONS_ONLY: &str = "coalesce(station_kind,'') <> 'net_control'";
+
 /// Columns `map_alert` reads, in order.
 const ALERT_COLUMNS: &str = "id, nws_id, event, headline, area_desc, severity, effective, ends, attached_at";
 
@@ -515,7 +519,8 @@ impl Repository {
     const ACTIVITY_COLS: &'static str = "id, title, type, coalesce(scheduled_at,''), coalesce(frequency,''), coalesce(location_label,''), location_lat, location_lon, state, coalesce(opened_at,''), coalesce(closed_at,''), coalesce(conclusion,''), coalesce(repeater_name,''), repeater_lat, repeater_lon, coalesce(operator_id,''), coalesce(event_id,''), coalesce((SELECT name FROM events WHERE events.id = activities.event_id),''), \
         CASE WHEN type = 'relay' \
             THEN (SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = activities.id AND m.voided_at IS NULL) \
-            ELSE (SELECT COUNT(*) FROM checkins c WHERE c.activity_id = activities.id AND c.voided_at IS NULL) END";
+            ELSE (SELECT COUNT(*) FROM checkins c WHERE c.activity_id = activities.id AND c.voided_at IS NULL \
+                AND coalesce(c.station_kind,'') <> 'net_control') END";
 
     fn map_activity(r: &rusqlite::Row) -> rusqlite::Result<Activity> {
         Ok(Activity {
@@ -793,6 +798,7 @@ impl Repository {
                     coalesce(nullif(c.frequency,''), a.frequency, '') \
              FROM checkins c JOIN activities a ON a.id = c.activity_id \
              WHERE UPPER(c.call_sign) = UPPER(?1) AND c.voided_at IS NULL \
+                AND coalesce(c.station_kind,'') <> 'net_control' \
              ORDER BY c.checked_in_at DESC",
         )?;
         let rows: Vec<PastContact> = stmt
@@ -1332,7 +1338,7 @@ impl Repository {
         let (first, last): (Option<String>, Option<String>) = self
             .conn
             .query_row(
-                "SELECT MIN(checked_in_at), MAX(checked_in_at) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL",
+                &format!("SELECT MIN(checked_in_at), MAX(checked_in_at) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND {STATIONS_ONLY}"),
                 params![id],
                 |r| Ok((r.get(0)?, r.get(1)?)),
             )
@@ -1373,15 +1379,21 @@ impl Repository {
             opened_at: a.opened_at,
             closed_at: a.closed_at,
             conclusion: a.conclusion,
-            checkins: one("SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL"),
-            unique_stations: one("SELECT COUNT(DISTINCT UPPER(call_sign)) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL"),
+            checkins: one(&format!("SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND {STATIONS_ONLY}")),
+            unique_stations: one(&format!(
+                "SELECT COUNT(DISTINCT UPPER(call_sign)) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND {STATIONS_ONLY}"
+            )),
             removed_checkins: one("SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NOT NULL"),
             first_checkin_at: first.unwrap_or_default(),
             last_checkin_at: last.unwrap_or_default(),
             hazards,
             spotter_reports: one("SELECT COUNT(*) FROM spotter_reports WHERE activity_id = ?1 AND voided_at IS NULL"),
-            traffic_items: one("SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND has_traffic = 1"),
-            open_traffic_items: one("SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND has_traffic = 1 AND traffic_handled = 0"),
+            traffic_items: one(&format!(
+                "SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND has_traffic = 1 AND {STATIONS_ONLY}"
+            )),
+            open_traffic_items: one(&format!(
+                "SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND has_traffic = 1 AND traffic_handled = 0 AND {STATIONS_ONLY}"
+            )),
             relay_messages: one("SELECT COUNT(*) FROM relay_messages WHERE activity_id = ?1 AND voided_at IS NULL"),
             held_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND NOT {RELAY_HAS_OUTCOME}")),
             unpassed_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND {RELAY_LAST_OUTCOME} = 'not_passed'")),
@@ -1956,6 +1968,24 @@ mod lifecycle_tests {
         assert_eq!(r.get_activity(&id).unwrap().activity_type, "other");
         r.update_activity(&id, "Storm Net", "directed_net", None, None).unwrap();
         assert_eq!(r.get_activity(&id).unwrap().activity_type, "directed_net");
+    }
+
+    #[test]
+    fn net_control_notes_are_not_check_ins_stations_or_traffic() {
+        let r = repo();
+        let id = r.create_activity("Net", "directed_net", None, None).unwrap();
+        let none = ContactDetails::default();
+        let ncs = ContactDetails { station_kind: Some("net_control".into()), ..Default::default() };
+        r.create_checkin(&id, "W4ABC", None, None, None, None, None, None, None, None, true, Some("Hail"), &none).unwrap();
+        r.create_checkin(&id, "W0LAB", None, None, None, None, None, None, None, None, false, Some("Tornado warning issued"), &ncs)
+            .unwrap();
+        r.create_checkin(&id, "W0LAB", None, None, None, None, None, None, None, None, false, Some("Switched to backup repeater"), &ncs)
+            .unwrap();
+        let s = r.activity_summary(&id).unwrap();
+        assert_eq!((s.checkins, s.unique_stations, s.traffic_items, s.open_traffic_items), (1, 1, 1, 1));
+        assert_eq!(r.list_checkins(&id).unwrap().len(), 3, "they're still on the roster");
+        assert_eq!(r.list_activities().unwrap().into_iter().find(|a| a.id == id).unwrap().record_count, 1);
+        assert_eq!(r.station_history("W0LAB").unwrap().count, 0, "net control's notes aren't contacts");
     }
 
     #[test]

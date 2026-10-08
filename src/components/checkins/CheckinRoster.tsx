@@ -87,6 +87,8 @@ export default function CheckinRoster({
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const selectedCheckin = checkins.find((c) => c.id === selectedCheckinId) ?? null;
+  // A note from net control isn't a station: no location or call-sign lookup (NETOPS-060).
+  const selectedIsNote = selectedCheckin?.station_kind === "net_control";
   const selectedIsGmrs = selectedCheckin
     ? callSignService(selectedCheckin.call_sign) === "gmrs"
     : false;
@@ -391,7 +393,7 @@ export default function CheckinRoster({
                   {...row}
                   onTrafficHandled={(handled) => handleTrafficHandled(c.id, handled)}
                   reports={skywarn ? (reportsByCheckin?.get(c.id) ?? []) : undefined}
-                  onReport={skywarn && !readOnly && onReport ? () => onReport(c) : undefined}
+                  onReport={skywarn && !readOnly && onReport && c.station_kind !== "net_control" ? () => onReport(c) : undefined}
                 />
               );
             })}
@@ -403,11 +405,13 @@ export default function CheckinRoster({
           !editingCheckinId && (
             <div className="inline-form checkin-roster-actions">
               <button onClick={() => startEdit(selectedCheckin)}>Edit</button>
-              <button onClick={() => setShowLocationPicker(true)}>
-                {selectedCheckin.location_lat != null ? "Edit location" : "Set location"}
-              </button>
+              {!selectedIsNote && (
+                <button onClick={() => setShowLocationPicker(true)}>
+                  {selectedCheckin.location_lat != null ? "Edit location" : "Set location"}
+                </button>
+              )}
               {!readOnly && <button onClick={() => startRemove(selectedCheckin.id)}>Remove</button>}
-              {(qrzConfigured || offlineCallsAvailable || selectedIsGmrs) && (
+              {!selectedIsNote && (qrzConfigured || offlineCallsAvailable || selectedIsGmrs) && (
                 <button
                   onClick={handleLookupSelectedCheckin}
                   disabled={checkinLookupStatus === "loading"}

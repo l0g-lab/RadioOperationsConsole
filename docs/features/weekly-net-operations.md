@@ -209,6 +209,20 @@ Earlier versions kept traffic as free-standing items in a Traffic tab. That tab
 was removed; items recorded that way remain in the database and appear in the
 History.
 
+## Notes from net control
+
+- **NETOPS-060:** On a net, Traffic typed with no call sign MUST be saved as
+  a note from net control (the net's operator's call sign, else "NET
+  CONTROL"), at the time it's saved: a bulletin read, a warning issued, a
+  switch to a backup repeater. The form MUST say so before saving, and its
+  Save button reads "Save note". On the roster it's a line of its own marked
+  "Net control", with the note where traffic would be; it can be edited or
+  removed like any line, but has no location, call-sign lookup, Handled box,
+  or (on a SKYWARN net) Report button. It's never traffic to pass, and isn't
+  counted as a check-in, a station, or traffic in the summary, the activity
+  list, the map, or a station's "worked before". On the ICS 309 it's its own
+  line, from net control, with To left blank and the note as the message.
+
 ## Explicitly out of scope for this slice
 
 - Opening/closing scripts (tracked against baseline steps 3, 4, 9, 10).

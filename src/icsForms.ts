@@ -101,9 +101,9 @@ export interface Comms309Input {
   entries: Comms309Entry[];
 }
 
-/** Just the station's traffic, so the line stays short; blank when it has none. */
+/** Just the station's traffic, so the line stays short; blank when it has none. A note from net control is its note. */
 function checkinMessage(c: Checkin): string {
-  return c.has_traffic ? c.traffic.trim() : "";
+  return c.has_traffic || c.station_kind === "net_control" ? c.traffic.trim() : "";
 }
 
 /**
@@ -116,10 +116,13 @@ export function comms309Entries(checkins: Checkin[], netControl: string): Comms3
   for (const c of checkins) {
     const d = toDate(c.checked_in_at);
     if (!d) continue;
+    // A note from net control is from net control to no one in particular:
+    // the To column is left blank (NETOPS-060).
+    const ncs = c.station_kind === "net_control";
     out.push({
       at: d.getTime(),
       from: c.call_sign.toUpperCase(),
-      to: netControl,
+      to: ncs ? "" : netControl,
       message: checkinMessage(c),
     });
   }

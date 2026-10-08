@@ -101,6 +101,8 @@ export function mapPins(checkins: Checkin[], rangeCheck: boolean): { pins: Resol
   const stations = new Set<string>();
   const placed = new Set<string>();
   for (const c of newestFirst) {
+    // Net control's own notes aren't stations (NETOPS-060).
+    if (c.station_kind === "net_control") continue;
     const call = c.call_sign.toUpperCase();
     stations.add(rangeCheck ? c.id : call);
     if (c.location_lat == null || c.location_lon == null) continue;

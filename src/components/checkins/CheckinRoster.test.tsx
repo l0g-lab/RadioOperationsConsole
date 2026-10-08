@@ -353,6 +353,36 @@ describe("CheckinRoster as a net", () => {
     expect(zip.closest("[title]")?.getAttribute("title")).toMatch(/Placed by: the centre of the ZIP code — approximate/);
   });
 
+  it("shows a note from net control as a note, not traffic or a station (NETOPS-060)", async () => {
+    const user = userEvent.setup();
+    const note = { ...WITH_TRAFFIC, id: "ncs", call_sign: "W0LAB", station_kind: "net_control", has_traffic: false, traffic: "Net opened" };
+    render(
+      <CheckinRoster
+        activity={NET}
+        operatorId="op1"
+        onOpenExports={() => {}}
+        checkins={[note]}
+        qrzConfigured={true}
+        offlineCallsAvailable={false}
+        selectedCheckinId="ncs"
+        onSelectCheckin={() => {}}
+        onCheckinsChanged={() => {}}
+        onShowMap={() => {}}
+      />
+    );
+    expect(screen.getByText("Net opened")).toBeInTheDocument();
+    expect(screen.getByText("Net control")).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Handled" })).not.toBeInTheDocument();
+    // Selected: it can be edited or removed, but it isn't a station to place or look up.
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Set location/ })).not.toBeInTheDocument();
+    // Corrected, it stays a note.
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.type(screen.getByDisplayValue("Net opened"), " at 19:00{Enter}");
+    const args = vi.mocked(api.updateCheckin).mock.calls[0];
+    expect([args[10], args[11]]).toEqual([false, "Net opened at 19:00"]);
+  });
+
   it("corrects a check-in's traffic", async () => {
     const user = userEvent.setup();
     renderNet("t1");

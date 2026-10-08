@@ -23,7 +23,7 @@ The initial usable release covers one trusted workstation and local data store.
 - Rapid check-ins
 - Optional name and location
 - Traffic-none or traffic-listed state
-- Announcements and general notes (recorded in the net's closing notes; there is no separate log)
+- Announcements and general notes: notes from net control logged on the roster as the net goes (`NETOPS-060`), and the net's closing notes
 - Net conclusion and summary
 
 ### Emergency and exercise capability
