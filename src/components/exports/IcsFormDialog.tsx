@@ -398,7 +398,7 @@ function Form309({
             )
           }
         >
-          Save file to load
+          Save file for Winlink (Load Form 309 Data)
         </button>
         <button
           disabled={!loaded || empty}

@@ -573,7 +573,7 @@ function Editor({
                   saveFile(`${base} - ICS 214 data${pageLabel}.txt`, form214LoadFile(pages[p]), "In Winlink's ICS 214, click Load ICS 214 Data and choose it.")
                 }
               >
-                Save file to load
+                Save file for Winlink (Load ICS 214 Data)
               </button>
               <button onClick={() => copy(form214PasteLines(pages[p]), "the log lines for the form's Paste Data box")}>
                 Copy log lines (Paste Data)
