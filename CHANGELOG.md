@@ -73,7 +73,8 @@ top. Each release's section here is also its description on the
   check-in stays on its row.
 - **Times line up to the second at any zoom.** Each list's Local and UTC
   times, and the Time heading, end at the same place on every row, whatever
-  the zoom or text size.
+  the zoom or text size, and so do the clock's two lines at the top right,
+  which no longer end the UTC time with a "Z".
 
 ## [2.6.0] - 2026-10-07
 

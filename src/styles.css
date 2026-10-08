@@ -2121,10 +2121,17 @@ button.online-pill-working-offline:hover {
   font-size: calc(12px * var(--font-scale));
 }
 
+/* Local over UTC, the seconds lined up at any zoom or text size, as in the
+   lists' Time column (.checkin-row-time): a fixed-width font, and exactly
+   the 26 characters of "Local: 2026-10-08 17:45:27" wide. */
 .header-clocks-right {
   margin-left: auto;
   text-align: right;
   padding-left: 12px;
+  min-width: 26ch;
+  font-family: "Consolas", "Menlo", monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .header-activity-meta {

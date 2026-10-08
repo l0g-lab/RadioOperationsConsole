@@ -30,8 +30,9 @@ export function nowLocal(): string {
   return formatLocalParts(new Date());
 }
 
+/** The UTC time, without a "Z": it's labelled UTC wherever it's shown. */
 export function nowUtc(): string {
-  return `${formatUtcParts(new Date())} Z`;
+  return formatUtcParts(new Date());
 }
 
 /**
