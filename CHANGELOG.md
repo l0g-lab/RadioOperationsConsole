@@ -71,6 +71,9 @@ top. Each release's section here is also its description on the
   Notes (a window too narrow for every column scrolls sideways). The buttons
   above each list wrap whole instead of breaking their words, and Save
   check-in stays on its row.
+- **Times line up to the second at any zoom.** Each list's Local and UTC
+  times, and the Time heading, end at the same place on every row, whatever
+  the zoom or text size.
 
 ## [2.6.0] - 2026-10-07
 

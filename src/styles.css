@@ -1017,7 +1017,7 @@ details > summary {
 .checkin-row {
   display: grid;
   /* A net: call sign, name, location, grid, time, traffic (CIMAP-081). */
-  grid-template-columns: calc(110px * var(--font-scale)) minmax(calc(100px * var(--font-scale)), 0.9fr) minmax(calc(150px * var(--font-scale)), 1.2fr) calc(70px * var(--font-scale)) calc(180px * var(--font-scale)) minmax(calc(220px * var(--font-scale)), 2fr);
+  grid-template-columns: calc(110px * var(--font-scale)) minmax(calc(100px * var(--font-scale)), 0.9fr) minmax(calc(150px * var(--font-scale)), 1.2fr) calc(70px * var(--font-scale)) max-content minmax(calc(220px * var(--font-scale)), 2fr);
   gap: 12px;
   padding: 8px 10px;
   border-radius: 3px;
@@ -1084,14 +1084,21 @@ details > summary {
   color: var(--on-accent);
 }
 
+/* Local over UTC, the seconds lined up on every row at any zoom or text
+   size: the column is as wide as its text ("max-content" in the lists'
+   columns), and every time cell, the heading's too, is exactly the 26
+   characters of "Local: 2026-10-08 17:45:27" in its own fixed-width font,
+   so no line is ever wider than the cell and spills out of the alignment. */
 .checkin-row-time {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 26ch;
   color: var(--text-dim);
   text-align: right;
   font-size: calc(12px * var(--font-scale));
   font-family: "Consolas", "Menlo", monospace;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -1299,7 +1306,7 @@ details > summary {
 .report-row {
   display: grid;
   /* Reporter, hazard, location, grid, time, notes — as the check-in roster. */
-  grid-template-columns: minmax(calc(110px * var(--font-scale)), 0.8fr) minmax(calc(140px * var(--font-scale)), 1fr) minmax(calc(160px * var(--font-scale)), 1.3fr) calc(70px * var(--font-scale)) calc(180px * var(--font-scale)) minmax(calc(200px * var(--font-scale)), 2fr);
+  grid-template-columns: minmax(calc(110px * var(--font-scale)), 0.8fr) minmax(calc(140px * var(--font-scale)), 1fr) minmax(calc(160px * var(--font-scale)), 1.3fr) calc(70px * var(--font-scale)) max-content minmax(calc(200px * var(--font-scale)), 2fr);
   gap: 12px;
   padding: 8px 10px;
   border-radius: 3px;
@@ -1311,6 +1318,12 @@ details > summary {
 
 .report-row > span {
   min-width: 0;
+}
+
+/* Except the time, heading included, which keeps its 26 characters so the
+   seconds line up (.checkin-row-time). */
+.report-row > .checkin-row-time {
+  min-width: 26ch;
 }
 
 .report-row-columns {
@@ -1889,7 +1902,7 @@ details > summary {
      notes, time, details. RST is wide enough for "599 / 599". */
   grid-template-columns:
     calc(100px * var(--font-scale)) minmax(calc(80px * var(--font-scale)), 1fr) minmax(calc(100px * var(--font-scale)), 1fr) calc(80px * var(--font-scale)) calc(90px * var(--font-scale)) calc(64px * var(--font-scale)) calc(96px * var(--font-scale)) calc(70px * var(--font-scale)) minmax(calc(90px * var(--font-scale)), 1fr)
-    minmax(calc(120px * var(--font-scale)), 1.5fr) calc(180px * var(--font-scale)) calc(100px * var(--font-scale));
+    minmax(calc(120px * var(--font-scale)), 1.5fr) max-content calc(100px * var(--font-scale));
 }
 
 .checkin-row-nowrap {
@@ -2177,7 +2190,7 @@ button.online-pill-working-offline:hover {
 .checkin-row-range {
   grid-template-columns:
     calc(100px * var(--font-scale)) minmax(calc(80px * var(--font-scale)), 1fr) minmax(calc(140px * var(--font-scale)), 1.4fr) calc(80px * var(--font-scale)) calc(70px * var(--font-scale)) minmax(calc(90px * var(--font-scale)), 1fr) calc(70px * var(--font-scale)) calc(140px * var(--font-scale)) calc(140px * var(--font-scale))
-    minmax(calc(100px * var(--font-scale)), 1.2fr) calc(180px * var(--font-scale));
+    minmax(calc(100px * var(--font-scale)), 1.2fr) max-content;
 }
 
 .checkin-roster-scroll-range > .checkin-roster {
