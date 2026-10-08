@@ -30,6 +30,11 @@ top. Each release's section here is also its description on the
   one pin where it stayed put and a new pin where it moved, and the map
   counts stations, not entries. Range checks still show every entry.
 
+### Changed
+- **Dropdowns are the same height as the text boxes beside them,** on every
+  system, so rows of fields line up. In forms, a short dropdown is at least
+  as wide as a short text box.
+
 ### Removed
 - "Create linked report" under the check-in roster. It only noted in the
   History that a report was made, without making one; Report on a SKYWARN
