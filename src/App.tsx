@@ -69,6 +69,8 @@ export default function App() {
     setNewActivityRequested(true);
   };
   const [focusCallSignSignal, setFocusCallSignSignal] = useState(0);
+  // Set by a roster row's Report; the Spotter Reports tab starts a report from it and clears it.
+  const [reportFromCheckin, setReportFromCheckin] = useState<string | null>(null);
   // Set by a net listing's "Start activity"; the create form fills from it and clears it.
   const [activityPrefill, setActivityPrefill] = useState<ActivityPrefill | null>(null);
   const [zoom, setZoom] = useState(loadSavedZoom);
@@ -258,6 +260,10 @@ export default function App() {
               focusCallSignSignal={focusCallSignSignal}
               onOpenExports={openExports}
               onOpenCallsignDirectories={() => openSettings("callsigns")}
+              onTakeReport={(id) => {
+                setReportFromCheckin(id);
+                setCurrentTab("Spotter Reports");
+              }}
             />
           )}
           {currentTab === "Spotter Reports" && (
@@ -267,6 +273,8 @@ export default function App() {
               selectedOperatorId={runBy}
               operators={operators}
               onOpenExports={openExports}
+              reportFromCheckin={reportFromCheckin}
+              onReportFromCheckinHandled={() => setReportFromCheckin(null)}
             />
           )}
           {currentTab === "Weather" && <WeatherTab />}

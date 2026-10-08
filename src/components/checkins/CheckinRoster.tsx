@@ -21,6 +21,7 @@ import { LogColumns, LogRow } from "./roster/LogRows";
 import { RangeColumns, RangeEditRow, RangeRow } from "./roster/RangeRows";
 import { CheckinEditRow } from "./roster/CheckinEditRow";
 import type { Place } from "./roster/shared";
+import { isSkywarn } from "../../activityTypes";
 
 interface Props {
   activity: Activity;
@@ -45,6 +46,10 @@ interface Props {
    * control (the same point the map uses). None, no distances.
    */
   distanceFrom?: Place | null;
+  /** A SKYWARN net: each check-in's linked reports' hazards, oldest first (SPOT-024). */
+  reportsByCheckin?: Map<string, string[]>;
+  /** A SKYWARN net: take a report from this station on the Spotter Reports tab. */
+  onReport?: (checkin: Checkin) => void;
 }
 
 
@@ -66,7 +71,10 @@ export default function CheckinRoster({
   log = false,
   rangeCheck = false,
   distanceFrom = null,
+  reportsByCheckin,
+  onReport,
 }: Props) {
+  const skywarn = isSkywarn(activity.activity_type);
   const [editingCheckinId, setEditingCheckinId] = useState<string | null>(null);
   /** Contacts whose details (power, antenna, notes, address…) are expanded. */
   const [openDetails, setOpenDetails] = useState<Set<string>>(new Set());
@@ -316,7 +324,7 @@ export default function CheckinRoster({
               ) : log ? (
                 <LogColumns distanceFrom={distanceFrom} />
               ) : (
-                <NetColumns />
+                <NetColumns reports={skywarn} />
               ))}
             {rows.length === 0 && (
               <p className="checkin-empty-state">
@@ -372,6 +380,8 @@ export default function CheckinRoster({
                   key={c.id}
                   {...row}
                   onTrafficHandled={(handled) => handleTrafficHandled(c.id, handled)}
+                  reports={skywarn ? (reportsByCheckin?.get(c.id) ?? []) : undefined}
+                  onReport={skywarn && !readOnly && onReport ? () => onReport(c) : undefined}
                 />
               );
             })}
@@ -412,21 +422,6 @@ export default function CheckinRoster({
               )}
               {checkinLookupStatus === "error" && (
                 <span className="qrz-status qrz-status-muted">QRZ lookup failed</span>
-              )}
-              {!readOnly && !log && !rangeCheck && (
-                <button
-                  onClick={() =>
-                    api.createAuditEvent(
-                      "checkin",
-                      selectedCheckin.id,
-                      "create_report_from_checkin",
-                      null,
-                      operatorId
-                    )
-                  }
-                >
-                  Create linked report
-                </button>
               )}
               <button onClick={() => onSelectCheckin(null)}>Clear selection</button>
             </div>

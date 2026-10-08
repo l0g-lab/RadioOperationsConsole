@@ -13,6 +13,9 @@ interface Props {
   selectedOperatorId: string | null;
   operators: Operator[];
   onOpenExports: () => void;
+  /** A check-in whose Report was clicked on the roster: start a report from it (SPOT-024). */
+  reportFromCheckin: string | null;
+  onReportFromCheckinHandled: () => void;
 }
 
 export default function ReportsTab({
@@ -21,12 +24,34 @@ export default function ReportsTab({
   selectedOperatorId,
   operators,
   onOpenExports,
+  reportFromCheckin,
+  onReportFromCheckinHandled,
 }: Props) {
   const operator = operators.find((o) => o.id === selectedOperatorId) ?? null;
   const [reports, setReports] = useState<SpotterReport[]>([]);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  // Which activity's check-ins are loaded, so a Report request waits for them.
+  const [checkinsFor, setCheckinsFor] = useState<string | null>(null);
+  // A report started from a roster row; `n` starts it again for the same station.
+  const [startFrom, setStartFrom] = useState<{ checkin: Checkin; n: number } | null>(null);
+  const [qrzConfigured, setQrzConfigured] = useState(false);
+
+  useEffect(() => {
+    api
+      .getSettings()
+      .then((s) => setQrzConfigured(Boolean(s.qrz_username && s.qrz_password)))
+      .catch(() => setQrzConfigured(false));
+  }, []);
+
+  function refreshCheckins() {
+    if (!selectedActivityId) return Promise.resolve();
+    return api
+      .listCheckins(selectedActivityId)
+      .then(setCheckins)
+      .catch(() => setCheckins([]));
+  }
 
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
   const editingReport = reports.find((r) => r.id === editingReportId) ?? null;
@@ -45,17 +70,34 @@ export default function ReportsTab({
         .listSpotterReports(selectedActivityId)
         .then(setReports)
         .catch(() => setReports([]));
+      const id = selectedActivityId;
       api
-        .listCheckins(selectedActivityId)
+        .listCheckins(id)
         .then(setCheckins)
-        .catch(() => setCheckins([]));
+        .catch(() => setCheckins([]))
+        .finally(() => setCheckinsFor(id));
     } else {
       setReports([]);
       setCheckins([]);
+      setCheckinsFor(null);
     }
     setSelectedReportId(null);
     setEditingReportId(null);
+    setStartFrom(null);
   }, [selectedActivityId]);
+
+  // A Report clicked on the roster: once this net's check-ins are in, start
+  // a report from that station.
+  useEffect(() => {
+    if (!reportFromCheckin || !selectedActivityId || checkinsFor !== selectedActivityId) return;
+    const c = checkins.find((x) => x.id === reportFromCheckin);
+    if (c) {
+      setEditingReportId(null);
+      setStartFrom({ checkin: c, n: Date.now() });
+    }
+    onReportFromCheckinHandled();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportFromCheckin, checkinsFor, selectedActivityId, checkins]);
 
   return (
     <div className="checkin-workspace">
@@ -81,8 +123,11 @@ export default function ReportsTab({
               checkins={checkins}
               counties={reports.map((r) => r.county)}
               editingReport={editingReport}
+              startFrom={startFrom}
+              qrzConfigured={qrzConfigured}
               onSaved={async (newId) => {
-                await refreshReports();
+                // Saving may have logged the reporter as a new check-in.
+                await Promise.all([refreshReports(), refreshCheckins()]);
                 if (newId) setSelectedReportId(newId);
                 setEditingReportId(null);
               }}

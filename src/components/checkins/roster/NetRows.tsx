@@ -4,8 +4,8 @@ import type { Checkin } from "../../../types";
 import { MapPin } from "lucide-react";
 import { TimeCell, type RowProps } from "./shared";
 
-/** A net's column headings. */
-export function NetColumns() {
+/** A net's column headings; a SKYWARN net's last column also holds its reports. */
+export function NetColumns({ reports = false }: { reports?: boolean }) {
   return (
     <div className="checkin-row checkin-row-columns">
       <span>Call Sign</span>
@@ -13,9 +13,16 @@ export function NetColumns() {
       <span>Location</span>
       <span>Grid</span>
       <span className="checkin-row-time">Time</span>
-      <span>Traffic</span>
+      <span>{reports ? "Traffic & reports" : "Traffic"}</span>
     </div>
   );
+}
+
+/** A station's reports in a word or two: "Hail ×2, Wind Damage", in the order first reported. */
+export function reportSummary(hazards: string[]): string {
+  const counts = new Map<string, number>();
+  for (const h of hazards) counts.set(h, (counts.get(h) ?? 0) + 1);
+  return [...counts].map(([h, n]) => (n > 1 ? `${h} ×${n}` : h)).join(", ");
 }
 
 /** Everything about where a station is, for the Location cell's tooltip. */
@@ -32,14 +39,24 @@ function locationDetails(c: Checkin): string {
     .join("\n");
 }
 
-/** A net check-in, with its traffic and whether it's been handled on the same row. */
+/**
+ * A net check-in, with its traffic and whether it's been handled on the same
+ * row. On a SKYWARN net the row also shows the station's reports and a Report
+ * button that takes one from them (SPOT-024).
+ */
 export function NetRow({
   checkin: c,
   selected,
   onSelect,
   onTrafficHandled,
+  reports,
+  onReport,
 }: RowProps & {
   onTrafficHandled: (handled: boolean) => void;
+  /** Hazards of the reports linked to this check-in, oldest first (SKYWARN). */
+  reports?: string[];
+  /** Takes a report from this station (SKYWARN, while the net is open). */
+  onReport?: () => void;
 }) {
   return (
     <div className={"checkin-row" + (selected ? " selected" : "")} onClick={onSelect}>
@@ -70,6 +87,27 @@ export function NetRow({
               Handled
             </label>
           </>
+        )}
+        {reports && reports.length > 0 && (
+          <span className="checkin-row-reports" title={`Reports: ${reportSummary(reports)}`}>
+            {reportSummary(reports)}
+          </span>
+        )}
+        {onReport && (
+          <button
+            className="checkin-row-report"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReport();
+            }}
+            title={
+              c.has_traffic && !c.traffic_handled
+                ? "Take a spotter report from this station, starting from its traffic"
+                : "Take a spotter report from this station"
+            }
+          >
+            Report
+          </button>
         )}
       </span>
     </div>

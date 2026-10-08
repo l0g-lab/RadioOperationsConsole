@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
-import type { Activity, Checkin, Operator } from "../../types";
+import type { Activity, Checkin, Operator, SpotterReport } from "../../types";
 import { formatCoordsWithGrid } from "../../geo";
 import CheckinLocationMap from "../CheckinLocationMap";
 import { netControlPoint, repeaterPoint } from "../../mapPoints";
@@ -8,7 +8,7 @@ import CheckinEntryForm from "../checkins/CheckinEntryForm";
 import CheckinRoster from "../checkins/CheckinRoster";
 import NotStartedBanner from "../lifecycle/NotStartedBanner";
 import ClosedBanner from "../lifecycle/ClosedBanner";
-import { isLog, isRangeCheck, isRelay } from "../../activityTypes";
+import { isLog, isRangeCheck, isRelay, isSkywarn } from "../../activityTypes";
 import RelayWorkspace from "../relay/RelayWorkspace";
 
 interface Props {
@@ -22,6 +22,18 @@ interface Props {
   onOpenExports: () => void;
   /** Goes to Settings → the FCC call-sign directories. */
   onOpenCallsignDirectories: () => void;
+  /** Takes a spotter report from a checked-in station, on the Spotter Reports tab (SPOT-024). */
+  onTakeReport: (checkinId: string) => void;
+}
+
+/** Each check-in's linked reports' hazards, oldest first. */
+function hazardsByCheckin(reports: SpotterReport[]): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const r of [...reports].sort((a, b) => a.reported_at.localeCompare(b.reported_at))) {
+    if (!r.checkin_id) continue;
+    out.set(r.checkin_id, [...(out.get(r.checkin_id) ?? []), r.hazard_type]);
+  }
+  return out;
 }
 
 export default function CheckinsTab({
@@ -34,6 +46,7 @@ export default function CheckinsTab({
   focusCallSignSignal,
   onOpenExports,
   onOpenCallsignDirectories,
+  onTakeReport,
 }: Props) {
   const [rapidEntryMode, setRapidEntryMode] = useState(true);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
@@ -48,6 +61,9 @@ export default function CheckinsTab({
   const log = focusedActivity ? isLog(focusedActivity.activity_type) : false;
   const rangeCheck = focusedActivity ? isRangeCheck(focusedActivity.activity_type) : false;
   const relay = focusedActivity ? isRelay(focusedActivity.activity_type) : false;
+  const skywarn = focusedActivity ? isSkywarn(focusedActivity.activity_type) : false;
+  // A SKYWARN net's reports, shown on the rows of the stations that made them.
+  const [reports, setReports] = useState<SpotterReport[]>([]);
   const focusedOperator = operators.find((o) => o.id === selectedOperatorId) ?? null;
 
   // Net control: the activity's location, else the operator's (CIMAP-060);
@@ -76,6 +92,17 @@ export default function CheckinsTab({
       setCheckins([]);
     }
   }, [selectedActivityId]);
+
+  useEffect(() => {
+    if (selectedActivityId && skywarn) {
+      api
+        .listSpotterReports(selectedActivityId)
+        .then(setReports)
+        .catch(() => setReports([]));
+    } else {
+      setReports([]);
+    }
+  }, [selectedActivityId, skywarn]);
 
   useEffect(() => {
     api
@@ -208,6 +235,8 @@ export default function CheckinsTab({
             log={log}
             rangeCheck={rangeCheck}
             distanceFrom={distanceFrom}
+            reportsByCheckin={skywarn ? hazardsByCheckin(reports) : undefined}
+            onReport={(c) => onTakeReport(c.id)}
           />
         </>
       )}

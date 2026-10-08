@@ -14,8 +14,23 @@ top. Each release's section here is also its description on the
   effect at the net and in your weather area, each once; tick the ones to
   keep. They stay with the net, even after NWS drops them, and are listed in
   its summary with their area and when they were in effect.
+- **Take a report from the roster.** On a SKYWARN net the roster's last
+  column is now Traffic & reports: each station's reports are listed beside
+  its traffic, and a Report button on every row opens the report form with
+  that station filled in and the report linked to that row. A row's traffic
+  not yet handled becomes the report's details. It stays open until you tick
+  Handled once the report is passed on, as with any traffic.
+- **Each report is its own line on the roster and ICS 309.** A report entered
+  on the Spotter Reports tab from a call sign logs a new check-in for that
+  station, at the time it's taken, with the report in brief as its traffic
+  (open until you tick Handled once it's passed on);
+  a station not yet on the roster is looked up and placed on the map as
+  usual. To add a report to a check-in already there, use Report on its row.
 
 ### Removed
+- "Create linked report" under the check-in roster. It only noted in the
+  History that a report was made, without making one; Report on a SKYWARN
+  net's roster rows does it now.
 - The "Weather now" line on a SKYWARN net's Reports tab, to give the reports
   more room. The alerts in effect are in the net's NWS alerts list, the
   Weather tab has the conditions and radar, and the weather as the net starts

@@ -273,6 +273,32 @@ later, rather than something only recoverable by matching names by eye.
 - **SPOT-013:** The link MUST be optional and remain editable on the same
   terms as any other report field (`SPOT-007`) — including clearing it
   back to an unlinked, free-text reporter.
+- **SPOT-024:** On a SKYWARN net, the check-in roster's last column MUST be
+  "Traffic & reports": the station's traffic as on any net, the hazards of
+  the reports linked to it ("Hail ×2, Wind Damage"), and, while the net is
+  open, a Report button on every row. Report MUST open the Spotter Reports
+  tab with that station as reporter and the report linked to that row; it
+  is the way to add a report to a check-in already on the roster. When the
+  row has traffic not yet marked handled, the traffic MUST become the
+  report's details. Saving a report MUST NOT mark any traffic handled: as on
+  any net, traffic is handled once it's passed on (to the NWS, for a
+  report), and net control ticks Handled on the roster then, so what's still
+  to send stays marked and the summary warns of any left at the end.
+- **SPOT-025:** When a new report's reporter is a call sign that isn't on
+  the roster, saving MUST check that station in too, as the check-in form
+  would with the call sign alone (its name and location looked up, placed on
+  the map), and link the report to it; the form MUST say so before saving. A
+  reporter that isn't a call sign (a name, "Orange County EM") is neither
+  checked in nor linked.
+- **SPOT-026:** A report entered on the Spotter Reports tab from a station
+  already on the roster is a new call, and the ICS 309 logs each call
+  (`ICSF-001`). Saving it MUST log a new check-in for that station, with no
+  option to do otherwise: a line at the time it's saved, where the station
+  was last placed, with the report in brief as its traffic ("Hail 1.00 in
+  (Quarter), Main & 5th, Orange Co."), open until it's passed on
+  (`SPOT-024`), and the report linked to it. The form MUST say so before saving, and point to a
+  row's Report for adding to a check-in already there (`SPOT-024`). The
+  summary counts stations once (`unique stations`).
 
 ## Future increment: Incidents
 

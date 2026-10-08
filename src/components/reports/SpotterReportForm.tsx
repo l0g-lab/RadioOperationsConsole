@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as api from "../../api";
 import type { Checkin, SpotterReport } from "../../types";
 import {
@@ -10,6 +10,8 @@ import {
 import { formatContactTime, parseContactTime } from "../../utils";
 import { resolveCheckinLocation, type CheckinLocation } from "../../checkinLocation";
 import { isWorkingOffline } from "../../workOffline";
+import { callSignService } from "../../callsignLookup";
+import { checkInCallSign } from "../../quickCheckin";
 import LocationPicker from "../LocationPicker";
 import SuggestInput, { earlierEntries } from "../SuggestInput";
 import { ClipboardPen, MapPin } from "lucide-react";
@@ -21,6 +23,14 @@ interface Props {
   /** Counties named in the activity's reports so far, suggested as you type. */
   counties?: string[];
   editingReport: SpotterReport | null;
+  /**
+   * Start a new report from this check-in (its row's Report button): the
+   * station as reporter, linked, and any traffic not yet handled as the
+   * details. `n` changes to start again for the same station (SPOT-024).
+   */
+  startFrom?: { checkin: Checkin; n: number } | null;
+  /** For looking up a reporter checked in from here (SPOT-025). */
+  qrzConfigured?: boolean;
   onSaved: (newId?: string) => void;
   onCancelEdit: () => void;
 }
@@ -62,6 +72,25 @@ export function linkedCheckin(reporter: string, checkins: Checkin[]): Checkin | 
   );
 }
 
+/**
+ * Whether the Reporter box holds one call sign (W4ABC, WRAB123), so a reporter
+ * not on the roster can be checked in from the report (SPOT-025); a name or
+ * "Orange County EM" can't.
+ */
+export function reporterIsCallSign(reporter: string): boolean {
+  const r = reporter.trim();
+  return r !== "" && !/\s/.test(r) && callSignService(r) !== "unknown";
+}
+
+/**
+ * A report as a check-in line's traffic, for the roster and the ICS 309:
+ * "Hail 1.00 in (Quarter), Main & 5th, Orange Co." (SPOT-026).
+ */
+export function reportTrafficText(hazard: string, magnitude: string, location: string, county: string): string {
+  const what = [hazard, magnitude.replace(/\s*—\s*Severe threshold$/, "").trim()].filter(Boolean).join(" ");
+  return [what, location.trim(), county.trim() && `${county.trim()} Co.`].filter(Boolean).join(", ");
+}
+
 /** Combined create/edit form for a spotter report — switches to edit mode whenever `editingReport` is set. */
 export default function SpotterReportForm({
   activityId,
@@ -69,6 +98,8 @@ export default function SpotterReportForm({
   checkins,
   counties = [],
   editingReport,
+  startFrom = null,
+  qrzConfigured = false,
   onSaved,
   onCancelEdit,
 }: Props) {
@@ -87,6 +118,8 @@ export default function SpotterReportForm({
   const [source, setSource] = useState<string>(REPORT_SOURCES[0]);
   const [notes, setNotes] = useState("");
   const [checkinId, setCheckinId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const hazardRef = useRef<HTMLSelectElement>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Where the Location box will put it on the map, as for check-ins.
@@ -107,10 +140,15 @@ export default function SpotterReportForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationText, lat, lon]);
 
-  /** Reporter typed or picked: picking a checked-in station links the report to it. */
+  /**
+   * Reporter typed or picked. A new report from a call sign gets a check-in
+   * line of its own (SPOT-026), so it isn't linked to an earlier one here;
+   * that's what a roster row's Report is for. A report being corrected keeps
+   * following the station named.
+   */
   function changeReporter(value: string) {
     setReporter(value);
-    setCheckinId(linkedCheckin(value, checkins)?.id ?? null);
+    setCheckinId(editingReport ? (linkedCheckin(value, checkins)?.id ?? null) : null);
   }
 
   // Set once Save is attempted, so the list of what's missing only appears
@@ -181,6 +219,21 @@ export default function SpotterReportForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingReport?.id]);
 
+  // After the reset above, so a form opened already holding one isn't wiped.
+  // A roster row's Report: that station, linked, with its traffic (if not yet
+  // handled) as the details; the hazard is next. The traffic stays open until
+  // it's ticked Handled on the roster, once passed on (SPOT-024).
+  useEffect(() => {
+    if (!startFrom || editingReport) return;
+    const c = startFrom.checkin;
+    resetForm();
+    setReporter(c.call_sign.toUpperCase());
+    setCheckinId(c.id);
+    if (c.has_traffic && !c.traffic_handled) setNotes(c.traffic);
+    hazardRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startFrom?.n]);
+
   // Magnitude options depend on hazard type (e.g. hail sizes vs. wind
   // speeds). Switching type only resets the magnitude when the current
   // value wouldn't make sense under the new type's list, so picking the
@@ -194,9 +247,17 @@ export default function SpotterReportForm({
     }
   }
 
+  // A new report from a call sign, not taken with a row's Report: it gets a
+  // check-in line of its own, so the roster and ICS 309 show the call when
+  // it was taken (SPOT-025, SPOT-026).
+  const newLine = !editingReport && !checkinId && reporterIsCallSign(reporter);
+  const linked = checkins.find((x) => x.id === checkinId) ?? null;
+  // The station's latest line, if it's on the roster: the new one goes where it was.
+  const onRoster = newLine ? linkedCheckin(reporter, checkins) : null;
+
   async function handleSaveReport() {
     setAttempted(true);
-    if (missing.length > 0) return;
+    if (missing.length > 0 || saving) return;
     const time = parseContactTime(timeText);
     if (time.kind === "invalid") {
       setError(`"${timeText}" isn't a time. Use YYYY-MM-DD HH:MM, or HH:MM for today; blank for now.`);
@@ -231,23 +292,57 @@ export default function SpotterReportForm({
       resetForm();
       onSaved();
     } else {
-      const id = await api.createSpotterReport(
-        activityId,
-        reportedAt,
-        county.trim() || null,
-        locationText.trim() || null,
-        lat2,
-        lon2,
-        reporter.trim() || null,
-        hazardType,
-        magnitude.trim() || null,
-        source || null,
-        notes.trim() || null,
-        checkinId,
-        operatorId
-      );
-      resetForm();
-      onSaved(id);
+      setSaving(true);
+      try {
+        let linkTo = checkinId;
+        let who = reporter.trim();
+        if (newLine) {
+          who = who.toUpperCase();
+          const traffic = reportTrafficText(hazardType, magnitude, locationText, county);
+          // Already on the roster: the same station again, where it was last
+          // placed. Otherwise a check-in as from the form, looked up.
+          linkTo = onRoster
+            ? await api.createCheckin(
+                activityId,
+                onRoster.call_sign.toUpperCase(),
+                onRoster.name || null,
+                onRoster.qth_location || null,
+                onRoster.grid_square || null,
+                onRoster.address || null,
+                operatorId,
+                onRoster.location_lat,
+                onRoster.location_lon,
+                onRoster.location_label || null,
+                true,
+                traffic,
+                null,
+                onRoster.location_manual
+              )
+            : await checkInCallSign(activityId, who, operatorId, qrzConfigured, traffic);
+          // Open, like any traffic, until ticked Handled once it's passed on.
+        }
+        const id = await api.createSpotterReport(
+          activityId,
+          reportedAt,
+          county.trim() || null,
+          locationText.trim() || null,
+          lat2,
+          lon2,
+          who || null,
+          hazardType,
+          magnitude.trim() || null,
+          source || null,
+          notes.trim() || null,
+          linkTo,
+          operatorId
+        );
+        resetForm();
+        onSaved(id);
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setSaving(false);
+      }
     }
   }
 
@@ -302,12 +397,16 @@ export default function SpotterReportForm({
               ))}
             </select>
           </label>
+          {newLine && (
+            <p className="settings-hint activity-form-note">
+              {onRoster
+                ? `Saving logs a new check-in for ${reporter.trim().toUpperCase()}, so this call has its own line on the roster and ICS 309. To add it to a check-in already there, use Report on that row.`
+                : `Saving checks in ${reporter.trim().toUpperCase()} too — not on this net's roster yet.`}
+            </p>
+          )}
           {checkinId && (
             <p className="settings-hint activity-form-note">
-              Linked to {(() => {
-                const c = checkins.find((x) => x.id === checkinId);
-                return c ? checkinLabel(c) : "a station";
-              })()}'s check-in.
+              Linked to {linked ? checkinLabel(linked) : "a station"}'s check-in.
             </p>
           )}
         </div>
@@ -328,7 +427,7 @@ export default function SpotterReportForm({
           </label>
           <label className="activity-field">
             <span className="activity-field-label">Hazard</span>
-            <select value={hazardType} onChange={(e) => handleHazardTypeChange(e.target.value)}>
+            <select ref={hazardRef} value={hazardType} onChange={(e) => handleHazardTypeChange(e.target.value)}>
               {HAZARD_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -464,7 +563,7 @@ export default function SpotterReportForm({
 
       </div>
       <div className="report-entry-actions">
-        <button className="primary" onClick={handleSaveReport}>
+        <button className="primary" onClick={handleSaveReport} disabled={saving}>
           {editingReport ? "Update report" : "Save report"}
         </button>
         {editingReport && <button onClick={onCancelEdit}>Cancel</button>}

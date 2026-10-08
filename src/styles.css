@@ -3289,6 +3289,23 @@ button.online-pill-working-offline:hover {
   color: var(--accent);
 }
 
+/* A SKYWARN station's reports, beside its traffic (NetRows.tsx). */
+.checkin-row-reports {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.checkin-row-report {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 1px 8px;
+  font-size: calc(12px * var(--font-scale));
+}
+
 .checkin-row-traffic .traffic-handled {
   flex-shrink: 0;
   margin: 0;

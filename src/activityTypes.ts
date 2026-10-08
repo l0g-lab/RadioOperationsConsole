@@ -105,6 +105,10 @@ export function isLog(id: string): boolean {
 }
 
 /** Whether this type is a repeater range check. */
+export function isSkywarn(id: string): boolean {
+  return id === "skywarn";
+}
+
 export function isRangeCheck(id: string): boolean {
   return activityTypeDef(id).rangeCheck === true;
 }
