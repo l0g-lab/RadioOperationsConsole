@@ -6,6 +6,20 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-10-08
+
+**What works differently:**
+- A typed location is placed on the map a few seconds after you save, once
+  it's looked up online; saving no longer waits for it.
+- On a net, Traffic typed with no call sign is saved as a note from net
+  control, not a check-in.
+- A station's street address, when it matches a house, now beats QRZ's
+  point, so some stations land somewhere different (usually closer to right).
+- Approximate pins are hollow or faded on the maps, and a location that
+  couldn't be placed gets a crossed-out pin in the list.
+
+This version updates the database: once it's run, 2.6.0 can't open the data.
+
 ### Added
 - **Cross streets are placed on the map,** typed the way people say them:
   "sw 152st & sw 137ave miami fl", "sw 152 st and sw 137 ave", "Coral Way &
@@ -631,7 +645,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.4...v2.6.0
 [2.5.4]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.3...v2.5.4
 [2.5.3]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.2...v2.5.3
