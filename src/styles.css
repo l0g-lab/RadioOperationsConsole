@@ -1538,6 +1538,24 @@ details > summary {
   min-width: 0;
 }
 
+/* A row's first line, with its action at the right end; the information
+   toggle's text opens on a line of its own below (OfflineDataPanel.tsx). */
+.offline-pack-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+}
+
+.offline-pack-head > .info-body {
+  order: 1;
+  flex-basis: 100%;
+}
+
+.offline-pack-head-action {
+  margin-left: auto;
+}
+
 .offline-calls-row {
   margin-top: 6px;
 }

@@ -131,19 +131,30 @@ export default function OfflineDataPanel() {
       </div>
       <div className="offline-pack-row" id="settings-roads" role="group" aria-label="Mile-marker roads">
         <div className="offline-pack-info">
-          <Milestone className="offline-row-icon" aria-hidden />
-          <strong>Mile-marker roads</strong>
-          <InfoToggle label="mile-marker road data">
-            Turns "mile marker 182 on the turnpike" into a map point, with no internet needed. Each road
-            is one small file kept on this computer. Update while online to download the latest
-            mile-marker locations from the Florida Department of Transportation, then take it with you
-            to offline locations. Positions are the marker signs' recorded locations — nudge the pin if
-            you know better.
-          </InfoToggle>{" "}
-          <span className="settings-hint">{roadsStatus}</span>
-          {roadErrors > 0 && !showRoads && (
-            <span className="weather-area-error"> {roadErrors} couldn't update — Show roads for why.</span>
-          )}
+          {/* Update all is on this line, so opening the road list or the
+              information below doesn't move it. */}
+          <div className="offline-pack-head">
+            <Milestone className="offline-row-icon" aria-hidden />
+            <strong>Mile-marker roads</strong>
+            <InfoToggle label="mile-marker road data">
+              Turns "mile marker 182 on the turnpike" into a map point, with no internet needed. Each road
+              is one small file kept on this computer. Update while online to download the latest
+              mile-marker locations from the Florida Department of Transportation, then take it with you
+              to offline locations. Positions are the marker signs' recorded locations — nudge the pin if
+              you know better.
+            </InfoToggle>
+            <span className="settings-hint">{roadsStatus}</span>
+            {roadErrors > 0 && !showRoads && (
+              <span className="weather-area-error">{roadErrors} couldn't update — Show roads for why.</span>
+            )}
+            <button
+              className="offline-pack-head-action"
+              onClick={updateAll}
+              disabled={updatingAll || anyWorking || packs.length === 0}
+            >
+              {updatingAll ? "Updating…" : "Update all"}
+            </button>
+          </div>
           <div>
             <button className="link-button" onClick={() => setShowRoads((v) => !v)} aria-expanded={showRoads}>
               {showRoads ? "Hide roads" : "Show roads"}
@@ -177,9 +188,6 @@ export default function OfflineDataPanel() {
             </ul>
           )}
         </div>
-        <button onClick={updateAll} disabled={updatingAll || anyWorking || packs.length === 0}>
-          {updatingAll ? "Updating…" : "Update all"}
-        </button>
       </div>
       <StoragePanel
         key={storageKey}
