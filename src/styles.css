@@ -351,6 +351,10 @@ select:disabled {
 
 .panel-header-row {
   display: flex;
+  /* With large text or a narrow window, the buttons go below the heading
+     rather than squeezing it. */
+  flex-wrap: wrap;
+  gap: 6px 12px;
   justify-content: space-between;
   /* Centred, so a heading and a button (with or without an icon) line up. */
   align-items: center;
@@ -958,8 +962,15 @@ details > summary {
 
 .checkin-roster-header-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 14px;
+  gap: 6px 14px;
+}
+
+/* Each button and count stays on one line; whole buttons wrap instead. */
+.checkin-roster-header-actions > * {
+  white-space: nowrap;
 }
 
 /* Holds the roster, so on a window too narrow for every column it scrolls
@@ -976,17 +987,17 @@ details > summary {
 }
 
 .checkin-roster-scroll > .checkin-roster {
-  min-width: 860px;
+  min-width: calc(860px * var(--font-scale));
 }
 
 /* A range check's wider columns (RangeRows.tsx). */
 .checkin-roster-scroll-range > .checkin-roster {
-  min-width: 1232px;
+  min-width: calc(1232px * var(--font-scale));
 }
 
 /* The log's columns: 1170px of minimums + 11 gaps + padding + scrollbar. */
 .checkin-roster-scroll-log > .checkin-roster {
-  min-width: 1340px;
+  min-width: calc(1340px * var(--font-scale));
 }
 
 .checkin-roster {
@@ -999,10 +1010,14 @@ details > summary {
   flex-direction: column;
 }
 
+/* The lists' fixed column widths are in pixels times the text size, so a
+   larger text size widens the columns with the text in them instead of
+   running one column into the next; a window too narrow for them scrolls
+   sideways (.checkin-roster-scroll). */
 .checkin-row {
   display: grid;
   /* A net: call sign, name, location, grid, time, traffic (CIMAP-081). */
-  grid-template-columns: 110px minmax(100px, 0.9fr) minmax(150px, 1.2fr) 70px 180px minmax(220px, 2fr);
+  grid-template-columns: calc(110px * var(--font-scale)) minmax(calc(100px * var(--font-scale)), 0.9fr) minmax(calc(150px * var(--font-scale)), 1.2fr) calc(70px * var(--font-scale)) calc(180px * var(--font-scale)) minmax(calc(220px * var(--font-scale)), 2fr);
   gap: 12px;
   padding: 8px 10px;
   border-radius: 3px;
@@ -1177,7 +1192,7 @@ details > summary {
 }
 
 .checkin-row-voided {
-  grid-template-columns: 120px 1fr auto;
+  grid-template-columns: calc(120px * var(--font-scale)) 1fr auto;
   cursor: default;
   align-items: center;
 }
@@ -1284,7 +1299,7 @@ details > summary {
 .report-row {
   display: grid;
   /* Reporter, hazard, location, grid, time, notes — as the check-in roster. */
-  grid-template-columns: minmax(110px, 0.8fr) minmax(140px, 1fr) minmax(160px, 1.3fr) 70px 180px minmax(200px, 2fr);
+  grid-template-columns: minmax(calc(110px * var(--font-scale)), 0.8fr) minmax(calc(140px * var(--font-scale)), 1fr) minmax(calc(160px * var(--font-scale)), 1.3fr) calc(70px * var(--font-scale)) calc(180px * var(--font-scale)) minmax(calc(200px * var(--font-scale)), 2fr);
   gap: 12px;
   padding: 8px 10px;
   border-radius: 3px;
@@ -1873,8 +1888,8 @@ details > summary {
   /* Call, name, location, distance, frequency, mode, RST, power, antenna,
      notes, time, details. RST is wide enough for "599 / 599". */
   grid-template-columns:
-    100px minmax(80px, 1fr) minmax(100px, 1fr) 80px 90px 64px 96px 70px minmax(90px, 1fr)
-    minmax(120px, 1.5fr) 180px 100px;
+    calc(100px * var(--font-scale)) minmax(calc(80px * var(--font-scale)), 1fr) minmax(calc(100px * var(--font-scale)), 1fr) calc(80px * var(--font-scale)) calc(90px * var(--font-scale)) calc(64px * var(--font-scale)) calc(96px * var(--font-scale)) calc(70px * var(--font-scale)) minmax(calc(90px * var(--font-scale)), 1fr)
+    minmax(calc(120px * var(--font-scale)), 1.5fr) calc(180px * var(--font-scale)) calc(100px * var(--font-scale));
 }
 
 .checkin-row-nowrap {
@@ -2161,8 +2176,8 @@ button.online-pill-working-offline:hover {
    they hear, notes, time: 1210px of minimums + 10 gaps + padding + scrollbar. */
 .checkin-row-range {
   grid-template-columns:
-    100px minmax(80px, 1fr) minmax(140px, 1.4fr) 80px 70px minmax(90px, 1fr) 70px 140px 140px
-    minmax(100px, 1.2fr) 180px;
+    calc(100px * var(--font-scale)) minmax(calc(80px * var(--font-scale)), 1fr) minmax(calc(140px * var(--font-scale)), 1.4fr) calc(80px * var(--font-scale)) calc(70px * var(--font-scale)) minmax(calc(90px * var(--font-scale)), 1fr) calc(70px * var(--font-scale)) calc(140px * var(--font-scale)) calc(140px * var(--font-scale))
+    minmax(calc(100px * var(--font-scale)), 1.2fr) calc(180px * var(--font-scale));
 }
 
 .checkin-roster-scroll-range > .checkin-roster {

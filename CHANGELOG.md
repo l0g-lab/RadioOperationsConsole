@@ -64,6 +64,14 @@ top. Each release's section here is also its description on the
   another state), and a town's or street's rough centre is marked
   approximate on the map.
 
+### Fixed
+- **Large text and zoom no longer misalign the lists.** At a larger text size
+  the check-in roster's, contact log's, range check's and spotter reports'
+  columns widen with their text, so the Time no longer runs into Traffic or
+  Notes (a window too narrow for every column scrolls sideways). The buttons
+  above each list wrap whole instead of breaking their words, and Save
+  check-in stays on its row.
+
 ## [2.6.0] - 2026-10-07
 
 ### Added

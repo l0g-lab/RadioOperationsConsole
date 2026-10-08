@@ -406,7 +406,9 @@ export default function CheckinEntryForm({
         </div>
         <div
           className="checkin-entry-field checkin-entry-field-name"
-          style={hintWidth(HINTS.name)}
+          // Takes the room left beside the call sign and Save, down to 14
+          // characters, rather than pushing Save off the row at a large text size.
+          style={{ flex: "1 1 14ch", minWidth: "14ch" }}
         >
           <label htmlFor="checkin-name">
             Name{" "}
