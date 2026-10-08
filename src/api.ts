@@ -267,7 +267,9 @@ export const createCheckin = (
   traffic: string | null,
   contact: ContactDetails | null = null,
   /** The location was placed by hand (typed coordinates or a mile marker). */
-  location_manual = false
+  location_manual = false,
+  /** How the map point was arrived at (LOCRES-064). */
+  location_how: string | null = null
 ) =>
   invoke<string>("create_checkin", {
     activityId: activity_id,
@@ -284,6 +286,7 @@ export const createCheckin = (
     traffic,
     contact,
     locationManual: location_manual,
+    locationHow: location_how,
   });
 
 /** Earlier records of a call sign across every activity. */
@@ -312,7 +315,9 @@ export const updateCheckin = (
   /** Left out, the contact's details and time stay as they are. */
   contact: ContactDetails | null = null,
   /** A corrected check-in time (ISO); left out, it stays as it is. */
-  checked_in_at: string | null = null
+  checked_in_at: string | null = null,
+  /** How the map point was arrived at, when the location was placed again; left out, unchanged. */
+  location_how: string | null = null
 ) =>
   invoke<void>("update_checkin", {
     checkinId: checkin_id,
@@ -329,6 +334,7 @@ export const updateCheckin = (
     traffic,
     contact,
     checkedInAt: checked_in_at,
+    locationHow: location_how,
   });
 
 export const setCheckinTrafficHandled = (
@@ -346,9 +352,11 @@ export const setCheckinLocationCoords = (
   checkin_id: string,
   lat: number,
   lon: number,
-  label: string | null
+  label: string | null,
+  /** How it was placed by hand, when not a pin on the map (typed coordinates, a mile marker…). */
+  how: string | null = null
 ) =>
-  invoke<Checkin>("set_checkin_location_coords", { checkinId: checkin_id, lat, lon, label });
+  invoke<Checkin>("set_checkin_location_coords", { checkinId: checkin_id, lat, lon, label, how });
 
 export const clearCheckinLocation = (checkin_id: string) =>
   invoke<Checkin>("clear_checkin_location", { checkinId: checkin_id });
@@ -376,7 +384,9 @@ export const createSpotterReport = (
   source: string | null,
   notes: string | null,
   checkin_id: string | null,
-  operator_id: string | null
+  operator_id: string | null,
+  /** How the map point was arrived at (LOCRES-064). */
+  location_how: string | null = null
 ) =>
   invoke<string>("create_spotter_report", {
     activityId: activity_id,
@@ -392,6 +402,7 @@ export const createSpotterReport = (
     notes,
     checkinId: checkin_id,
     operatorId: operator_id,
+    locationHow: location_how,
   });
 
 export const listSpotterReports = (activity_id: string) =>
@@ -413,7 +424,9 @@ export const updateSpotterReport = (
   source: string | null,
   notes: string | null,
   checkin_id: string | null,
-  operator_id: string | null
+  operator_id: string | null,
+  /** How the map point was arrived at, when placed again; left out, unchanged. */
+  location_how: string | null = null
 ) =>
   invoke<void>("update_spotter_report", {
     reportId: report_id,
@@ -429,6 +442,7 @@ export const updateSpotterReport = (
     notes,
     checkinId: checkin_id,
     operatorId: operator_id,
+    locationHow: location_how,
   });
 
 export const voidSpotterReport = (

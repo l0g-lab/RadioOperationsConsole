@@ -170,6 +170,8 @@ export interface Checkin {
   location_label: string;
   /** Placed by hand, so Lookup and edits leave it alone. */
   location_manual: boolean;
+  /** How the map point was arrived at (LOCRES-064), or "" when not known (placeText.ts `HOW`). */
+  location_how: string;
   /** The station has traffic to pass; `traffic` holds the details, if any yet. */
   has_traffic: boolean;
   traffic: string;
@@ -370,6 +372,8 @@ export interface SpotterReport {
   source: string;
   notes: string;
   checkin_id: string | null;
+  /** How the map point was arrived at (LOCRES-064), or "". */
+  location_how: string;
 }
 
 export interface AuditEvent {

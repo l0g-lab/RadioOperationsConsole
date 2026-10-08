@@ -562,6 +562,17 @@ pub enum Precision {
 }
 
 impl Precision {
+    /// As a record's "how placed" (LOCRES-064).
+    pub fn how(self) -> &'static str {
+        match self {
+            Precision::Address => "address",
+            Precision::Crossing => "crossing",
+            Precision::Street => "street",
+            Precision::Town => "town",
+            Precision::Region => "region",
+        }
+    }
+
     /// From a Nominatim result's place rank.
     pub fn from_rank(rank: i64) -> Precision {
         match rank {

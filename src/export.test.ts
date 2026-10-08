@@ -48,6 +48,7 @@ function checkin(overrides: Partial<Checkin> = {}): Checkin {
     location_lon: -80.19,
     location_label: "Miami",
     location_manual: false,
+    location_how: "",
     has_traffic: false,
     traffic: "",
     traffic_handled: false,
@@ -80,6 +81,7 @@ function report(overrides: Partial<SpotterReport> = {}): SpotterReport {
     source: "Trained Spotter",
     notes: "dents",
     checkin_id: null,
+    location_how: "",
     ...overrides,
   };
 }
@@ -116,7 +118,7 @@ describe("checkinsToCsv", () => {
     const csv = checkinsToCsv([checkin({ has_traffic: true, traffic: 'Need "generator"' })]);
     const [header, row] = csv.trim().split("\r\n");
     expect(header).toBe(
-      "Call Sign,Name,Location,Grid Square,Address,Latitude,Longitude,Location Label," +
+      "Call Sign,Name,Location,Grid Square,Address,Latitude,Longitude,Location Label,Location Placed By," +
         "Checked In (Local),Checked In (UTC),Has Traffic,Traffic,Traffic Handled," +
         "Frequency,Mode,RST Sent,RST Received,Power,Antenna,Notes,Station Type,Cross Street"
     );
@@ -124,6 +126,10 @@ describe("checkinsToCsv", () => {
     expect(row).toContain('"Need ""generator"""'); // quotes are doubled and the field is wrapped
     expect(row).toContain("25.77,-80.19");
     expect(row).toContain("2026-09-21T23:04:00Z");
+    // How the point was placed (LOCRES-064), saying when it's only approximate.
+    const zip = checkinsToCsv([checkin({ location_how: "zip" })]).trim().split("\r\n")[1];
+    expect(zip).toContain("the centre of the ZIP code (approximate)");
+    expect(checkinsToCsv([checkin({ location_how: "crossing" })])).toContain(",where the streets cross,");
   });
 
   it("includes a contact's radio details", () => {
@@ -181,6 +187,7 @@ describe("spotter report exports", () => {
       "Location",
       "Latitude",
       "Longitude",
+      "Location Placed By",
       "Grid Square",
     ]);
     expect(row).toContain("N0SPT");

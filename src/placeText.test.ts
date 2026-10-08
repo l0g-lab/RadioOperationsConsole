@@ -17,7 +17,7 @@ vi.mock("./locationResolution", () => ({
 }));
 
 import * as api from "./api";
-import { placeText, savedPlaceNamed } from "./placeText";
+import { howPlaced, howText, isApproximate, placeText, savedPlaceNamed } from "./placeText";
 import { initWorkOffline } from "./workOffline";
 import type { FoundPlace, Place } from "./types";
 
@@ -104,6 +104,22 @@ describe("placeText — the one place resolver (LOCRES-060)", () => {
     expect(p).toMatchObject({ source: "zip", approx: true });
     const none = await placeText("somewhere", { online: "wait" });
     expect(none.note).toMatch(/online search failed \(map search HTTP error: 503\)/);
+  });
+
+  it("says how each point was placed, and which are only approximate (LOCRES-064)", async () => {
+    expect(howPlaced(await placeText("25.6, -80.4", { online: "later" }))).toBe("coords");
+    expect(howPlaced(await placeText("county eoc", { online: "later" }))).toBe("saved_place");
+    vi.mocked(api.recallPlace).mockResolvedValue(corner);
+    expect(howPlaced(await placeText("sw 152 st & sw 137 ave", { online: "later" }))).toBe("crossing");
+    vi.mocked(api.recallPlace).mockResolvedValue(null);
+    expect(howPlaced(await placeText("somewhere 33177", { online: "later" }))).toBe("zip");
+    expect(howPlaced(await placeText("nowhere at all", { online: "later" }))).toBeNull();
+    expect(isApproximate("zip")).toBe(true);
+    expect(isApproximate("crossing")).toBe(false);
+    expect(isApproximate("")).toBe(false);
+    expect(howText("town")).toBe("Placed by: the town's centre — approximate");
+    expect(howText("pin")).toBe("Placed by: picked on the map");
+    expect(howText("")).toBe("");
   });
 
   it("says what to do when it can't be placed", async () => {

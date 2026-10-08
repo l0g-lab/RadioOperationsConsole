@@ -140,6 +140,9 @@ pub struct Checkin {
     pub location_label: String,
     /// The location was placed by hand, so Lookup and edits leave it alone.
     pub location_manual: bool,
+    /// How the map point was arrived at (LOCRES-064): "pin", "zip", "crossing"…,
+    /// or "" when not known.
+    pub location_how: String,
     /// The station has traffic to pass; `traffic` holds the details, if any yet.
     pub has_traffic: bool,
     pub traffic: String,
@@ -209,7 +212,7 @@ pub struct PastContact {
 const ALERT_COLUMNS: &str = "id, nws_id, event, headline, area_desc, severity, effective, ends, attached_at";
 
 /// Columns `map_checkin` reads, in order.
-const CHECKIN_COLUMNS: &str = "id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled, coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,''), coalesce(station_kind,''), coalesce(cross_street,''), location_manual";
+const CHECKIN_COLUMNS: &str = "id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled, coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,''), coalesce(station_kind,''), coalesce(cross_street,''), location_manual, location_how";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SpotterReport {
@@ -227,6 +230,8 @@ pub struct SpotterReport {
     pub source: String,
     pub notes: String,
     pub checkin_id: Option<String>,
+    /// How the map point was arrived at (LOCRES-064), or "".
+    pub location_how: String,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -705,6 +710,7 @@ impl Repository {
             station_kind: r.get(20)?,
             cross_street: r.get(21)?,
             location_manual: r.get(22)?,
+            location_how: r.get(23)?,
         })
     }
 
@@ -834,7 +840,7 @@ impl Repository {
         label: Option<&str>,
     ) -> rusqlite::Result<()> {
         self.conn.execute(
-            "UPDATE checkins SET location_lat = ?1, location_lon = ?2, location_label = ?3, location_manual = 1 WHERE id = ?4",
+            "UPDATE checkins SET location_lat = ?1, location_lon = ?2, location_label = ?3, location_manual = 1, location_how = 'pin' WHERE id = ?4",
             params![lat, lon, label, id],
         )?;
         Ok(())
@@ -842,7 +848,7 @@ impl Repository {
 
     pub fn clear_checkin_location(&self, id: &str) -> rusqlite::Result<()> {
         self.conn.execute(
-            "UPDATE checkins SET location_lat = NULL, location_lon = NULL, location_label = NULL, location_manual = 0 WHERE id = ?1",
+            "UPDATE checkins SET location_lat = NULL, location_lon = NULL, location_label = NULL, location_manual = 0, location_how = '' WHERE id = ?1",
             params![id],
         )?;
         Ok(())
@@ -851,6 +857,7 @@ impl Repository {
     /// Puts a check-in on the map from an online lookup of `text`, unless it
     /// was placed by hand or its location isn't `text` any more (corrected
     /// while the lookup ran). Returns its activity when it was placed.
+    #[allow(clippy::too_many_arguments)]
     pub fn place_checkin(
         &self,
         id: &str,
@@ -859,6 +866,7 @@ impl Repository {
         lon: f64,
         label: &str,
         grid: Option<&str>,
+        how: &str,
     ) -> rusqlite::Result<Option<String>> {
         let row: Option<(String, String, String, bool)> = self
             .conn
@@ -875,14 +883,14 @@ impl Repository {
         }
         self.conn.execute(
             "UPDATE checkins SET location_lat = ?1, location_lon = ?2, location_label = ?3, \
-             grid_square = coalesce(?4, grid_square) WHERE id = ?5",
-            params![lat, lon, label, grid, id],
+             grid_square = coalesce(?4, grid_square), location_how = ?5 WHERE id = ?6",
+            params![lat, lon, label, grid, how, id],
         )?;
         Ok(Some(activity_id))
     }
 
     /// The same for a spotter report: placed unless its Location box changed.
-    pub fn place_report(&self, id: &str, text: &str, lat: f64, lon: f64) -> rusqlite::Result<Option<String>> {
+    pub fn place_report(&self, id: &str, text: &str, lat: f64, lon: f64, how: &str) -> rusqlite::Result<Option<String>> {
         let row: Option<(String, String)> = self
             .conn
             .query_row(
@@ -896,10 +904,22 @@ impl Repository {
             return Ok(None);
         }
         self.conn.execute(
-            "UPDATE spotter_reports SET lat = ?1, lon = ?2 WHERE id = ?3",
-            params![lat, lon, id],
+            "UPDATE spotter_reports SET lat = ?1, lon = ?2, location_how = ?3 WHERE id = ?4",
+            params![lat, lon, how, id],
         )?;
         Ok(Some(activity_id))
+    }
+
+    /// Records how a check-in's map point was arrived at (LOCRES-064).
+    pub fn set_checkin_location_how(&self, id: &str, how: &str) -> rusqlite::Result<()> {
+        self.conn.execute("UPDATE checkins SET location_how = ?1 WHERE id = ?2", params![how, id])?;
+        Ok(())
+    }
+
+    /// The same for a spotter report.
+    pub fn set_report_location_how(&self, id: &str, how: &str) -> rusqlite::Result<()> {
+        self.conn.execute("UPDATE spotter_reports SET location_how = ?1 WHERE id = ?2", params![how, id])?;
+        Ok(())
     }
 
     /// Records that a new check-in's location was placed by hand.
@@ -953,7 +973,7 @@ impl Repository {
     }
 
     pub fn list_spotter_reports(&self, activity_id: &str) -> rusqlite::Result<Vec<SpotterReport>> {
-        let mut stmt = self.conn.prepare("SELECT id, activity_id, coalesce(operator_id,''), reported_at, coalesce(county,''), coalesce(location_text,''), lat, lon, coalesce(reporter,''), hazard_type, coalesce(magnitude,''), coalesce(source,''), coalesce(notes,''), checkin_id FROM spotter_reports WHERE activity_id = ?1 AND voided_at IS NULL ORDER BY reported_at DESC")?;
+        let mut stmt = self.conn.prepare("SELECT id, activity_id, coalesce(operator_id,''), reported_at, coalesce(county,''), coalesce(location_text,''), lat, lon, coalesce(reporter,''), hazard_type, coalesce(magnitude,''), coalesce(source,''), coalesce(notes,''), checkin_id, location_how FROM spotter_reports WHERE activity_id = ?1 AND voided_at IS NULL ORDER BY reported_at DESC")?;
         let rows = stmt.query_map(params![activity_id], Self::map_spotter_report)?;
         let mut v = Vec::new();
         for r in rows {
@@ -966,7 +986,7 @@ impl Repository {
         &self,
         activity_id: &str,
     ) -> rusqlite::Result<Vec<SpotterReport>> {
-        let mut stmt = self.conn.prepare("SELECT id, activity_id, coalesce(operator_id,''), reported_at, coalesce(county,''), coalesce(location_text,''), lat, lon, coalesce(reporter,''), hazard_type, coalesce(magnitude,''), coalesce(source,''), coalesce(notes,''), checkin_id FROM spotter_reports WHERE activity_id = ?1 AND voided_at IS NOT NULL ORDER BY voided_at DESC")?;
+        let mut stmt = self.conn.prepare("SELECT id, activity_id, coalesce(operator_id,''), reported_at, coalesce(county,''), coalesce(location_text,''), lat, lon, coalesce(reporter,''), hazard_type, coalesce(magnitude,''), coalesce(source,''), coalesce(notes,''), checkin_id, location_how FROM spotter_reports WHERE activity_id = ?1 AND voided_at IS NOT NULL ORDER BY voided_at DESC")?;
         let rows = stmt.query_map(params![activity_id], Self::map_spotter_report)?;
         let mut v = Vec::new();
         for r in rows {
@@ -977,7 +997,7 @@ impl Repository {
 
     pub fn get_spotter_report(&self, id: &str) -> rusqlite::Result<SpotterReport> {
         self.conn.query_row(
-            "SELECT id, activity_id, coalesce(operator_id,''), reported_at, coalesce(county,''), coalesce(location_text,''), lat, lon, coalesce(reporter,''), hazard_type, coalesce(magnitude,''), coalesce(source,''), coalesce(notes,''), checkin_id FROM spotter_reports WHERE id = ?1",
+            "SELECT id, activity_id, coalesce(operator_id,''), reported_at, coalesce(county,''), coalesce(location_text,''), lat, lon, coalesce(reporter,''), hazard_type, coalesce(magnitude,''), coalesce(source,''), coalesce(notes,''), checkin_id, location_how FROM spotter_reports WHERE id = ?1",
             params![id],
             Self::map_spotter_report,
         )
@@ -999,6 +1019,7 @@ impl Repository {
             source: r.get(11)?,
             notes: r.get(12)?,
             checkin_id: r.get(13)?,
+            location_how: r.get(14)?,
         })
     }
 
@@ -1912,26 +1933,33 @@ mod lifecycle_tests {
         let c = r
             .create_checkin(&id, "W4ABC", None, None, Some("EL95"), Some(typed), None, None, None, None, false, None, &ContactDetails::default())
             .unwrap();
-        assert_eq!(r.place_checkin(&c, typed, 25.6262, -80.4145, typed, Some("EL95tp")).unwrap(), Some(id.clone()));
+        assert_eq!(r.place_checkin(&c, typed, 25.6262, -80.4145, typed, Some("EL95tp"), "crossing").unwrap(), Some(id.clone()));
         let got = r.get_checkin(&c).unwrap();
         assert_eq!((got.location_lat, got.location_lon, got.grid_square.as_str()), (Some(25.6262), Some(-80.4145), "EL95tp"));
         assert!(!got.location_manual, "a lookup isn't placing by hand");
+        assert_eq!(got.location_how, "crossing", "how it was placed is kept (LOCRES-064)");
         // A grid square from a call-sign lookup stays.
-        r.place_checkin(&c, typed, 25.0, -80.0, typed, None).unwrap();
+        r.place_checkin(&c, typed, 25.0, -80.0, typed, None, "crossing").unwrap();
         assert_eq!(r.get_checkin(&c).unwrap().grid_square, "EL95tp");
         // Corrected while the lookup ran, or placed by hand: left alone.
-        assert_eq!(r.place_checkin(&c, "somewhere else", 1.0, 1.0, "x", None).unwrap(), None);
+        assert_eq!(r.place_checkin(&c, "somewhere else", 1.0, 1.0, "x", None, "crossing").unwrap(), None);
         r.set_checkin_location_coords(&c, 25.7, -80.2, Some("pin")).unwrap();
-        assert_eq!(r.place_checkin(&c, typed, 1.0, 1.0, "x", None).unwrap(), None);
+        assert_eq!(r.place_checkin(&c, typed, 1.0, 1.0, "x", None, "crossing").unwrap(), None);
         assert_eq!(r.get_checkin(&c).unwrap().location_lat, Some(25.7));
+        assert_eq!(r.get_checkin(&c).unwrap().location_how, "pin");
+        r.clear_checkin_location(&c).unwrap();
+        assert_eq!(r.get_checkin(&c).unwrap().location_how, "");
 
         let rep = r
             .create_spotter_report(&id, "2026-01-01T12:00", None, Some(typed), None, None, None, "Hail", None, None, None, None, None)
             .unwrap();
-        assert_eq!(r.place_report(&rep, typed, 25.6, -80.4).unwrap(), Some(id));
+        assert_eq!(r.place_report(&rep, typed, 25.6, -80.4, "crossing").unwrap(), Some(id.clone()));
         assert_eq!(r.get_spotter_report(&rep).unwrap().lat, Some(25.6));
-        assert_eq!(r.place_report(&rep, "elsewhere", 1.0, 1.0).unwrap(), None);
-        assert_eq!(r.place_checkin("missing", typed, 1.0, 1.0, "x", None).unwrap(), None);
+        assert_eq!(r.get_spotter_report(&rep).unwrap().location_how, "crossing");
+        r.set_report_location_how(&rep, "zip").unwrap();
+        assert_eq!(r.list_spotter_reports(&id).unwrap()[0].location_how, "zip");
+        assert_eq!(r.place_report(&rep, "elsewhere", 1.0, 1.0, "crossing").unwrap(), None);
+        assert_eq!(r.place_checkin("missing", typed, 1.0, 1.0, "x", None, "crossing").unwrap(), None);
     }
 
     #[test]

@@ -115,6 +115,8 @@ export default function SpotterReportForm({
   const [county, setCounty] = useState("");
   const [locationText, setLocationText] = useState("");
   const [lat, setLat] = useState<number | null>(null);
+  // The point was picked on the map in this form (not one the report already had).
+  const [picked, setPicked] = useState(false);
   const [lon, setLon] = useState<number | null>(null);
   const [reporter, setReporter] = useState("");
   const [hazardType, setHazardType] = useState<string>(HAZARD_TYPES[0]);
@@ -188,6 +190,7 @@ export default function SpotterReportForm({
     setCounty("");
     setLocationText("");
     setLat(null);
+    setPicked(false);
     setLon(null);
     setReporter("");
     setHazardType(HAZARD_TYPES[0]);
@@ -282,6 +285,9 @@ export default function SpotterReportForm({
       where = { lat: later.lat, lon: later.lon };
     }
     const [lat2, lon2] = [where.lat, where.lon];
+    // How the point was arrived at (LOCRES-064): picked on the map here,
+    // placed from the Location box, or (unchanged) left alone.
+    const how = picked && lat != null ? "pin" : later ? later.how : null;
     if (editingReport) {
       await api.updateSpotterReport(
         editingReport.id,
@@ -296,7 +302,8 @@ export default function SpotterReportForm({
         source || null,
         notes.trim() || null,
         checkinId,
-        operatorId
+        operatorId,
+        how
       );
       if (later) placeReportLater(editingReport.id, locationText, later, near);
       resetForm();
@@ -326,7 +333,8 @@ export default function SpotterReportForm({
                 true,
                 traffic,
                 null,
-                onRoster.location_manual
+                onRoster.location_manual,
+                onRoster.location_how || null
               )
             : await checkInCallSign(activityId, who, operatorId, qrzConfigured, traffic, near);
           // Open, like any traffic, until ticked Handled once it's passed on.
@@ -344,7 +352,8 @@ export default function SpotterReportForm({
           source || null,
           notes.trim() || null,
           linkTo,
-          operatorId
+          operatorId,
+          how
         );
         if (later) placeReportLater(id, locationText, later, near);
         resetForm();
@@ -539,6 +548,7 @@ export default function SpotterReportForm({
                 setLocationText(e.target.value);
                 // A typed location replaces a point picked for the old one.
                 setLat(null);
+                setPicked(false);
                 setLon(null);
               }}
             />
@@ -597,6 +607,7 @@ export default function SpotterReportForm({
           initialLabel={locationText}
           onSave={(newLat, newLon, label) => {
             setLat(newLat);
+            setPicked(true);
             setLon(newLon);
             if (!locationText.trim()) setLocationText(label);
             setShowPicker(false);

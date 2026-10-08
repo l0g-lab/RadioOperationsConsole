@@ -3,6 +3,7 @@ import { locationText } from "../../../checkinLocation";
 import type { Checkin } from "../../../types";
 import { MapPin } from "lucide-react";
 import { TimeCell, type RowProps } from "./shared";
+import { howText } from "../../../placeText";
 
 /** A net's column headings; a SKYWARN net's last column also holds its reports. */
 export function NetColumns({ reports = false }: { reports?: boolean }) {
@@ -31,7 +32,9 @@ function locationDetails(c: Checkin): string {
     c.address && `Address: ${c.address}`,
     c.qth_location && c.qth_location !== c.address && `QTH: ${c.qth_location}`,
     c.location_lat != null && c.location_lon != null
-      ? `On the map: ${formatCoords(c.location_lat, c.location_lon)}${c.location_manual ? " (placed by hand)" : ""}`
+      ? `On the map: ${formatCoords(c.location_lat, c.location_lon)}${
+          howText(c.location_how) ? `\n${howText(c.location_how)}` : c.location_manual ? " (placed by hand)" : ""
+        }`
       : "Not on the map",
     c.grid_square && `Grid square: ${c.grid_square}`,
   ]

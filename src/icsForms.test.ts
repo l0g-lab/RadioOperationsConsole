@@ -41,6 +41,7 @@ function checkin(overrides: Partial<Checkin> = {}): Checkin {
     location_lon: null,
     location_label: "",
     location_manual: false,
+    location_how: "",
     has_traffic: false,
     traffic: "",
     traffic_handled: false,
@@ -98,6 +99,7 @@ function report(overrides: Partial<SpotterReport> = {}): SpotterReport {
     source: "Trained Spotter",
     notes: "dents",
     checkin_id: null,
+    location_how: "",
     ...overrides,
   };
 }

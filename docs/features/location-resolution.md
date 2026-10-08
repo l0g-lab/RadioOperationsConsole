@@ -200,6 +200,18 @@ them as it can.
   corner, never to a vaguer street or town. Without a house number (a town
   alone), QRZ's point stands.
 
+- **LOCRES-064:** Each check-in's and spotter report's map point MUST keep
+  how it was arrived at: picked on the map, typed coordinates, a mile
+  marker, a saved place, QRZ's point, a street address, where streets
+  cross, or, approximately, somewhere along a street, a town's or area's
+  centre, a ZIP code's centre, or a grid square's centre. It MUST be set
+  wherever the point is (when saved, corrected, looked up, placed by hand,
+  or placed by the lookup after saving), and shown: on hovering over the
+  location in the roster and reports list, in the map popups, and in the
+  CSV exports. Approximate points MUST look different on the maps (a
+  hollow, dashed dot for a station; a faded icon for a report), with a key.
+  Records from before this was kept say nothing.
+
 ## Acceptance examples
 
 ```gherkin

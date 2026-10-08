@@ -288,7 +288,8 @@ export default function CheckinEntryForm({
       traffic.trim() || null,
       log ? toContactDetails(contact) : null,
       // Picked on the map, typed coordinates, or a mile marker.
-      loc.manual
+      loc.manual,
+      loc.how
     );
     placeCheckinLater(id, location, loc, near);
     // The station setup carries over to the next contact.

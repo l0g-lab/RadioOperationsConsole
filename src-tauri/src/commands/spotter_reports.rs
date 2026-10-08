@@ -19,10 +19,11 @@ pub fn create_spotter_report(
     notes: Option<String>,
     checkin_id: Option<String>,
     operator_id: Option<String>,
+    location_how: Option<String>,
 ) -> Result<String, String> {
     let repo = state.repo.lock().unwrap();
     ensure_open(&repo, &activity_id)?;
-    repo.create_spotter_report(
+    let id = repo.create_spotter_report(
         &activity_id,
         &reported_at,
         county.as_deref(),
@@ -37,7 +38,12 @@ pub fn create_spotter_report(
         checkin_id.as_deref(),
         operator_id.as_deref(),
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    // How its point was arrived at (LOCRES-064), when it's on the map.
+    if let Some(how) = location_how.filter(|_| lat.is_some()) {
+        repo.set_report_location_how(&id, &how).map_err(|e| e.to_string())?;
+    }
+    Ok(id)
 }
 
 #[tauri::command]
@@ -83,6 +89,7 @@ pub fn update_spotter_report(
     notes: Option<String>,
     checkin_id: Option<String>,
     operator_id: Option<String>,
+    location_how: Option<String>,
 ) -> Result<(), String> {
     let repo = state.repo.lock().unwrap();
     ensure_report_open(&repo, &report_id)?;
@@ -104,6 +111,10 @@ pub fn update_spotter_report(
         checkin_id.as_deref(),
     )
     .map_err(|e| e.to_string())?;
+    if let Some(how) = &location_how {
+        repo.set_report_location_how(&report_id, if lat.is_some() { how } else { "" })
+            .map_err(|e| e.to_string())?;
+    }
     let data = serde_json::json!({
         "before": {
             "reported_at": before.reported_at,

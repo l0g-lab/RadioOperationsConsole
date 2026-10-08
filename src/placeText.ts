@@ -54,6 +54,8 @@ export interface Placement {
   approx: boolean;
   /** Where it lands, in words. */
   note: string;
+  /** What a place found online or remembered was matched as (an address, a crossing, a town…). */
+  precision?: FoundPrecision;
   /** Not placed exactly offline: worth looking up online once saved (LOCRES-050). */
   lookUp: boolean;
   /**
@@ -108,6 +110,41 @@ export function roughness(p: FoundPrecision): string | null {
   }
 }
 
+/**
+ * How a record's map point was arrived at, as it's kept (LOCRES-064): what
+ * placed it, or for a place found online or remembered, what it matched.
+ */
+export function howPlaced(p: Pick<Placement, "source" | "precision" | "lat">): string | null {
+  if (p.lat == null || !p.source) return null;
+  return p.source === "online" || p.source === "remembered" ? (p.precision ?? null) : p.source;
+}
+
+/** Each "how placed" in words, and whether it's only approximate. */
+export const HOW: Record<string, { words: string; approx: boolean }> = {
+  pin: { words: "picked on the map", approx: false },
+  coords: { words: "typed coordinates", approx: false },
+  mile_marker: { words: "a mile marker", approx: false },
+  saved_place: { words: "a saved place", approx: false },
+  qrz: { words: "QRZ's point for the station", approx: false },
+  address: { words: "the street address", approx: false },
+  crossing: { words: "where the streets cross", approx: false },
+  grid: { words: "the centre of the grid square typed", approx: true },
+  station_grid: { words: "the centre of the station's grid square", approx: true },
+  zip: { words: "the centre of the ZIP code", approx: true },
+  street: { words: "somewhere along the street", approx: true },
+  town: { words: "the town's centre", approx: true },
+  region: { words: "the area's centre", approx: true },
+};
+
+/** Whether a record's point is only approximate. */
+export const isApproximate = (how: string) => HOW[how]?.approx ?? false;
+
+/** "Placed by: the centre of the ZIP code — approximate", or "" when not known. */
+export function howText(how: string): string {
+  const h = HOW[how];
+  return h ? `Placed by: ${h.words}${h.approx ? " — approximate" : ""}` : "";
+}
+
 /** A saved place whose name is what's typed, ignoring case. */
 export function savedPlaceNamed(places: Place[], text: string): Place | null {
   const t = text.trim().toLowerCase();
@@ -139,6 +176,7 @@ export async function placeText(text: string, opts: PlaceOptions): Promise<Place
     const rough = roughness(f.precision);
     return at(f.lat, f.lon, source, rough ? `${said}: ${rough} — approximate` : said, {
       approx: rough != null,
+      precision: f.precision,
       label: rough ? `${typed} (${rough} — approximate)` : typed || f.label,
     });
   };

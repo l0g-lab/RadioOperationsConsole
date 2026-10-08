@@ -11,7 +11,7 @@ import { listen } from "@tauri-apps/api/event";
 import * as api from "./api";
 import { parseCoords } from "./geo";
 import { latLonToGridSquare } from "./grid";
-import { asGridSquare, canLookUpOnline, placeText, type PlaceSource } from "./placeText";
+import { asGridSquare, canLookUpOnline, howPlaced, placeText, type PlaceSource } from "./placeText";
 
 export { asGridSquare, canLookUpOnline };
 
@@ -48,6 +48,8 @@ export interface CheckinLocation {
   keepGrid: boolean;
   /** Placed at QRZ's point: the lookup after saving moves it only to a matched house or corner. */
   lookUpExactOnly: boolean;
+  /** How the map point was arrived at, as kept on the check-in (LOCRES-064). */
+  how: string | null;
 }
 
 /**
@@ -90,6 +92,7 @@ export async function resolveCheckinLocation(
     lookUp: p.lookUp,
     keepGrid: fromLookup && !!lookup.grid,
     lookUpExactOnly: p.lookUpExactOnly,
+    how: howPlaced(p),
   };
 }
 

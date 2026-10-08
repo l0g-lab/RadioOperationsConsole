@@ -8,7 +8,7 @@ import {
 } from "../../../checkinLocation";
 import type { MapPoint } from "../../../mapPoints";
 import { lookupCallsign, sourceLabels, type CallsignSource } from "../../../callsignLookup";
-import { placeText } from "../../../placeText";
+import { howPlaced, placeText } from "../../../placeText";
 import { formatContactTime, parseContactTime } from "../../../utils";
 import {
   contactTimeError,
@@ -101,9 +101,11 @@ export function CheckinEditRow({
     let locationLat = checkin.location_lat;
     let locationLon = checkin.location_lon;
     let locationLabel = checkin.location_label || null;
-    let pinned: { lat: number; lon: number; label: string | null } | null = null;
+    let pinned: { lat: number; lon: number; label: string | null; how: string | null } | null = null;
     // A changed location not placed exactly here is looked up online once saved.
     let later: CheckinLocation | null = null;
+    // How a new point was arrived at (LOCRES-064); null leaves it as it was.
+    let how: string | null = null;
     // Or the corrected call sign's address, the same way.
     let replacedLater: { text: string; lookUp: boolean; keepGrid: boolean; lookUpExactOnly: boolean } | null = null;
     // A changed location is sorted again, as when checking in. A spot placed by
@@ -115,11 +117,12 @@ export function CheckinEditRow({
       address = r.address;
       qth = r.qth;
       if (r.manual && r.lat != null && r.lon != null) {
-        pinned = { lat: r.lat, lon: r.lon, label: r.label };
+        pinned = { lat: r.lat, lon: r.lon, label: r.label, how: r.how };
       } else if (!checkin.location_manual && r.lat != null && r.lon != null) {
         locationLat = r.lat;
         locationLon = r.lon;
         locationLabel = r.label;
+        how = r.how;
       }
       grid = r.grid ?? grid;
     } else if (replace) {
@@ -142,6 +145,7 @@ export function CheckinEditRow({
         locationLat = p.lat;
         locationLon = p.lon;
         locationLabel = p.lat != null ? qth || address || p.label : null;
+        how = howPlaced(p) ?? "";
         replacedLater = { text, lookUp: p.lookUp, keepGrid: !!grid, lookUpExactOnly: p.lookUpExactOnly };
       }
     }
@@ -162,10 +166,11 @@ export function CheckinEditRow({
       traffic.trim() !== "",
       traffic.trim() || null,
       log ? toContactDetails(contact) : null,
-      !log && at.trim() !== startAt && atParsed.kind === "ok" ? atParsed.iso : null
+      !log && at.trim() !== startAt && atParsed.kind === "ok" ? atParsed.iso : null,
+      how
     );
     // Typed coordinates or a mile marker: placed by hand.
-    if (pinned) await api.setCheckinLocationCoords(checkin.id, pinned.lat, pinned.lon, pinned.label);
+    if (pinned) await api.setCheckinLocationCoords(checkin.id, pinned.lat, pinned.lon, pinned.label, pinned.how);
     else if (later) placeCheckinLater(checkin.id, location, later, near);
     else if (replacedLater) placeCheckinLater(checkin.id, replacedLater.text, replacedLater, near);
     onSaved();

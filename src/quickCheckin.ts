@@ -48,7 +48,8 @@ export async function checkInCallSign(
     !!traffic,
     traffic,
     null,
-    loc.manual
+    loc.manual,
+    loc.how
   );
   placeCheckinLater(id, text, loc, near);
   return id;

@@ -7,6 +7,7 @@ import { createBaseMap } from "../../map/baseMap";
 import { spreadDuplicates } from "../../map/spreadDuplicates";
 import { hazardIconSvg } from "./hazardIcons";
 import { MapPinned } from "lucide-react";
+import { howText, isApproximate } from "../../placeText";
 
 interface Props {
   reports: SpotterReport[];
@@ -31,6 +32,7 @@ function popupFor(r: SpotterReport): HTMLElement {
   line(box, formatCoords(r.lat as number, r.lon as number));
   if (r.reporter) line(box, `Reported by ${r.reporter}`);
   if (r.notes) line(box, r.notes);
+  if (howText(r.location_how)) line(box, howText(r.location_how));
   return box;
 }
 
@@ -85,9 +87,12 @@ export default function SpotterReportMap({ reports, selectedReportId, onClose }:
         iconAnchor: [ICON_SIZE / 2, ICON_SIZE / 2],
         popupAnchor: [0, -ICON_SIZE / 2],
       });
+      // Only roughly placed: faded, so it isn't read as the exact spot (LOCRES-064).
+      const rough = isApproximate(p.report.location_how);
       const marker = L.marker([p.lat, p.lon], {
         icon,
-        title: p.report.hazard_type,
+        title: rough ? `${p.report.hazard_type} (approximate location)` : p.report.hazard_type,
+        opacity: rough ? 0.5 : 1,
       })
         .bindPopup(popupFor(p.report))
         .addTo(layer);
@@ -121,6 +126,7 @@ export default function SpotterReportMap({ reports, selectedReportId, onClose }:
         <p className="leaflet-map-status">
           {located.length} of {reports.length} reports plotted at the location of the hazard
           {missing > 0 && ` — ${missing} without a location`}
+          {located.some((x) => isApproximate(x.location_how)) && " — faded icons are approximate"}
         </p>
         <div ref={containerRef} className="leaflet-map-container" />
         {(typesShown.length > 0 || otherShown) && (

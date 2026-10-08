@@ -127,6 +127,7 @@ describe("ExportOptions Show CSV", () => {
       source: "",
       notes: "",
       checkin_id: null,
+      location_how: "",
     };
     vi.mocked(api.listCheckins).mockResolvedValue([CHECKIN]);
     vi.mocked(api.listSpotterReports).mockResolvedValue([REPORT]);

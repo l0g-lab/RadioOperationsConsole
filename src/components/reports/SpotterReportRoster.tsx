@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import { howText } from "../../placeText";
 import * as api from "../../api";
 import type { Activity, SpotterReport } from "../../types";
 import { WIND_DAMAGE_GUIDE } from "../../types";
@@ -126,6 +127,7 @@ export default function SpotterReportRoster({
               r.location_text && `Where: ${r.location_text}`,
               r.county && `County: ${r.county}`,
               hasCoords ? `On the map: ${formatCoords(r.lat as number, r.lon as number)}` : "Not on the map",
+              hasCoords && howText(r.location_how),
             ]
               .filter(Boolean)
               .join("\n");

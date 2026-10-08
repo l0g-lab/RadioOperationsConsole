@@ -140,6 +140,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0034_activity_alerts.sql",
         include_str!("../migrations/0034_activity_alerts.sql"),
     ),
+    (
+        "0035_location_how.sql",
+        include_str!("../migrations/0035_location_how.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't

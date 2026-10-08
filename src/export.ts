@@ -1,4 +1,5 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
+import { HOW } from "./placeText";
 import { mkdir, writeTextFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import * as api from "./api";
@@ -168,6 +169,7 @@ const CSV_COLUMNS = [
   "Latitude",
   "Longitude",
   "Location Label",
+  "Location Placed By",
   "Checked In (Local)",
   "Checked In (UTC)",
   "Has Traffic",
@@ -184,6 +186,12 @@ const CSV_COLUMNS = [
   "Cross Street",
 ];
 
+/** How a point was placed, for a CSV cell: "the centre of the ZIP code (approximate)". */
+function howCell(how: string): string {
+  const h = HOW[how];
+  return h ? `${h.words}${h.approx ? " (approximate)" : ""}` : "";
+}
+
 /** The active (non-voided) roster as CSV, with everything the roster shows. */
 export function checkinsToCsv(checkins: Checkin[]): string {
   const rows = [CSV_COLUMNS];
@@ -197,6 +205,7 @@ export function checkinsToCsv(checkins: Checkin[]): string {
       c.location_lat != null ? String(c.location_lat) : "",
       c.location_lon != null ? String(c.location_lon) : "",
       c.location_label,
+      howCell(c.location_how),
       localStamp(c.checked_in_at),
       utcStamp(c.checked_in_at),
       c.has_traffic ? "yes" : "",
@@ -313,6 +322,7 @@ const SPOTTER_CSV_COLUMNS = [
   "Location",
   "Latitude",
   "Longitude",
+  "Location Placed By",
   "Grid Square",
 ];
 
@@ -341,6 +351,7 @@ export function spotterReportsToCsv(reports: SpotterReport[]): string {
       r.location_text,
       r.lat != null ? String(r.lat) : "",
       r.lon != null ? String(r.lon) : "",
+      howCell(r.location_how),
       reportGrid(r),
     ]);
   }

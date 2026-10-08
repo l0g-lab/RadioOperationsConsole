@@ -43,6 +43,7 @@ pub fn create_checkin(
     traffic: Option<String>,
     contact: Option<ContactDetails>,
     location_manual: Option<bool>,
+    location_how: Option<String>,
 ) -> Result<String, String> {
     let mut contact = normalize_contact(contact)?.unwrap_or_default();
     let repo = state.repo.lock().unwrap();
@@ -76,6 +77,10 @@ pub fn create_checkin(
     // A range check's point is always pinned by hand (RANGE-014).
     if location_lat.is_some() && (range || location_manual == Some(true)) {
         repo.mark_checkin_location_manual(&id).map_err(|e| e.to_string())?;
+    }
+    let how = if range && location_lat.is_some() { Some("pin".to_string()) } else { location_how };
+    if let Some(how) = how.filter(|_| location_lat.is_some()) {
+        repo.set_checkin_location_how(&id, &how).map_err(|e| e.to_string())?;
     }
     Ok(id)
 }
@@ -128,6 +133,7 @@ pub fn update_checkin(
     traffic: Option<String>,
     contact: Option<ContactDetails>,
     checked_in_at: Option<String>,
+    location_how: Option<String>,
 ) -> Result<(), String> {
     let mut contact = normalize_contact(contact)?;
     // A net check-in's time, corrected without contact details (LIFE-013).
@@ -164,6 +170,12 @@ pub fn update_checkin(
     .map_err(|e| e.to_string())?;
     if let Some(at) = &checked_in_at {
         repo.set_checkin_time(&checkin_id, at).map_err(|e| e.to_string())?;
+    }
+    // How the point was arrived at, when the location was placed again;
+    // nothing when it isn't on the map any more.
+    if let Some(how) = &location_how {
+        let how = if location_lat.is_some() { how.as_str() } else { "" };
+        repo.set_checkin_location_how(&checkin_id, how).map_err(|e| e.to_string())?;
     }
     let after = repo.get_checkin(&checkin_id).map_err(|e| e.to_string())?;
     let data = serde_json::json!({
@@ -259,10 +271,16 @@ pub fn set_checkin_location_coords(
     lat: f64,
     lon: f64,
     label: Option<String>,
+    how: Option<String>,
 ) -> Result<Checkin, String> {
     let repo = state.repo.lock().unwrap();
     repo.set_checkin_location_coords(&checkin_id, lat, lon, label.as_deref())
         .map_err(|e| e.to_string())?;
+    // Placed by hand: a pin, unless it says otherwise (typed coordinates, a
+    // mile marker, a saved place; LOCRES-064).
+    if let Some(how) = how {
+        repo.set_checkin_location_how(&checkin_id, &how).map_err(|e| e.to_string())?;
+    }
     repo.get_checkin(&checkin_id).map_err(|e| e.to_string())
 }
 

@@ -9,6 +9,7 @@ import { spreadDuplicates } from "../map/spreadDuplicates";
 import { MapPinned, Radio, RadioTower } from "lucide-react";
 import type { MapPoint } from "../mapPoints";
 import { SIGNAL_COLORS, SIGNAL_REPORTS, stationKindLabel } from "../rangeCheck";
+import { howText, isApproximate } from "../placeText";
 
 type Place = MapPoint;
 
@@ -38,6 +39,8 @@ interface ResolvedPin {
   theyHear: string;
   kind: string;
   power: string;
+  /** How the point was arrived at (LOCRES-064); approximate ones are drawn hollow. */
+  how: string;
 }
 
 const CHECKIN_MARKER_RADIUS = 5;
@@ -116,6 +119,7 @@ export function mapPins(checkins: Checkin[], rangeCheck: boolean): { pins: Resol
       theyHear: c.rst_received,
       kind: c.station_kind,
       power: c.power,
+      how: c.location_how,
     });
   }
   return { pins: pins.reverse(), stations: stations.size, placed: placed.size };
@@ -145,6 +149,7 @@ function popupContentFor(
     if (station) line(station);
   }
   if (distance) line(`Distance to ${distance.to}: ${formatDistance(distance.km)}`);
+  if (howText(pin.how)) line(howText(pin.how));
   return container;
 }
 
@@ -234,13 +239,17 @@ export default function CheckinLocationMap({
           )
         ).bindTooltip(formatDistance(distanceKm));
       }
+      // Only roughly placed (a ZIP's or town's centre…): hollow and dashed,
+      // so it isn't read as where the station really is (LOCRES-064).
+      const rough = isApproximate(pin.how);
       add(
         L.circleMarker([pin.lat, pin.lon], {
-          radius: rangeCheck ? RANGE_MARKER_RADIUS : CHECKIN_MARKER_RADIUS,
+          radius: (rangeCheck ? RANGE_MARKER_RADIUS : CHECKIN_MARKER_RADIUS) + (rough ? 1 : 0),
           color: signal?.stroke ?? CHECKIN_MARKER_STROKE,
           weight: 2,
+          dashArray: rough ? "3,3" : undefined,
           fillColor: signal?.fill ?? CHECKIN_MARKER_COLOR,
-          fillOpacity: 0.9,
+          fillOpacity: rough ? 0.15 : 0.9,
         })
       ).bindPopup(
         popupContentFor(pin, distanceKm != null ? { km: distanceKm, to: fromName } : null, rangeCheck)
@@ -331,6 +340,15 @@ export default function CheckinLocationMap({
             <li>
               <span className="map-line-swatch" style={{ borderColor: LINK_LINE_COLOR }} />
               Net control to repeater
+            </li>
+          )}
+          {pins.some((p) => isApproximate(p.how)) && (
+            <li>
+              <span
+                className="range-map-swatch range-map-swatch-approx"
+                style={{ borderColor: CHECKIN_MARKER_STROKE, background: "transparent" }}
+              />
+              Approximate location
             </li>
           )}
         </ul>

@@ -86,11 +86,15 @@ pub fn place_checkin_later(
             return;
         }
         let grid = replace_grid.then(|| geocode::grid_square(f.lat, f.lon));
-        let placed = state
-            .repo
-            .lock()
-            .unwrap()
-            .place_checkin(&checkin_id, &text, f.lat, f.lon, &label_for(&text, &f), grid.as_deref());
+        let placed = state.repo.lock().unwrap().place_checkin(
+            &checkin_id,
+            &text,
+            f.lat,
+            f.lon,
+            &label_for(&text, &f),
+            grid.as_deref(),
+            f.precision.how(),
+        );
         if let Ok(Some(activity_id)) = placed {
             let _ = tauri::Emitter::emit(&app, "location-placed", &activity_id);
         }
@@ -112,7 +116,7 @@ pub fn place_report_later(
         let Lookup::Found(f) = geocode::find(&state.place_memory, &dir, &text, near_of(&state, near_lat, near_lon), true).await else {
             return;
         };
-        let placed = state.repo.lock().unwrap().place_report(&report_id, &text, f.lat, f.lon);
+        let placed = state.repo.lock().unwrap().place_report(&report_id, &text, f.lat, f.lon, f.precision.how());
         if let Ok(Some(activity_id)) = placed {
             let _ = tauri::Emitter::emit(&app, "location-placed", &activity_id);
         }

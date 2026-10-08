@@ -22,6 +22,13 @@ top. Each release's section here is also its description on the
 - **Type a saved place's name** ("County EOC") into any location box to put
   it there.
 
+- **Rough pins look rough.** Each check-in and report keeps how its map point
+  was found (a pin, the street address, where the streets cross, a ZIP code's
+  or town's centre…). On the maps, approximate stations are hollow, dashed
+  dots and approximate reports are faded, with a key; hovering over a
+  location says how it was placed, and the CSV exports have a "Location
+  Placed By" column.
+
 ### Changed
 - **A station's street address beats QRZ's point** when the address matches
   a house. QRZ's point can be an old address still set on QRZ, or a rough

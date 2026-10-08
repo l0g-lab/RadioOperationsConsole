@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "../../api";
 import type { Activity, Checkin } from "../../types";
 import { QRZ_ERR_NOT_CONFIGURED, ERR_OFFLINE } from "../../types";
-import { placeText } from "../../placeText";
+import { howPlaced, placeText } from "../../placeText";
 import { placeCheckinLater } from "../../checkinLocation";
 import {
   callSignService,
@@ -212,7 +212,10 @@ export default function CheckinRoster({
         locationLon,
         locationLabel,
         selectedCheckin.has_traffic,
-        selectedCheckin.traffic || null
+        selectedCheckin.traffic || null,
+        null,
+        null,
+        placed ? howPlaced(placed) : null
       );
       if (placed) placeCheckinLater(selectedCheckin.id, text, { lookUp: placed.lookUp, keepGrid: !!grid, lookUpExactOnly: placed.lookUpExactOnly }, distanceFrom);
       setCheckinLookupStatus("found");
