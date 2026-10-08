@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-10-07
+
 ### Added
 - **A fuller SKYWARN summary.** A SKYWARN net's summary, and its saved text,
   now give the largest hail and strongest wind reported and how many reports
@@ -38,6 +40,12 @@ top. Each release's section here is also its description on the
   roster and the spotter reports list, instead of being cut off after one,
   without making rows taller; longer text ends in "…", with the full text on
   hovering.
+- **Update all stays put in Settings.** The mile-marker roads' Update all is
+  on the same line as their name, and no longer moves when the road list or
+  its information is opened.
+- **Clearer Winlink buttons on the ICS 309 and 214:** "Save file for Winlink
+  (Load Form 309 Data)" and "(Load ICS 214 Data)" name the Winlink button the
+  file is for.
 
 ### Removed
 - "Create linked report" under the check-in roster. It only noted in the
@@ -553,7 +561,8 @@ top. Each release's section here is also its description on the
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.4...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.4...v2.6.0
 [2.5.4]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.3...v2.5.4
 [2.5.3]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.2...v2.5.3
 [2.5.2]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.1...v2.5.2
