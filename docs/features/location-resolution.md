@@ -192,6 +192,10 @@ them as it can.
   online. This memory grows as the application is used, in place of
   downloading areas ahead of time; it's kept and cleared with the
   looked-up places (`LOCRES-055`), and is limited to 100,000 pieces of road.
+  With a town typed, the crossing MUST be worked out around that town, never
+  the net (the same street names can cross in another town nearer it), so
+  only once the town has been looked up; a town looked up is remembered
+  like a place, so it's asked once and works offline after.
 - **LOCRES-062:** QRZ's point for a station can be old (a past address
   still set on QRZ) or rough, so a street address with a house number that
   matches a house MUST win over it. Where someone is waiting, the address

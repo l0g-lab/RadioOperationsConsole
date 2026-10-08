@@ -740,11 +740,27 @@ fn best_corner(streets: &Streets, a: &Street, b: &Street, centre: Option<(f64, f
     None
 }
 
-/// A cross street worked out from known streets alone, near the net when
-/// it's known; None when they don't cover it.
-pub fn known_crossing(streets: &Streets, text: &str, near: Option<(f64, f64)>) -> Option<Found> {
-    let Query::Crossing { a, b, .. } = parse(text) else { return None };
-    let ((lat, lon), label) = best_corner(streets, &a, &b, near, NEAR_NET_KM)?;
+/// Where a typed town is remembered: by its name as read, and roughly where
+/// it was asked from (`cache_key`), apart from typed places.
+fn town_key(place: &str, near: Option<(f64, f64)>) -> String {
+    format!("town:{}", cache_key(place, near))
+}
+
+/// A cross street worked out from known streets alone, near the typed town
+/// when there is one, else near the net; None when they don't cover it. A
+/// typed town must be one looked up before (it's remembered then): the same
+/// two street names can cross in another town nearer the net, so it's never
+/// guessed.
+pub fn known_crossing(memory: &Memory, text: &str, near: Option<(f64, f64)>, now: i64) -> Option<Found> {
+    let Query::Crossing { a, b, place } = parse(text) else { return None };
+    let centre = match place {
+        None => near,
+        Some(p) => {
+            let town = memory.places.get(&town_key(&p, near), now)??;
+            Some((town.lat, town.lon))
+        }
+    };
+    let ((lat, lon), label) = best_corner(&memory.streets, &a, &b, centre, NEAR_NET_KM)?;
     Some(Found { lat, lon, precision: Precision::Crossing, label, source: "known streets".into() })
 }
 
@@ -991,13 +1007,23 @@ async fn find_crossing(
     patient: bool,
 ) -> Result<Option<Found>, Lookup> {
     let (centre, km) = match place {
-        Some(p) => match search(p, near.map(|n| (n, 150.0))).await? {
-            Some((f, _)) => ((f.lat, f.lon), NEAR_NET_KM),
-            None => match search(p, None).await? {
-                Some((f, _)) => ((f.lat, f.lon), NEAR_NET_KM),
-                None => return Ok(None),
-            },
-        },
+        Some(p) => {
+            // A town looked up before is remembered: no request, and the
+            // street memory can use it offline (`known_crossing`).
+            let now = chrono::Utc::now().timestamp();
+            let key = town_key(p, near);
+            let known = memory.lock().unwrap().places.get(&key, now).flatten();
+            let town = match known {
+                Some(f) => Some(f),
+                None => match search(p, near.map(|n| (n, 150.0))).await? {
+                    Some((f, _)) => Some(f),
+                    None => search(p, None).await?.map(|(f, _)| f),
+                },
+            };
+            let Some(town) = town else { return Ok(None) };
+            memory.lock().unwrap().places.put(key, Some(town.clone()), now);
+            ((town.lat, town.lon), NEAR_NET_KM)
+        }
         None => match near {
             Some(n) => (n, NEAR_NET_KM),
             // No town and no net to search around: anywhere in the country
@@ -1051,7 +1077,7 @@ pub fn recall(memory: &Mutex<Memory>, text: &str, near: Option<(f64, f64)>) -> O
     m.places
         .get(&cache_key(text.trim(), near), now)
         .flatten()
-        .or_else(|| known_crossing(&m.streets, text, near))
+        .or_else(|| known_crossing(&m, text, near, now))
 }
 
 /// Places typed text: a cross street, else a search near the net, then
@@ -1072,7 +1098,7 @@ pub async fn find(memory: &Mutex<Memory>, dir: &Path, text: &str, near: Option<(
         if let Some(hit) = m.places.get(&key, now) {
             return hit.map(Lookup::Found).unwrap_or(Lookup::NotFound);
         }
-        if let Some(f) = known_crossing(&m.streets, text, near) {
+        if let Some(f) = known_crossing(&m, text, near, now) {
             m.places.put(key, Some(f.clone()), now);
             m.save(dir);
             return Lookup::Found(f);
@@ -1389,30 +1415,39 @@ mod tests {
         streets.add("W3".into(), &names(&["Southwest 117th Avenue"]), vec![vec![(-80.3790, 25.60), (-80.3790, 25.65)]]);
         assert_eq!(streets.len(), 3);
         let near = Some((25.6261, -80.4155));
-        let f = known_crossing(&streets, "sw 152 st & 117 ave", near).expect("both streets known");
+        let mut m = Memory { streets, ..Default::default() };
+        let f = known_crossing(&m, "sw 152 st & 117 ave", near, 0).expect("both streets known");
         assert!(metres((f.lat, f.lon), (25.6262, -80.3790)) < 1.0);
         assert_eq!((f.precision, f.source.as_str()), (Precision::Crossing, "known streets"));
         // Another name for the same road works too.
-        assert!(known_crossing(&streets, "coral reef dr & sw 137 ave", near).is_some());
+        assert!(known_crossing(&m, "coral reef dr & sw 137 ave", near, 0).is_some());
+        // A typed town decides, not the corner nearest the net.
+        assert!(known_crossing(&m, "sw 152 st & 117 ave, Homestead", near, 0).is_none(), "a town never looked up isn't guessed");
+        // Once the town has been looked up it's remembered, and the corner is
+        // worked out around it, not around the net.
+        let homestead = Found { lat: 25.6270, lon: -80.3800, precision: Precision::Town, label: "Homestead".into(), source: "nominatim".into() };
+        m.places.put(town_key("Homestead", near), Some(homestead), 0);
+        let f = known_crossing(&m, "sw 152 st & 117 ave, Homestead", near, 0).expect("the town is known");
+        assert!(metres((f.lat, f.lon), (25.6262, -80.3790)) < 1.0);
         // A street never fetched, or not a crossing: nothing.
-        assert!(known_crossing(&streets, "sw 152 st & sw 97 ave", near).is_none());
-        assert!(known_crossing(&streets, "13700 sw 152 st", near).is_none());
+        assert!(known_crossing(&m, "sw 152 st & sw 97 ave", near, 0).is_none());
+        assert!(known_crossing(&m, "13700 sw 152 st", near, 0).is_none());
         // Too far from this net.
-        assert!(known_crossing(&streets, "sw 152 st & 117 ave", Some((28.5, -81.4))).is_none());
+        assert!(known_crossing(&m, "sw 152 st & 117 ave", Some((28.5, -81.4)), 0).is_none());
         // A numbered street said without a type is the Street, not a Terrace
         // of the same number a block away; any type when there's no Street.
-        streets.add("W4".into(), &names(&["Northwest 151st Terrace"]), vec![vec![(-80.30, 25.9122), (-80.20, 25.9122)]]);
-        streets.add("W5".into(), &names(&["Northwest 151st Street"]), vec![vec![(-80.30, 25.9115), (-80.20, 25.9115)]]);
-        streets.add("W6".into(), &names(&["Northwest 27th Avenue"]), vec![vec![(-80.2439, 25.89), (-80.2439, 25.93)]]);
-        streets.add("W7".into(), &names(&["Northwest 160th Terrace"]), vec![vec![(-80.30, 25.925), (-80.20, 25.925)]]);
+        m.streets.add("W4".into(), &names(&["Northwest 151st Terrace"]), vec![vec![(-80.30, 25.9122), (-80.20, 25.9122)]]);
+        m.streets.add("W5".into(), &names(&["Northwest 151st Street"]), vec![vec![(-80.30, 25.9115), (-80.20, 25.9115)]]);
+        m.streets.add("W6".into(), &names(&["Northwest 27th Avenue"]), vec![vec![(-80.2439, 25.89), (-80.2439, 25.93)]]);
+        m.streets.add("W7".into(), &names(&["Northwest 160th Terrace"]), vec![vec![(-80.30, 25.925), (-80.20, 25.925)]]);
         let miami_gardens = Some((25.91, -80.24));
-        let f = known_crossing(&streets, "nw 27 ave & nw 151st", miami_gardens).unwrap();
+        let f = known_crossing(&m, "nw 27 ave & nw 151st", miami_gardens, 0).unwrap();
         assert!((f.lat - 25.9115).abs() < 1e-6, "the Street: {f:?}");
         assert_eq!(f.label, "Northwest 27th Avenue & Northwest 151st Street");
-        let t = known_crossing(&streets, "nw 27 ave & nw 160th", miami_gardens).unwrap();
+        let t = known_crossing(&m, "nw 27 ave & nw 160th", miami_gardens, 0).unwrap();
         assert!((t.lat - 25.925).abs() < 1e-6, "no Street, so the Terrace");
         // Through recall, as the location boxes use it offline.
-        let m = Mutex::new(Memory { streets, ..Default::default() });
+        let m = Mutex::new(m);
         assert!(recall(&m, "SW 152nd St & SW 117th Ave", near).is_some());
     }
 
