@@ -56,7 +56,7 @@ const ROWS: RowDef[] = [
     label: "Looked-up places",
     unit: ["file", "files"],
     about:
-      "Addresses, towns and cross streets already found online, so each is looked up once and the next check-in from the same place is placed at once.",
+      "Addresses, towns and cross streets already found online, and the streets fetched to find them, so each is looked up once and crossings of streets already fetched are placed at once, even offline.",
     consequence: "Places will be looked up online again as they're entered.",
   },
   {

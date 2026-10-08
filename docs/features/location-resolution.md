@@ -142,7 +142,8 @@ them as it can.
   crossing piece didn't come back; then, if that finds nothing, by asking
   Overpass; then by a plain search. Street names match whichever way map
   data spells them, including alternate names ("Douglas Road" for
-  "Southwest 37th Avenue").
+  "Southwest 37th Avenue"). A numbered street said without a type is a
+  Street before any other type of the same number.
 - **LOCRES-053:** Searches MUST stay near the net first: within 40 km of its
   repeater, else net control, or of a typed town; then anywhere in the US.
   Without a town or a net location a cross street isn't searched for, since
@@ -174,6 +175,13 @@ them as it can.
   name, an address, a town, a cross street), look near the net when it's
   opened for one, and say when the pin is only roughly placed.
 
+- **LOCRES-057:** The street shapes fetched to place cross streets MUST be
+  kept (each piece of road once), with every name each goes by, so a later
+  cross street of streets already fetched is worked out on this computer,
+  offline and without asking any service, before anything is looked up
+  online. This memory grows as the application is used, in place of
+  downloading areas ahead of time; it's kept and cleared with the
+  looked-up places (`LOCRES-055`), and is limited to 100,000 pieces of road.
 - **LOCRES-062:** QRZ's point for a station can be old (a past address
   still set on QRZ) or rough, so a street address with a house number that
   matches a house MUST win over it. Where someone is waiting, the address

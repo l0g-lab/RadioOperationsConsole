@@ -105,8 +105,9 @@ pub struct AppState {
     /// where it was downloaded (commands/updates.rs).
     pub update_installer: Mutex<Option<crate::updates::Asset>>,
     pub update_download: Mutex<Option<PathBuf>>,
-    /// Places already looked up online, so each is asked once (geocode.rs).
-    pub place_cache: Mutex<crate::geocode::Cache>,
+    /// Places already looked up online, and street shapes fetched, so each
+    /// is asked once and crossings of known streets work offline (geocode.rs).
+    pub place_memory: Mutex<crate::geocode::Memory>,
 }
 
 impl AppState {
@@ -133,7 +134,7 @@ impl AppState {
             qrz_session: Mutex::new(None),
             aprs_is_stream: Mutex::new(None),
             route_packs: Mutex::new(crate::datapacks::load_all(&datapacks_dir)),
-            place_cache: Mutex::new(crate::geocode::Cache::load(&datapacks_dir)),
+            place_memory: Mutex::new(crate::geocode::Memory::load(&datapacks_dir)),
             datapacks_dir,
             callsign_dbs: Mutex::new(std::collections::HashMap::new()),
             callsign_update_running: std::sync::atomic::AtomicBool::new(false),

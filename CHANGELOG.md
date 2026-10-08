@@ -15,6 +15,10 @@ top. Each release's section here is also its description on the
   looked up online once; the next check-in from it is placed at once, even
   offline. They're listed in Settings under Offline data, where they can be
   cleared.
+- **Streets are remembered too.** The streets fetched to find a cross street
+  are kept, so a later corner of streets already fetched is placed at once,
+  offline and without asking anyone. The more the app is used around your
+  area, the more corners it can place with no internet.
 - **Type a saved place's name** ("County EOC") into any location box to put
   it there.
 

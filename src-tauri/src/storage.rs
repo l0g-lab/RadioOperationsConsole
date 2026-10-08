@@ -55,7 +55,10 @@ fn files_for(id: &str, dirs: &Dirs) -> Option<Vec<PathBuf>> {
             .iter()
             .flat_map(|d| existing(dirs.datapacks.join(format!("{}.json", d.id))))
             .collect(),
-        "looked-up-places" => existing(dirs.datapacks.join(crate::geocode::CACHE_FILE)),
+        "looked-up-places" => [crate::geocode::CACHE_FILE, crate::geocode::STREETS_FILE]
+            .iter()
+            .flat_map(|f| existing(dirs.datapacks.join(f)))
+            .collect(),
         "partial-downloads" => names_in(dirs.datapacks, |n| {
             n.ends_with(".part") || n.ends_with(".part.meta")
         }),

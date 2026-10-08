@@ -169,10 +169,19 @@ fn has_direction(name: &str) -> bool {
 /// one typed without a direction ("137 Ave", where the direction goes without
 /// saying) matches any direction.
 pub fn same_street(typed: &Street, name: &str) -> bool {
-    let (other, _) = canonical(&words(name));
+    matches_canonical(typed, &canonical_lower(name))
+}
+
+/// A street name in map-data form, lower case: how known streets keep their names.
+fn canonical_lower(name: &str) -> String {
+    canonical(&words(name)).0.to_lowercase()
+}
+
+/// `same_street`, against a name already in `canonical_lower` form.
+fn matches_canonical(typed: &Street, other: &str) -> bool {
     let a = typed.name.to_lowercase();
-    let mut b = other.to_lowercase();
-    if !has_direction(&typed.name) && has_direction(&other) {
+    let mut b = other.to_string();
+    if !has_direction(&typed.name) && has_direction(other) {
         b = b.split_once(' ').map(|(_, rest)| rest.to_string()).unwrap_or(b);
     }
     if typed.typed {
@@ -192,8 +201,9 @@ pub enum Query {
 const SEPARATORS: [&str; 5] = ["&", "and", "@", "at", "/"];
 
 /// Reads typed text. Two streets joined by "&", "and", "@", "at" or "/" are a
-/// crossing; a town after the second street is split off at a comma, or
-/// after its street type ("sw 137 ave miami fl").
+/// crossing; a town after the second street is split off at a comma, after
+/// its street type ("sw 137 ave miami fl"), or, with no type, after its
+/// number ("nw 151st miami fl").
 pub fn parse(text: &str) -> Query {
     let w = words(&text.replace('&', " & ").replace('/', " / ").replace('@', " @ "));
     let Some(i) = w.iter().position(|x| SEPARATORS.contains(&x.as_str())) else {
@@ -208,6 +218,8 @@ pub fn parse(text: &str) -> Query {
         if t > 0 {
             place = second.split_off(t + 1);
         }
+    } else if let Some(n) = second.iter().rposition(|x| is_street_number(x)) {
+        place = second.split_off(n + 1);
     }
     let place: Vec<String> = place.into_iter().filter(|x| x != ",").collect();
     if first.is_empty() || second.is_empty() {
@@ -222,6 +234,12 @@ pub fn parse(text: &str) -> Query {
         b: street(&second),
         place: (!place.is_empty()).then(|| canonical(&place).0),
     }
+}
+
+/// A numbered street's number: "151", or an ordinal like "151st".
+fn is_street_number(w: &str) -> bool {
+    let digits: String = w.chars().take_while(|c| c.is_ascii_digit()).collect();
+    !digits.is_empty() && (digits.len() == w.len() || ordinal(digits.parse().unwrap_or(0)) == w)
 }
 
 /// An Overpass name pattern matching a street however it's written:
@@ -523,6 +541,125 @@ impl Cache {
     }
 }
 
+// ------------------------------------------------------------ known streets
+
+/// Street shapes fetched for cross streets, kept so later crossings of the
+/// same streets are worked out here, offline and without asking anyone
+/// (LOCRES-057). Each piece of road once, by its OpenStreetMap id.
+#[derive(Default, Serialize, Deserialize)]
+pub struct Streets {
+    ways: HashMap<String, Way>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+struct Way {
+    /// Every name the road goes by, in `canonical_lower` form.
+    names: Vec<String>,
+    lines: Vec<Line>,
+}
+
+pub const STREETS_FILE: &str = "known-streets.json";
+const STREETS_LIMIT: usize = 100_000;
+
+impl Streets {
+    /// Keeps a piece of road; false if it was already known (or there's no room).
+    fn add(&mut self, id: String, names: &[String], lines: Vec<Line>) -> bool {
+        if lines.is_empty() || names.is_empty() || self.ways.contains_key(&id) || self.ways.len() >= STREETS_LIMIT {
+            return false;
+        }
+        // To about 10 cm: plenty for a pin, and a much smaller file.
+        let round = |v: f64| (v * 1e6).round() / 1e6;
+        let lines = lines.into_iter().map(|l| l.into_iter().map(|(x, y)| (round(x), round(y))).collect()).collect();
+        let names = names.iter().map(|n| canonical_lower(n)).collect();
+        self.ways.insert(id, Way { names, lines });
+        true
+    }
+
+    /// The known pieces of a street, within `km` of `centre` when given.
+    fn lines_for(&self, s: &Street, centre: Option<(f64, f64)>, km: f64) -> Vec<Line> {
+        let near = |l: &Line| centre.is_none_or(|c| l.iter().any(|&(lon, lat)| metres((lat, lon), c) < km * 1000.0));
+        self.ways
+            .values()
+            .filter(|w| w.names.iter().any(|n| matches_canonical(s, n)))
+            .flat_map(|w| w.lines.iter().filter(|l| near(l)).cloned())
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.ways.len()
+    }
+}
+
+/// The ways a street might be meant, likeliest first: a numbered street
+/// said without a type ("nw 151st") is a Street, unless no Street fits, in
+/// which case any type ("Terrace", "Court") will do.
+fn meanings(s: &Street) -> Vec<Street> {
+    let numbered = s.name.rsplit(' ').next().is_some_and(|w| is_street_number(&w.to_lowercase()));
+    if s.typed || !numbered {
+        return vec![s.clone()];
+    }
+    vec![Street { name: format!("{} Street", s.name), typed: true }, s.clone()]
+}
+
+/// Where two streets cross, from known streets within `km` of `centre`,
+/// trying the likeliest meanings first; with the names it found them by.
+fn best_corner(streets: &Streets, a: &Street, b: &Street, centre: Option<(f64, f64)>, km: f64) -> Option<((f64, f64), String)> {
+    for ma in meanings(a) {
+        let la = streets.lines_for(&ma, centre, km);
+        if la.is_empty() {
+            continue;
+        }
+        for mb in meanings(b) {
+            let lb = streets.lines_for(&mb, centre, km);
+            if let Some(p) = corner(&crossings(&la, &lb), centre) {
+                return Some((p, format!("{} & {}", ma.name, mb.name)));
+            }
+        }
+    }
+    None
+}
+
+/// A cross street worked out from known streets alone, near the net when
+/// it's known; None when they don't cover it.
+pub fn known_crossing(streets: &Streets, text: &str, near: Option<(f64, f64)>) -> Option<Found> {
+    let Query::Crossing { a, b, .. } = parse(text) else { return None };
+    let ((lat, lon), label) = best_corner(streets, &a, &b, near, NEAR_NET_KM)?;
+    Some(Found { lat, lon, precision: Precision::Crossing, label, source: "known streets".into() })
+}
+
+/// What the lookup remembers between runs: places found, and the street
+/// shapes fetched along the way. Both work offline.
+#[derive(Default)]
+pub struct Memory {
+    pub places: Cache,
+    pub streets: Streets,
+    streets_changed: bool,
+}
+
+impl Memory {
+    pub fn load(dir: &Path) -> Memory {
+        Memory {
+            places: Cache::load(dir),
+            streets: std::fs::read_to_string(dir.join(STREETS_FILE))
+                .ok()
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
+            streets_changed: false,
+        }
+    }
+
+    fn save(&mut self, dir: &Path) {
+        self.places.save(dir);
+        if self.streets_changed {
+            if let Ok(s) = serde_json::to_string(&self.streets) {
+                let _ = std::fs::write(dir.join(STREETS_FILE), s);
+            }
+            self.streets_changed = false;
+        }
+    }
+}
+
 /// The cache key: the typed text in map-data form, and roughly where it was
 /// searched from (about 5 km), since "Main St & 5th" means a different place
 /// near another net.
@@ -613,7 +750,7 @@ async fn search(q: &str, around: Option<((f64, f64), f64)>) -> Result<Option<(Fo
 
 /// A street's shapes within `km` of `centre`, keeping only roads that really
 /// have that name (Nominatim also returns near matches).
-async fn street_lines(s: &Street, centre: (f64, f64), km: f64) -> Result<Vec<Line>, Lookup> {
+async fn street_lines(memory: &Mutex<Memory>, s: &Street, centre: (f64, f64), km: f64) -> Result<Vec<Line>, Lookup> {
     let p = vec![
         ("q", s.name.clone()),
         ("format", "jsonv2".to_string()),
@@ -628,16 +765,26 @@ async fn street_lines(s: &Street, centre: (f64, f64), km: f64) -> Result<Vec<Lin
     ];
     let body = nominatim(&p).await?;
     let mut lines = Vec::new();
+    let mut m = memory.lock().unwrap();
     for r in body.as_array().into_iter().flatten() {
         if r.get("category").and_then(Value::as_str) != Some("highway") {
             continue;
         }
-        let names = r.get("namedetails").and_then(Value::as_object);
-        let named = names.is_some_and(|n| n.values().filter_map(Value::as_str).any(|v| same_street(s, v)));
-        if !named {
-            continue;
+        let names: Vec<String> = r
+            .get("namedetails")
+            .and_then(Value::as_object)
+            .map(|n| n.values().filter_map(Value::as_str).map(String::from).collect())
+            .unwrap_or_default();
+        let shape = geojson_lines(r.get("geojson"));
+        // Every road that came back is kept, for crossings asked later.
+        if let (Some(t), Some(id)) = (r.get("osm_type").and_then(Value::as_str), r.get("osm_id").and_then(Value::as_i64)) {
+            if m.streets.add(format!("{t}{id}"), &names, shape.clone()) {
+                m.streets_changed = true;
+            }
         }
-        lines.extend(geojson_lines(r.get("geojson")));
+        if names.iter().any(|v| same_street(s, v)) {
+            lines.extend(shape);
+        }
     }
     Ok(lines)
 }
@@ -715,7 +862,13 @@ async fn overpass_corner(a: &Street, b: &Street, centre: (f64, f64), km: f64) ->
 
 /// Places a cross street: around the typed town, else the net; first from
 /// the two streets' shapes worked out here, then from Overpass.
-async fn find_crossing(a: &Street, b: &Street, place: Option<&str>, near: Option<(f64, f64)>) -> Result<Option<Found>, Lookup> {
+async fn find_crossing(
+    memory: &Mutex<Memory>,
+    a: &Street,
+    b: &Street,
+    place: Option<&str>,
+    near: Option<(f64, f64)>,
+) -> Result<Option<Found>, Lookup> {
     let (centre, km) = match place {
         Some(p) => match search(p, near.map(|n| (n, 150.0))).await? {
             Some((f, _)) => ((f.lat, f.lon), NEAR_NET_KM),
@@ -731,52 +884,72 @@ async fn find_crossing(a: &Street, b: &Street, place: Option<&str>, near: Option
             None => return Ok(None),
         },
     };
-    let label = format!("{} & {}", a.name, b.name);
-    let found = |(lat, lon): (f64, f64), source: &str| Found {
+    let found = |(lat, lon): (f64, f64), label: String, source: &str| Found {
         lat,
         lon,
         precision: Precision::Crossing,
-        label: label.clone(),
+        label,
         source: source.into(),
     };
-    let la = street_lines(a, centre, km).await?;
+    // The pieces fetched are kept (`street_lines`), so the corner is worked
+    // out from them with the likeliest meanings first (`best_corner`).
+    let corner_here = |at: (f64, f64), km: f64| best_corner(&memory.lock().unwrap().streets, a, b, Some(at), km);
+    let la = street_lines(memory, a, centre, km).await?;
     if !la.is_empty() {
-        let lb = street_lines(b, centre, km).await?;
-        if let Some(p) = corner(&crossings(&la, &lb), Some(centre)) {
-            return Ok(Some(found(p, "nominatim")));
+        let lb = street_lines(memory, b, centre, km).await?;
+        if let Some((p, label)) = corner_here(centre, km) {
+            return Ok(Some(found(p, label, "nominatim")));
         }
         // Long streets: the pieces near the crossing may not have come back.
         // Look again close to where the two streets look likely to meet.
         if let Some(m) = likely_meeting(&la, &lb).filter(|m| metres(*m, centre) < km * 1000.0) {
-            let (la, lb) = (street_lines(a, m, CLOSER_KM).await?, street_lines(b, m, CLOSER_KM).await?);
-            if let Some(p) = corner(&crossings(&la, &lb), Some(m)) {
-                return Ok(Some(found(p, "nominatim")));
+            let (la, lb) = (
+                street_lines(memory, a, m, CLOSER_KM).await?,
+                street_lines(memory, b, m, CLOSER_KM).await?,
+            );
+            if !la.is_empty() && !lb.is_empty() {
+                if let Some((p, label)) = corner_here(m, CLOSER_KM * 1.5) {
+                    return Ok(Some(found(p, label, "nominatim")));
+                }
             }
         }
     }
     let points = overpass_corner(a, b, centre, km).await?;
-    Ok(corner(&points, Some(centre)).map(|p| found(p, "overpass")))
+    Ok(corner(&points, Some(centre)).map(|p| found(p, format!("{} & {}", a.name, b.name), "overpass")))
 }
 
-/// A place already looked up, without going online: works offline
-/// (LOCRES-055). None when it was never found, or never asked.
-pub fn recall(cache: &Mutex<Cache>, text: &str, near: Option<(f64, f64)>) -> Option<Found> {
+/// A place already looked up, or a cross street worked out from known
+/// streets, without going online: works offline (LOCRES-055, LOCRES-057).
+pub fn recall(memory: &Mutex<Memory>, text: &str, near: Option<(f64, f64)>) -> Option<Found> {
     let now = chrono::Utc::now().timestamp();
-    cache.lock().unwrap().get(&cache_key(text.trim(), near), now).flatten()
+    let m = memory.lock().unwrap();
+    m.places
+        .get(&cache_key(text.trim(), near), now)
+        .flatten()
+        .or_else(|| known_crossing(&m.streets, text, near))
 }
 
 /// Places typed text: a cross street, else a search near the net, then
-/// anywhere. Remembered either way (`cache`, kept in `dir`).
-pub async fn find(cache: &Mutex<Cache>, dir: &Path, text: &str, near: Option<(f64, f64)>) -> Lookup {
+/// anywhere. Remembered either way (`memory`, kept in `dir`).
+pub async fn find(memory: &Mutex<Memory>, dir: &Path, text: &str, near: Option<(f64, f64)>) -> Lookup {
     let text = text.trim();
     if text.is_empty() {
         return Lookup::NotFound;
     }
     let key = cache_key(text, near);
     let now = chrono::Utc::now().timestamp();
-    // Remembered places answer offline too.
-    if let Some(hit) = cache.lock().unwrap().get(&key, now) {
-        return hit.map(Lookup::Found).unwrap_or(Lookup::NotFound);
+    // Remembered places, and crossings of known streets, answer offline too
+    // and ask nobody.
+    {
+        let mut m = memory.lock().unwrap();
+        if let Some(hit) = m.places.get(&key, now) {
+            return hit.map(Lookup::Found).unwrap_or(Lookup::NotFound);
+        }
+        if let Some(f) = known_crossing(&m.streets, text, near) {
+            m.places.put(key, Some(f.clone()), now);
+            m.save(dir);
+            return Lookup::Found(f);
+        }
     }
     if crate::net::working_offline() {
         return Lookup::Offline;
@@ -786,7 +959,7 @@ pub async fn find(cache: &Mutex<Cache>, dir: &Path, text: &str, near: Option<(f6
     let mut definite = true;
     let result = async {
         if let Query::Crossing { a, b, place } = parse(text) {
-            match find_crossing(&a, &b, place.as_deref(), near).await {
+            match find_crossing(memory, &a, &b, place.as_deref(), near).await {
                 Ok(Some(f)) => return Ok(Some(f)),
                 Ok(None) => {}
                 Err(Lookup::Offline) => return Err(Lookup::Offline),
@@ -803,17 +976,19 @@ pub async fn find(cache: &Mutex<Cache>, dir: &Path, text: &str, near: Option<(f6
         Ok(search(&q, None).await?.map(|(f, _)| f))
     }
     .await;
-    match result {
+    let mut m = memory.lock().unwrap();
+    let out = match result {
         Ok(found) => {
             if definite {
-                let mut c = cache.lock().unwrap();
-                c.put(key, found.clone(), now);
-                c.save(dir);
+                m.places.put(key, found.clone(), now);
             }
             found.map(Lookup::Found).unwrap_or(Lookup::NotFound)
         }
         Err(e) => e,
-    }
+    };
+    // Streets fetched are kept even when the lookup itself failed.
+    m.save(dir);
+    out
 }
 
 #[cfg(test)]
@@ -872,6 +1047,15 @@ mod tests {
             crossing("Coral Way", "Douglas Road", Some("Coral Gables"))
         );
         assert_eq!(parse("Main St / 5th Ave"), crossing("Main Street", "5th Avenue", None));
+        // No street type on the second: the town starts after its number.
+        assert_eq!(
+            parse("nw 27 ave and nw 151st miami fl"),
+            Query::Crossing {
+                a: st("Northwest 27th Avenue", true),
+                b: st("Northwest 151st", false),
+                place: Some("Miami FL".into()),
+            }
+        );
         assert_eq!(
             parse("old cutler & coral reef"),
             Query::Crossing { a: st("Old Cutler", false), b: st("Coral Reef", false), place: None }
@@ -961,7 +1145,7 @@ mod tests {
     fn live_lookups() {
         let dir = std::env::temp_dir().join(format!("roc-geocode-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        let cache = Mutex::new(Cache::default());
+        let cache = Mutex::new(Memory::default());
         // A repeater in south Miami-Dade.
         let near = Some((25.6261, -80.4155));
         for text in [
@@ -969,6 +1153,7 @@ mod tests {
             "sw 152 st and sw 137 ave",
             "sw184st  and sw112ave miami fl",
             "sw 152st & 137ave miami fl",
+            "nw 27 ave and nw 151st miami fl",
             "Coral Way & Douglas Rd, Miami",
             "old cutler rd & coral reef dr",
             "13700 sw 152 st miami fl",
@@ -988,6 +1173,56 @@ mod tests {
         let t = Instant::now();
         let again = tauri::async_runtime::block_on(find(&cache, &dir, "SW 152 St & SW 137 Ave, Miami FL", near));
         println!("remembered: {:.3}s {}", t.elapsed().as_secs_f64(), matches!(again, Lookup::Found(_)));
+        // A crossing never asked, of two streets already fetched: worked out here.
+        crate::net::set_work_offline(true);
+        let t = Instant::now();
+        let known = recall(&cache, "sw 184 st & sw 137 ave", near);
+        println!(
+            "known streets ({} pieces): {:.3}s {:?}",
+            cache.lock().unwrap().streets.len(),
+            t.elapsed().as_secs_f64(),
+            known.map(|f| (f.lat, f.lon, f.source))
+        );
+        crate::net::set_work_offline(false);
+    }
+
+    #[test]
+    fn known_streets_place_new_crossings_without_asking_anyone() {
+        let mut streets = Streets::default();
+        // SW 152nd Street running east-west, with a second name; two avenues
+        // crossing it, kept from earlier lookups.
+        let names = |n: &[&str]| n.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert!(streets.add("W1".into(), &names(&["Southwest 152nd Street", "Coral Reef Drive"]), vec![vec![(-80.45, 25.6262), (-80.30, 25.6262)]]));
+        assert!(!streets.add("W1".into(), &names(&["Southwest 152nd Street"]), vec![vec![(0.0, 0.0), (1.0, 1.0)]]), "each piece once");
+        streets.add("W2".into(), &names(&["SW 137th Ave"]), vec![vec![(-80.4145, 25.60), (-80.4145, 25.65)]]);
+        streets.add("W3".into(), &names(&["Southwest 117th Avenue"]), vec![vec![(-80.3790, 25.60), (-80.3790, 25.65)]]);
+        assert_eq!(streets.len(), 3);
+        let near = Some((25.6261, -80.4155));
+        let f = known_crossing(&streets, "sw 152 st & 117 ave", near).expect("both streets known");
+        assert!(metres((f.lat, f.lon), (25.6262, -80.3790)) < 1.0);
+        assert_eq!((f.precision, f.source.as_str()), (Precision::Crossing, "known streets"));
+        // Another name for the same road works too.
+        assert!(known_crossing(&streets, "coral reef dr & sw 137 ave", near).is_some());
+        // A street never fetched, or not a crossing: nothing.
+        assert!(known_crossing(&streets, "sw 152 st & sw 97 ave", near).is_none());
+        assert!(known_crossing(&streets, "13700 sw 152 st", near).is_none());
+        // Too far from this net.
+        assert!(known_crossing(&streets, "sw 152 st & 117 ave", Some((28.5, -81.4))).is_none());
+        // A numbered street said without a type is the Street, not a Terrace
+        // of the same number a block away; any type when there's no Street.
+        streets.add("W4".into(), &names(&["Northwest 151st Terrace"]), vec![vec![(-80.30, 25.9122), (-80.20, 25.9122)]]);
+        streets.add("W5".into(), &names(&["Northwest 151st Street"]), vec![vec![(-80.30, 25.9115), (-80.20, 25.9115)]]);
+        streets.add("W6".into(), &names(&["Northwest 27th Avenue"]), vec![vec![(-80.2439, 25.89), (-80.2439, 25.93)]]);
+        streets.add("W7".into(), &names(&["Northwest 160th Terrace"]), vec![vec![(-80.30, 25.925), (-80.20, 25.925)]]);
+        let miami_gardens = Some((25.91, -80.24));
+        let f = known_crossing(&streets, "nw 27 ave & nw 151st", miami_gardens).unwrap();
+        assert!((f.lat - 25.9115).abs() < 1e-6, "the Street: {f:?}");
+        assert_eq!(f.label, "Northwest 27th Avenue & Northwest 151st Street");
+        let t = known_crossing(&streets, "nw 27 ave & nw 160th", miami_gardens).unwrap();
+        assert!((t.lat - 25.925).abs() < 1e-6, "no Street, so the Terrace");
+        // Through recall, as the location boxes use it offline.
+        let m = Mutex::new(Memory { streets, ..Default::default() });
+        assert!(recall(&m, "SW 152nd St & SW 117th Ave", near).is_some());
     }
 
     fn found_at(lat: f64) -> Found {
@@ -1005,14 +1240,16 @@ mod tests {
         assert_eq!(c.get("miss", 3600), Some(None));
         assert_eq!(c.get("miss", MISS_KEPT_SECS + 1), None);
         assert_eq!(c.get("never", 0), None);
-        let m = Mutex::new(c);
+        let m = Mutex::new(Memory { places: c, ..Default::default() });
         assert!(recall(&m, " Hit ", None).is_some(), "found however it's typed");
         assert!(recall(&m, "miss", None).is_none());
-        m.lock().unwrap().put(cache_key("sw 152 st & sw 137 ave", None), Some(found_at(25.6)), 0);
+        m.lock().unwrap().places.put(cache_key("sw 152 st & sw 137 ave", None), Some(found_at(25.6)), 0);
         assert_eq!(recall(&m, "SW 152 St & SW 137 Ave", None).map(|f| f.lat), Some(25.6));
         // Near another net, the same words are another search.
         assert_ne!(cache_key("Main St & 5th", Some((25.6, -80.4))), cache_key("main st & 5th", Some((28.5, -81.4))));
         assert_eq!(cache_key("Main St & 5th", Some((25.61, -80.41))), cache_key("main st & 5th", Some((25.6, -80.4))));
     }
 }
+
+
 

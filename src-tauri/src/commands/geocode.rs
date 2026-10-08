@@ -18,7 +18,7 @@ pub async fn geocode_location(
     near_lon: Option<f64>,
 ) -> Result<Option<Found>, String> {
     let dir = state.datapacks_dir.clone();
-    match geocode::find(&state.place_cache, &dir, &query, near(near_lat, near_lon)).await {
+    match geocode::find(&state.place_memory, &dir, &query, near(near_lat, near_lon)).await {
         Lookup::Found(f) => Ok(Some(f)),
         Lookup::NotFound => Ok(None),
         Lookup::Offline => Err(ERR_OFFLINE.to_string()),
@@ -35,7 +35,7 @@ pub fn recall_place(
     near_lat: Option<f64>,
     near_lon: Option<f64>,
 ) -> Option<Found> {
-    geocode::recall(&state.place_cache, &text, near(near_lat, near_lon))
+    geocode::recall(&state.place_memory, &text, near(near_lat, near_lon))
 }
 
 /// The map popup's words for a place found online: the typed text, and how
@@ -72,7 +72,7 @@ pub fn place_checkin_later(
     tauri::async_runtime::spawn(async move {
         let state = app.state::<AppState>();
         let dir = state.datapacks_dir.clone();
-        let Lookup::Found(f) = geocode::find(&state.place_cache, &dir, &text, near(near_lat, near_lon)).await else {
+        let Lookup::Found(f) = geocode::find(&state.place_memory, &dir, &text, near(near_lat, near_lon)).await else {
             return;
         };
         let exact = matches!(f.precision, geocode::Precision::Address | geocode::Precision::Crossing);
@@ -103,7 +103,7 @@ pub fn place_report_later(
     tauri::async_runtime::spawn(async move {
         let state = app.state::<AppState>();
         let dir = state.datapacks_dir.clone();
-        let Lookup::Found(f) = geocode::find(&state.place_cache, &dir, &text, near(near_lat, near_lon)).await else {
+        let Lookup::Found(f) = geocode::find(&state.place_memory, &dir, &text, near(near_lat, near_lon)).await else {
             return;
         };
         let placed = state.repo.lock().unwrap().place_report(&report_id, &text, f.lat, f.lon);

@@ -184,7 +184,7 @@ export async function placeText(text: string, opts: PlaceOptions): Promise<Place
     // A street address that matches a house beats QRZ's point (LOCRES-062).
     const house = hasHouseNumber(typed);
     if (house) {
-      if (remembered?.precision === "address") return fromFound(remembered, "remembered", "looked up before");
+      if (remembered?.precision === "address") return fromFound(remembered, "remembered", rememberedSaid(remembered));
       const found = await search();
       if (found?.precision === "address") return fromFound(found, "online", "found online");
     }
@@ -194,7 +194,7 @@ export async function placeText(text: string, opts: PlaceOptions): Promise<Place
     });
   }
 
-  if (remembered) return fromFound(remembered, "remembered", "looked up before");
+  if (remembered) return fromFound(remembered, "remembered", rememberedSaid(remembered));
   const found = await search();
   if (found) return fromFound(found, "online", "found online");
 
@@ -238,6 +238,11 @@ export async function placeText(text: string, opts: PlaceOptions): Promise<Place
             ? "not found — try adding the town, or pick it on the map"
             : "can't be placed offline — pick it on the map",
   };
+}
+
+/** How a remembered place was found, in words. */
+function rememberedSaid(f: FoundPlace): string {
+  return f.source === "known streets" ? "worked out from streets looked up before" : "looked up before";
 }
 
 /** A street address starting with a house number ("9296 SW 183rd Ter, …"). */

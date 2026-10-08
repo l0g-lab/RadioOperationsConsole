@@ -53,7 +53,7 @@ pub fn clear_storage(state: State<'_, AppState>, id: String) -> Result<Vec<Stora
             *state.route_packs.lock().unwrap() = crate::datapacks::load_all(&datapacks);
         }
         "looked-up-places" => {
-            *state.place_cache.lock().unwrap() = crate::geocode::Cache::default();
+            *state.place_memory.lock().unwrap() = crate::geocode::Memory::default();
         }
         _ => {}
     }
