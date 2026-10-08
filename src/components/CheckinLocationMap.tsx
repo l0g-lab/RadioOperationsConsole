@@ -82,6 +82,45 @@ function iconMarker(kind: "repeater" | "net-control"): L.DivIcon {
   });
 }
 
+/** The same spot: equal to about a metre, so one pin isn't split by rounding. */
+const spotKey = (lat: number, lon: number) => `${lat.toFixed(5)},${lon.toFixed(5)}`;
+
+/**
+ * The pins for a map: one per station per spot (CIMAP-090). A station entered
+ * again at the same place (new traffic, a report) is one pin, showing its
+ * latest entry; one that has moved gets a pin at each place. A range check
+ * plots every entry, since each is a signal report from where it was made.
+ */
+export function mapPins(checkins: Checkin[], rangeCheck: boolean): { pins: ResolvedPin[]; stations: number; placed: number } {
+  const newestFirst = [...checkins].sort((a, b) => b.checked_in_at.localeCompare(a.checked_in_at));
+  const pins: ResolvedPin[] = [];
+  const seen = new Set<string>();
+  const stations = new Set<string>();
+  const placed = new Set<string>();
+  for (const c of newestFirst) {
+    const call = c.call_sign.toUpperCase();
+    stations.add(rangeCheck ? c.id : call);
+    if (c.location_lat == null || c.location_lon == null) continue;
+    placed.add(rangeCheck ? c.id : call);
+    const key = `${call}|${spotKey(c.location_lat, c.location_lon)}`;
+    if (!rangeCheck && seen.has(key)) continue;
+    seen.add(key);
+    pins.push({
+      checkinId: c.id,
+      callSign: call,
+      name: c.name,
+      lat: c.location_lat,
+      lon: c.location_lon,
+      label: rangeCheck ? c.cross_street || c.location_label : c.location_label,
+      weHear: c.rst_sent,
+      theyHear: c.rst_received,
+      kind: c.station_kind,
+      power: c.power,
+    });
+  }
+  return { pins: pins.reverse(), stations: stations.size, placed: placed.size };
+}
+
 function popupContentFor(
   pin: ResolvedPin,
   distance: { km: number; to: string } | null,
@@ -156,27 +195,8 @@ export default function CheckinLocationMap({
     };
   }, []);
 
-  const pins = useMemo<ResolvedPin[]>(() => {
-    const resolved: ResolvedPin[] = [];
-    for (const c of checkins) {
-      if (c.location_lat == null || c.location_lon == null) continue;
-      resolved.push({
-        checkinId: c.id,
-        callSign: c.call_sign.toUpperCase(),
-        name: c.name,
-        lat: c.location_lat,
-        lon: c.location_lon,
-        label: rangeCheck ? c.cross_street || c.location_label : c.location_label,
-        weHear: c.rst_sent,
-        theyHear: c.rst_received,
-        kind: c.station_kind,
-        power: c.power,
-      });
-    }
-    return resolved;
-  }, [checkins, rangeCheck]);
-
-  const unresolvedCount = checkins.length - pins.length;
+  const { pins, stations, placed } = useMemo(() => mapPins(checkins, rangeCheck), [checkins, rangeCheck]);
+  const unresolvedCount = stations - placed;
   // Distances and station lines run from the repeater when there is one (RPT-031).
   const from = repeater ?? netControl;
   const fromName = repeater ? "repeater" : "net control";
@@ -267,7 +287,9 @@ export default function CheckinLocationMap({
           <button onClick={onClose}>Close</button>
         </div>
         <p className="leaflet-map-status">
-          {pins.length} of {checkins.length} check-ins plotted
+          {rangeCheck
+            ? `${placed} of ${stations} check-ins plotted`
+            : `${placed} of ${stations} ${stations === 1 ? "station" : "stations"} plotted`}
           {unresolvedCount > 0 && ` — ${unresolvedCount} without a resolvable location`}
           {rangeCheck && !repeater && " — no repeater set"}
           {!rangeCheck && !from && " — no repeater or net control location set"}

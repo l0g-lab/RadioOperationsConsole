@@ -298,7 +298,8 @@ later, rather than something only recoverable by matching names by eye.
   (Quarter), Main & 5th, Orange Co."), open until it's passed on
   (`SPOT-024`), and the report linked to it. The form MUST say so before saving, and point to a
   row's Report for adding to a check-in already there (`SPOT-024`). The
-  summary counts stations once (`unique stations`).
+  summary counts stations once (`unique stations`), and the map one marker
+  per station per place (`CIMAP-090`).
 
 ## Future increment: Incidents
 

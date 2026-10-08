@@ -26,6 +26,9 @@ top. Each release's section here is also its description on the
   (open until you tick Handled once it's passed on);
   a station not yet on the roster is looked up and placed on the map as
   usual. To add a report to a check-in already there, use Report on its row.
+- **One map pin per station per place.** A station entered more than once is
+  one pin where it stayed put and a new pin where it moved, and the map
+  counts stations, not entries. Range checks still show every entry.
 
 ### Removed
 - "Create linked report" under the check-in roster. It only noted in the

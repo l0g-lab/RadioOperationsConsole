@@ -232,6 +232,12 @@ is — useful for propagation and coverage awareness during a net.
   visible against the basemap. Net control and the repeater MUST be shown
   as icons (a radio and an antenna tower) in round badges, so they never
   read as check-ins, with a key above the map.
+- **CIMAP-090:** A station entered more than once (new traffic, a spotter
+  report) MUST be one marker for each place it was entered from: entries at
+  the same spot are one marker showing the latest, and a station that has
+  moved gets a marker at each place. The map's status line MUST count
+  stations, not entries. A range check MUST plot every entry, since each is
+  a signal report from where it was made.
 - **CIMAP-072:** Distance lines MUST use a line weight and color that keep
   them clearly visible against the basemap and easy to point at/hover over,
   distinct from the marker colors. Lines to check-ins are dashed; the line
