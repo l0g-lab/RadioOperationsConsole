@@ -94,20 +94,29 @@ each still matter for not trying it again.
   place, so a pan or zoom never blanks the radar, stretches it, or stalls the
   loop. If NOAA turns a picture away, the radar MUST say its server is busy and that it will try again at
   the next refresh, rather than show nothing.
-- **RADAR-020:** From zoom 9 in, where the national mosaic's 1 km blocks
-  show, the radar MUST be the nearest NEXRAD station's super-resolution
-  reflectivity (`<id>/<id>_sr_bref`, about four times finer), as
-  radar.weather.gov does — the station shown kept while it's within 150 km of
-  the view's middle, so a pan doesn't flip between two — and the national
-  mosaic farther out or with no station in range. The status MUST name the
+- **RADAR-020:** A **Radar** choice MUST offer NOAA's quality-controlled
+  national mosaic, *Filtered (national)*, the default, and the NEXRAD
+  stations within 300 km of the area, nearest first (at most four), by id,
+  name and distance ("KAMX Miami · 7 mi"). A station shows its own
+  super-resolution reflectivity (`<id>/<id>_sr_bref`, about four times finer)
+  at every zoom. The choice is remembered on this computer; one no longer near
+  the area (the area moved) goes back to the mosaic. The status MUST name a
   station ("KEVX · 22:10, 4 min ago"). A station with no scans in the last
-  hour MUST fall back to the national mosaic. On changing radar, the last
-  one's picture MUST stay until the new one's arrives. The stations and
-  their positions are built in (from NWS's /radar/stations).
+  hour MUST fall back to the mosaic and say so. On changing radar, the last
+  one's picture MUST stay until the new one's arrives. The stations, their
+  positions and names are built in (from NWS's /radar/stations).
+  A station was tried automatically from zoom 9 in, as radar.weather.gov does,
+  and dropped before release: a station's scans aren't filtered, and in its
+  sensitive clear-air mode (no rain about) birds, insects, sea and ground
+  clutter cover the map near it — at about 10–26 dBZ, as strong as light rain,
+  so hiding the weak colors can't take it out. Fall nights' bird migration
+  over KAMX covered all of Miami-Dade while the mosaic showed nothing. Every
+  station near a place shows it, so picking another doesn't help; the
+  mosaic, filtered by NOAA, doesn't.
 - **RADAR-017:** In Full view, where the panel's controls are hidden behind
   the map, a small strip in the map's bottom-left corner MUST give the loop's
   earlier / play-pause / later, the shown scan's time (or why there's no
-  radar), the opacity slider (`RADAR-012`), and the Alerts checkbox
+  radar), the Radar choice (`RADAR-020`), the opacity slider (`RADAR-012`), and the Alerts checkbox
   (`RADAR-013`, `RADAR-018`). Pressing, double-clicking, or scrolling on it MUST NOT pan or zoom
   the map.
 - **RADAR-012:** An opacity slider MUST let the map show through the radar;
@@ -174,6 +183,12 @@ Scenario: Zooming in on a storm
   When the operator zooms in and pans to a storm
   Then the radar redraws at that zoom over the streets
   And Full view shows the same map filling the window
+
+Scenario: No rain, birds on a station's radar
+  Given the area is near a radar station on a fall night with no rain about
+  When the operator zooms in on the area
+  Then the radar shows nothing, filtered by NOAA
+  And picking the station from Radar shows its own sharper scans, birds and all
 
 Scenario: A warning's area is outlined
   Given a Severe Thunderstorm Warning with an area is in effect

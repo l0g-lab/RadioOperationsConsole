@@ -29,13 +29,15 @@ top. Each release's section here is also its description on the
 - **Alerts are colored to match.** Each outline is in the color NWS uses for
   that kind of alert, and the Alerts list shows a small swatch in the same
   color by each alert that's outlined.
-- **Sharper radar close in.** Zoomed in to county level and closer, the radar
-  switches to the nearest radar station's high-resolution scans, as
-  radar.weather.gov does, and names the station by the time ("KEVX · 22:10").
-  Farther out it's the national picture as before. It's also drawn at your
-  screen's full sharpness.
-- **The radar's Opacity slider and Alerts checkbox are on the map in Full
-  view** too, beside the loop's buttons.
+- **Pick a nearby radar station.** The radar's new *Radar* choice offers the
+  stations near your area ("KAMX Miami · 7 mi") beside *Filtered
+  (national)*, which stays the default. A station's own radar is sharper
+  close in, but isn't filtered: birds, insects and ground clutter show too,
+  most at night with no rain about. The station is named by the time
+  ("KAMX · 22:10"), and the choice is remembered on this computer. The radar
+  is also drawn at your screen's full sharpness.
+- **The radar's Radar choice, Opacity slider and Alerts checkbox are on the
+  map in Full view** too, beside the loop's buttons.
 
 ### Fixed
 - **The radar loop no longer gets stuck** after its five-minute refresh.

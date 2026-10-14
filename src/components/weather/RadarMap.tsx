@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import L from "leaflet";
 import type { Feature, Geometry } from "geojson";
@@ -16,7 +16,15 @@ import {
   warningsInViewUrl,
   withNwsText,
 } from "./radarAlerts";
-import { NATIONAL, fallbackFrameTimes, frameMs, radarImageUrl, radarSourceFor, type RadarSource } from "./radarSource";
+import {
+  NATIONAL,
+  fallbackFrameTimes,
+  frameMs,
+  nearbyStations,
+  radarImageUrl,
+  stationLabel,
+  type RadarSource,
+} from "./radarSource";
 import { pad2 } from "../../utils";
 import { ChevronLeft, ChevronRight, Pause, Play, RefreshCw } from "lucide-react";
 
@@ -25,6 +33,7 @@ const REST_FRAMES = 6;
 /** While shown, new scans are checked for this often (RADAR-014). */
 export const RADAR_REFRESH_MS = 5 * 60_000;
 const OPACITY_KEY = "roc-radar-opacity";
+const SOURCE_KEY = "roc-radar-source";
 
 function loadOpacity(): number {
   try {
@@ -32,6 +41,15 @@ function loadOpacity(): number {
     return v > 0 && v <= 1 ? v : 0.7;
   } catch {
     return 0.7;
+  }
+}
+
+/** The radar picked last on this computer: the national mosaic unless a station was. */
+function loadSource(): RadarSource {
+  try {
+    return localStorage.getItem(SOURCE_KEY) || NATIONAL;
+  } catch {
+    return NATIONAL;
   }
 }
 
@@ -69,7 +87,7 @@ interface Frame {
   failedView: string;
 }
 
-/** "19:42, 4 min ago" for a radar scan. *//** "19:42, 4 min ago" for a radar scan. */
+/** "19:42, 4 min ago" for a radar scan. */
 export function frameLabel(iso: string, now = new Date()): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -80,8 +98,8 @@ export function frameLabel(iso: string, now = new Date()): string {
 
 /**
  * Live radar on the app's own map (weather-radar-display.md): zoom, pan, and
- * Full view; NOAA's national radar mosaic over it, or close in the nearest
- * station's sharper scans, looping the last hour (playing on its own unless
+ * Full view; NOAA's filtered national radar mosaic over it, or a nearby
+ * station's sharper but unfiltered scans where one is picked, looping the last hour (playing on its own unless
  * reduced motion is asked for); an opacity slider; and the alerts as shapes in
  * NWS's colors — the area's own and every storm warning in view — that say
  * what they are when clicked. Radar isn't saved to disk; the base map works
@@ -104,11 +122,14 @@ export default function RadarMap({
   const framesStoreRef = useRef<Map<string, Frame>>(new Map());
   // The last radar's picture, kept showing until the new one's arrives.
   const retiringRef = useRef<L.ImageOverlay[]>([]);
-  // The national mosaic, or the nearest station's sharper radar close in
-  // (RADAR-020); stations whose scans couldn't be had aren't tried again.
-  const [source, setSource] = useState<RadarSource>(NATIONAL);
+  // The national mosaic, or a station near the area where one's picked
+  // (RADAR-020); one no longer near (the area moved) goes back to the mosaic.
+  const [choice, setChoice] = useState<RadarSource>(loadSource);
+  const stations = useMemo(() => nearbyStations(lat, lon), [lat, lon]);
+  const source = stations.some((s) => s.id === choice) ? choice : NATIONAL;
   const sourceRef = useRef<RadarSource>(NATIONAL);
-  const badStationsRef = useRef<Set<string>>(new Set());
+  // A station picked that had no scans this hour, so the mosaic is shown instead.
+  const [stationDown, setStationDown] = useState<string | null>(null);
   // Bumped when the view settles after a pan, zoom, or resize, to redraw the shown scan.
   const [viewTick, setViewTick] = useState(0);
   // NOAA's server turned a picture away (busy): say so rather than show nothing.
@@ -264,8 +285,8 @@ export default function RadarMap({
       if (sourceRef.current !== src) return;
       if (f.length === 0 && src !== NATIONAL) {
         // The station has no scans this hour (down for maintenance, say).
-        badStationsRef.current.add(src);
-        setSource(NATIONAL);
+        setStationDown(src);
+        setChoice(NATIONAL);
         return;
       }
       // Scans that have aged out of the hour: unload their pictures.
@@ -290,16 +311,13 @@ export default function RadarMap({
     }
   }
 
-  // Close in, the nearest station's radar; farther out, the national mosaic
-  // (RADAR-020): decided as each pan or zoom settles.
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const c = map.getCenter();
-    let next = radarSourceFor(map.getZoom(), c.lat, c.lng, sourceRef.current);
-    if (badStationsRef.current.has(next)) next = NATIONAL;
-    setSource(next);
-  }, [viewTick]);
+    try {
+      localStorage.setItem(SOURCE_KEY, choice);
+    } catch {
+      // Only the remembered setting is lost.
+    }
+  }, [choice]);
 
   // The radar's scans: fetched on showing and on changing radar, then every
   // five minutes while shown and online, so a radar left up stays current
@@ -490,8 +508,8 @@ export default function RadarMap({
 
   const sourceTitle =
     source === NATIONAL
-      ? "NOAA's national radar mosaic; zoom in for a station's sharper radar"
-      : `Radar station ${source.toUpperCase()}, sharper close in; zoom out for the national mosaic`;
+      ? "NOAA's national radar, filtered to show only rain and storms"
+      : `Radar station ${source.toUpperCase()}'s own scans: sharper, but unfiltered, so birds, insects and ground clutter show too`;
 
   const loopButtons = (
     <>
@@ -527,6 +545,27 @@ export default function RadarMap({
     </label>
   );
 
+  // Only where there's a station to pick.
+  const sourceControl = stations.length > 0 && (
+    <select
+      className="radar-source"
+      value={source}
+      onChange={(e) => {
+        setStationDown(null);
+        setChoice(e.target.value);
+      }}
+      aria-label="Radar"
+      title="Filtered shows only rain and storms. A station's own radar is sharper close in, but also shows birds, insects and ground clutter, most when there's no rain about."
+    >
+      <option value={NATIONAL}>Filtered (national)</option>
+      {stations.map((s) => (
+        <option key={s.id} value={s.id}>
+          {stationLabel(s)}
+        </option>
+      ))}
+    </select>
+  );
+
   const alertsControl = (
     <label className="checkbox-row" title="Outline the alerts here, and every storm warning in view">
       <input type="checkbox" checked={showAlerts} onChange={(e) => setShowAlerts(e.target.checked)} />
@@ -557,12 +596,18 @@ export default function RadarMap({
         <span className="radar-time checkin-row-mono" aria-live="off" title={sourceTitle}>
           {status}
         </span>
+        {sourceControl}
         {opacityControl}
         {alertsControl}
         <button className="icon-button" aria-label="Refresh radar" title="Get the latest scans" onClick={loadFrames} disabled={loading || offline}>
           <RefreshCw />
         </button>
       </div>
+      {stationDown && (
+        <p className="settings-hint radar-note">
+          {stationDown.toUpperCase()} has no scans from the last hour, so the national radar is shown.
+        </p>
+      )}
       {showAlerts && zoneOnly > 0 && (
         <p className="settings-hint radar-note">
           {zoneOnly} alert{zoneOnly === 1 ? " covers" : "s cover"} whole counties and {zoneOnly === 1 ? "isn't" : "aren't"}{" "}
@@ -578,6 +623,7 @@ export default function RadarMap({
             <span className="checkin-row-mono" title={sourceTitle}>
               {status}
             </span>
+            {sourceControl}
             {opacityControl}
             {alertsControl}
           </div>,

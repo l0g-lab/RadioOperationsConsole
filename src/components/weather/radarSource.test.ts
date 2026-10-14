@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   NATIONAL,
-  STATION_ZOOM,
   distanceKm,
   fallbackFrameTimes,
   frameMs,
+  nearbyStations,
   radarImageUrl,
-  radarSourceFor,
+  stationLabel,
 } from "./radarSource";
 
 const BBOX: [number, number, number, number] = [-9079495.12, 3326539, -8766409, 3639625.56];
@@ -42,25 +42,21 @@ describe("radarImageUrl (RADAR-016)", () => {
   });
 });
 
-describe("radarSourceFor (RADAR-020)", () => {
-  // Eglin AFB (KEVX) is at 30.565, -85.922; Mobile (KMOB) at 30.679, -88.24.
-  it("is the national mosaic farther out", () => {
-    expect(radarSourceFor(STATION_ZOOM - 1, 30.5, -86)).toBe(NATIONAL);
+describe("nearbyStations (RADAR-020)", () => {
+  it("offers the stations in range of the area, nearest first, with their names", () => {
+    const list = nearbyStations(25.66, -80.31);
+    expect(list[0]).toMatchObject({ id: "kamx", name: "Miami" });
+    expect(stationLabel(list[0])).toBe("KAMX Miami · 7 mi");
+    expect(list.map((s) => s.id)).toContain("kbyx");
+    expect(list.every((s, k) => k === 0 || list[k - 1].km <= s.km)).toBe(true);
   });
 
-  it("is the nearest station close in", () => {
-    expect(radarSourceFor(STATION_ZOOM, 30.5, -86)).toBe("kevx");
-    expect(radarSourceFor(11, 30.7, -88.1)).toBe("kmob");
+  it("offers at most four", () => {
+    expect(nearbyStations(35, -85).length).toBe(4);
   });
 
-  it("keeps the station shown while it's still in range, so a pan doesn't flip between two", () => {
-    // Nearer KMOB here, but KEVX still covers it.
-    expect(radarSourceFor(10, 30.6, -87.3, "kevx")).toBe("kevx");
-    expect(radarSourceFor(10, 30.6, -87.3)).toBe("kmob");
-  });
-
-  it("is the national mosaic where no station's in range", () => {
-    expect(radarSourceFor(12, 40, -40)).toBe(NATIONAL);
+  it("offers none where no station's in range", () => {
+    expect(nearbyStations(40, -40)).toEqual([]);
   });
 
   it("measures distance in km", () => {

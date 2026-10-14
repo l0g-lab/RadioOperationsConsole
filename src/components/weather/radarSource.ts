@@ -1,19 +1,22 @@
 /**
- * Which radar the map shows, and the pictures to ask NOAA for: the national
- * mosaic (about 1 km per block) farther out, and close in the nearest
- * station's super-resolution scans (about a quarter of that), as
- * radar.weather.gov does (RADAR-016, RADAR-020).
+ * Which radar the map shows, and the pictures to ask NOAA for: NOAA's
+ * quality-controlled national mosaic, or a station's super-resolution scans
+ * where the operator picks one (RADAR-016, RADAR-020).
  */
 import { RADAR_STATIONS } from "./radarStations";
+import { kmToMiles } from "../../geo";
 
 /** "conus" for the national mosaic, else a station's id ("kevx"). */
 export type RadarSource = string;
 export const NATIONAL: RadarSource = "conus";
 
-/** From this zoom in, the national mosaic's blocks get big enough to see. */
-export const STATION_ZOOM = 9;
-/** How far from the view's middle a station can be and still cover it. */
-export const STATION_RANGE_KM = 150;
+/**
+ * How far from the area a station can be and still be offered: about as far
+ * as its lowest scan still sees rain near the ground.
+ */
+export const STATION_RANGE_KM = 300;
+/** The most stations offered, nearest first. */
+const MAX_STATIONS = 4;
 
 /** Distance in km between two points (haversine). */
 export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -24,25 +27,23 @@ export function distanceKm(lat1: number, lon1: number, lat2: number, lon2: numbe
   return 2 * 6371 * Math.asin(Math.sqrt(a));
 }
 
-/**
- * The radar for a view: the national mosaic farther out than STATION_ZOOM or
- * with no station in range; else the station already shown while it's still
- * in range (so a pan doesn't flip between two near ones), else the nearest.
- */
-export function radarSourceFor(zoom: number, lat: number, lon: number, current: RadarSource = NATIONAL): RadarSource {
-  if (zoom < STATION_ZOOM) return NATIONAL;
-  const shown = RADAR_STATIONS.find(([id]) => id === current);
-  if (shown && distanceKm(lat, lon, shown[1], shown[2]) <= STATION_RANGE_KM) return current;
-  let best: RadarSource = NATIONAL;
-  let bestKm = STATION_RANGE_KM;
-  for (const [id, sLat, sLon] of RADAR_STATIONS) {
-    const km = distanceKm(lat, lon, sLat, sLon);
-    if (km <= bestKm) {
-      best = id;
-      bestKm = km;
-    }
-  }
-  return best;
+export interface NearbyStation {
+  id: string;
+  name: string;
+  km: number;
+}
+
+/** The stations near a point that can be picked instead of the national mosaic, nearest first. */
+export function nearbyStations(lat: number, lon: number): NearbyStation[] {
+  return RADAR_STATIONS.map(([id, sLat, sLon, name]) => ({ id, name, km: distanceKm(lat, lon, sLat, sLon) }))
+    .filter((s) => s.km <= STATION_RANGE_KM)
+    .sort((a, b) => a.km - b.km)
+    .slice(0, MAX_STATIONS);
+}
+
+/** "KAMX Miami · 7 mi", in miles like the rest of the app's distances. */
+export function stationLabel(s: NearbyStation): string {
+  return `${s.id.toUpperCase()} ${s.name} · ${Math.round(kmToMiles(s.km))} mi`;
 }
 
 /** The WMS a source is served from, and its layer. */

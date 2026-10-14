@@ -4113,6 +4113,11 @@ path.aprs-area {
   text-overflow: ellipsis;
 }
 
+/* Filtered (national) or a nearby station (RADAR-020). */
+.radar-source {
+  max-width: 14em;
+}
+
 .radar-opacity input {
   width: 5.5em;
 }
@@ -4201,8 +4206,8 @@ path.radar-center {
   margin: 6px 0 0;
 }
 
-/* In Full view, the loop's controls, the scan's time, the opacity and Alerts
-   on the map itself, in the free bottom-left corner (RADAR-017). */
+/* In Full view, the loop's controls, the scan's time, the radar picked, the
+   opacity and Alerts on the map itself, in the free bottom-left corner (RADAR-017). */
 .radar-fullview-strip {
   position: absolute;
   left: 10px;
@@ -4220,6 +4225,7 @@ path.radar-center {
   font-size: calc(13px * var(--font-scale));
 }
 
+.radar-fullview-strip .radar-source,
 .radar-fullview-strip .radar-opacity,
 .radar-fullview-strip .checkbox-row {
   margin-left: 8px;
