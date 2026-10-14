@@ -111,6 +111,38 @@ describe("ExportOptions Show CSV", () => {
     expect(saveTextFile).toHaveBeenLastCalledWith(expect.stringContaining("Check-ins"), checkinsToCsv([CHECKIN]));
   });
 
+  it("asks for the net's mode before an ADIF, when it can't be guessed (EXPORT-019)", async () => {
+    vi.mocked(api.listCheckins).mockResolvedValue([CHECKIN]);
+    vi.mocked(api.listSpotterReports).mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<ExportOptions activity={NET} operator={null} />);
+    await screen.findByText("1 contact");
+    const mode = screen.getByRole("combobox", { name: "Mode" });
+    expect(mode).toHaveValue("");
+    await user.click(screen.getByRole("button", { name: "ADIF" }));
+    expect(screen.getByText(/Choose the mode the net was on first/)).toBeInTheDocument();
+    expect(saveTextFile).not.toHaveBeenCalledWith(expect.stringMatching(/\.adi$/), expect.anything());
+
+    await user.selectOptions(mode, "FM");
+    await user.click(screen.getByRole("button", { name: "Show ADIF" }));
+    const dialog = await screen.findByRole("dialog", { name: "Logbook (ADIF) — Tuesday Net" });
+    expect(within(dialog).getByText(/<CALL:6>KD4ABC/).textContent).toContain("<MODE:2>FM");
+  });
+
+  it("guesses the mode from the net's frequency, and asks nothing when every contact has one", async () => {
+    vi.mocked(api.listCheckins).mockResolvedValue([CHECKIN]);
+    vi.mocked(api.listSpotterReports).mockResolvedValue([]);
+    const { unmount } = render(<ExportOptions activity={{ ...NET, frequency: "3.975" }} operator={null} />);
+    await screen.findByText("1 contact");
+    expect(screen.getByRole("combobox", { name: "Mode" })).toHaveValue("SSB");
+    unmount();
+
+    vi.mocked(api.listCheckins).mockResolvedValue([{ ...CHECKIN, mode: "FM" }]);
+    render(<ExportOptions activity={NET} operator={null} />);
+    await screen.findByText("1 contact");
+    expect(screen.queryByRole("combobox", { name: "Mode" })).not.toBeInTheDocument();
+  });
+
   it("shows the spotter text report before saving", async () => {
     const REPORT: SpotterReport = {
       id: "r1",

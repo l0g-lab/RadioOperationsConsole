@@ -7,6 +7,13 @@ top. Each release's section here is also its description on the
 ## [Unreleased]
 
 ### Added
+- **ADIF export, for a logging program.** *Logbook (ADIF)* in Exports &
+  forms saves a net's check-ins, or a station log's contacts, as an `.adi`
+  file to import into your logger, each as a contact with net control. Net
+  control's own check-in is left out. Contacts without a mode of their own
+  get the one picked beside the button, which starts guessed from the net's
+  frequency (FM on VHF/UHF, SSB on HF); change it if the net was on
+  something else.
 - **Map styles: Street, Dark and Satellite.** Pick one with the buttons
   beside Full view on any map; it's remembered on this computer and every
   map follows it. Dark is the street map with its colors turned down for a

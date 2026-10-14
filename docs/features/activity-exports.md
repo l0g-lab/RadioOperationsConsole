@@ -85,6 +85,17 @@ be in one predictable place, complete, and unambiguous about time.
   app work with spreadsheets and readable text; JSON can be added back if a
   need for it appears. A database backup ([database-backup-restore.md](database-backup-restore.md))
   keeps everything.
+- **EXPORT-019:** The check-ins (a station log's contacts) as ADIF (`.adi`),
+  for importing into a logging program, viewable before saving. Each record
+  is a contact with net control, whose call sign is the station call; net
+  control's own entry is left out. A record's own frequency and mode are used
+  where it has them, else the activity's frequency and one mode chosen for
+  the export. That mode MUST be asked only when some record has none, and
+  MUST start guessed from the activity's frequency: a mode written there
+  ("3.975 LSB"), else FM from 30 MHz up and SSB below, and nothing when
+  there's no frequency to read (a repeater's name), so the operator picks.
+  Not offered for a relay station, whose messages aren't contacts. Export
+  only: no ADIF import and no LoTW, eQSL or QRZ upload.
 - **EXPORT-016:** The ICS 309 (from the check-ins) and ICS 213 (from spotter
   reports, all or one) as Winlink import data and as printable forms
   ([ics-form-exports.md](ics-form-exports.md)).

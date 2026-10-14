@@ -19,7 +19,9 @@ import {
   spotterReportsToCsv,
   spotterReportsToText,
 } from "../../export";
-import { isRelay } from "../../activityTypes";
+import { isLog, isRelay } from "../../activityTypes";
+import { adifContacts, checkinsToAdif, guessMode, needsMode } from "../../adif";
+import { MODES } from "../checkins/ContactFields";
 import { ics213FromReport, ics213FromReports, type GeneralMessage213Input } from "../../icsForms";
 import IcsFormDialog from "./IcsFormDialog";
 import { SummaryTextDialog } from "./SummaryDialog";
@@ -123,6 +125,9 @@ export default function ExportOptions({
     null | { form: "309" } | { form: "213"; initial: GeneralMessage213Input }
   >(null);
   const [reportId, setReportId] = useState("");
+  // The mode for contacts that have none of their own, guessed from the net's frequency (EXPORT-019).
+  const [adifMode, setAdifMode] = useState(() => guessMode(activity.frequency));
+  useEffect(() => setAdifMode(guessMode(activity.frequency)), [activity.id, activity.frequency]);
   const [showingSummary, setShowingSummary] = useState(false);
   // A CSV being looked at before it's saved (EXPORT-018).
   const [textPreview, setTextPreview] = useState<{
@@ -180,6 +185,17 @@ export default function ExportOptions({
   const noRelayed = relayed.length === 0;
   const noReports = reports.length === 0;
   const chosenReport = reports.find((r) => r.id === reportId);
+  const contacts = adifContacts(checkins, operatorCall);
+  const askMode = needsMode(contacts);
+  const adifUnavailable =
+    contacts.length === 0
+      ? noCheckins
+        ? "There are no check-ins yet, so there's nothing to export."
+        : "The only check-in is net control's own, so there are no contacts to export."
+      : askMode && !adifMode
+        ? "Choose the mode the net was on first, for the contacts that don't have one."
+        : undefined;
+  const adifText = () => checkinsToAdif(activity, checkins, operatorCall, askMode ? adifMode : "");
 
   return (
     <div className="export-list">
@@ -255,6 +271,55 @@ export default function ExportOptions({
             },
           ]}
         />
+        )}
+        {!relay && (
+          <Row
+            notify={notify}
+            title="Logbook (ADIF)"
+            count={plural(contacts.length, "contact", "contacts")}
+            note={
+              isLog(activity.activity_type)
+                ? "Each contact, to import into a logging program."
+                : "Each check-in as a contact with net control, to import into a logging program."
+            }
+            actions={[
+              {
+                label: "Show ADIF",
+                unavailable: adifUnavailable,
+                title: "See exactly what the ADIF file will hold, before saving it",
+                onClick: () =>
+                  setTextPreview({
+                    heading: `Logbook (ADIF) — ${activity.title}`,
+                    filename: exportFilename(activity, "Log", "adi"),
+                    text: adifText(),
+                    what: "the log",
+                  }),
+              },
+              {
+                label: "ADIF",
+                unavailable: adifUnavailable,
+                onClick: () => save(exportFilename(activity, "Log", "adi"), adifText(), "the log"),
+              },
+            ]}
+          >
+            {askMode && contacts.length > 0 && (
+              <label className="inline-form">
+                Mode
+                <select
+                  value={adifMode}
+                  onChange={(e) => setAdifMode(e.target.value)}
+                  title="For contacts with no mode of their own; guessed from the net's frequency"
+                >
+                  {!adifMode && <option value="">Choose…</option>}
+                  {MODES.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </Row>
         )}
         <Row
           notify={notify}

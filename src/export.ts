@@ -56,6 +56,7 @@ const FILE_TYPE_NAMES: Record<string, string> = {
   txt: "Text",
   html: "Web page (HTML)",
   xml: "XML",
+  adi: "ADIF log",
 };
 
 /**

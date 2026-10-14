@@ -27,8 +27,8 @@ or end, and each record is a contact carrying its radio details.
   activity that was never started accept records.
 - Not a contest or award logbook, and not a general station logger: a
   pen-and-paper replacement for simplex contacts from a set location. No dupe
-  checking, scoring, or LoTW/eQSL exchange; at most an ADIF export (see "Not
-  yet built").
+  checking, scoring, or LoTW/eQSL exchange; at most an ADIF export
+  ([activity-exports.md](activity-exports.md), `EXPORT-019`).
 
 ## The type
 
@@ -119,8 +119,6 @@ or end, and each record is a contact carrying its radio details.
 
 ## Not yet built
 
-- ADIF export, so contacts can be carried into a real logging program. This
-  is the limit: no ADIF import, LoTW, eQSL, or QRZ logbook upload.
 - A per-station view gathering every contact with one call sign.
 - Band derived from frequency, and validation of RST format.
 
