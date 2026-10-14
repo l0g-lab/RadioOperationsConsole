@@ -6,6 +6,19 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-10-13
+
+**What works differently:**
+- Every map has Street, Dark and Satellite buttons beside Full view. The
+  style picked applies to all maps.
+- The radar outlines storm warnings anywhere in view, not only those
+  covering your area, and every alert is drawn in NWS's color for its kind:
+  a Severe Thunderstorm Warning is yellow, no longer red.
+- The radar stays on NOAA's filtered national radar at every zoom. A nearby
+  station's sharper radar can be picked from *Radar*.
+
+There's no database change: 2.7.0 can still open the data if you go back.
+
 ### Added
 - **ADIF export, for a logging program.** *Logbook (ADIF)* in Exports &
   forms saves a net's check-ins, or a station log's contacts, as an `.adi`
@@ -683,7 +696,8 @@ This version updates the database: once it's run, 2.6.0 can't open the data.
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.4...v2.6.0
 [2.5.4]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.3...v2.5.4
