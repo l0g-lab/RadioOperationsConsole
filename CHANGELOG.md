@@ -6,6 +6,14 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+### Added
+- **Map styles: Street, Dark and Satellite.** Pick one with the buttons
+  beside Full view on any map; it's remembered on this computer and every
+  map follows it. Dark is the street map with its colors turned down for a
+  dark room, and works offline from the same saved tiles. Satellite is USGS
+  aerial imagery with street names on top (US only, and it can't zoom in
+  quite as far as the street map).
+
 ## [2.7.0] - 2026-10-08
 
 **What works differently:**

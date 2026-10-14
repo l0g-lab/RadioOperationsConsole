@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import L from "leaflet";
 import type { Checkin } from "../types";
 import { haversineKm, formatDistance } from "../geo";
-import { BASEMAP_ATTRIBUTION, ZIP_ATTRIBUTION, createBaseMap } from "../map/baseMap";
+import { ZIP_ATTRIBUTION, createBaseMap } from "../map/baseMap";
 import { spreadDuplicates } from "../map/spreadDuplicates";
 import { MapPinned, Radio, RadioTower } from "lucide-react";
 import type { MapPoint } from "../mapPoints";
@@ -193,7 +193,7 @@ export default function CheckinLocationMap({
       mapContainerRef.current,
       undefined,
       undefined,
-      BASEMAP_ATTRIBUTION + ZIP_ATTRIBUTION
+      ZIP_ATTRIBUTION
     );
     mapRef.current = map;
     return () => {

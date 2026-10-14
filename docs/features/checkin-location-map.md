@@ -251,13 +251,20 @@ is — useful for propagation and coverage awareness during a net.
   coordinates. All three MUST
   end up setting the same underlying lat/lon, so whichever method was used
   last is authoritative.
-- **CIMAP-071:** The basemap MUST be the standard OpenStreetMap tile style
-  (`tile.openstreetmap.org`), free and requiring no API key. A CartoDB
-  dark-tile style was tried here and reverted: CartoDB's public basemap
-  tiles now require an API key, and their tile server returns this as a
-  rendered "API key required" placeholder image with an HTTP 200 status
-  rather than an error code — checking response headers alone does not
-  reveal it; the actual tile image content must be inspected.
+- **CIMAP-071:** The default basemap MUST be the standard OpenStreetMap tile
+  style (`tile.openstreetmap.org`), free and requiring no API key. Every map
+  MUST also offer a Dark and a Satellite style, chosen from Street / Dark /
+  Satellite buttons beside Full view and remembered on this computer for all
+  maps. Dark MUST be the same OpenStreetMap tiles with their colors inverted in CSS (sharing their offline
+  cache), not another tile server: a CartoDB dark-tile style was tried and
+  reverted — CartoDB's public basemap tiles now require an API key, and their
+  tile server returns this as a rendered "API key required" placeholder image
+  with an HTTP 200 status rather than an error code, so checking response
+  headers alone does not reveal it; the actual tile image content must be
+  inspected. Satellite MUST be USGS The National Map's *Imagery Topo* tiles
+  (public domain, no key, US only, with roads and place names drawn on);
+  their tiles stop at zoom 16, so this style allows one zoom step past that
+  and no more.
 
 ## Explicit non-goals for this slice
 

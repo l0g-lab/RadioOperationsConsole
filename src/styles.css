@@ -1490,6 +1490,59 @@ details > summary {
   background: #f4f4f4;
 }
 
+/* Map style buttons (map/styleControl.ts): one pill to the left of Full
+   view, on its row, the same height, the chosen style filled in. */
+.leaflet-right .map-style-control {
+  clear: none;
+  display: flex;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* On a narrow map there's no room beside Full view without running into the
+   zoom buttons, so they go under it instead. */
+.leaflet-container {
+  container-type: inline-size;
+}
+
+@container (max-width: 420px) {
+  .leaflet-right .map-style-control {
+    clear: both;
+  }
+}
+
+.map-style-control .map-style-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 0;
+  background: #fff;
+  color: #333;
+  font-size: calc(12px * var(--font-scale));
+  cursor: pointer;
+}
+
+.map-style-control .map-style-button + .map-style-button {
+  border-left: 1px solid #ddd;
+}
+
+.map-style-control .map-style-button:hover {
+  background: #f4f4f4;
+}
+
+.map-style-control .map-style-button[aria-pressed="true"] {
+  background: #333;
+  color: #fff;
+}
+
+/* Dark map style: the street tiles with light and dark swapped, hues kept
+   (water stays blue, parks green), toned down so it isn't glaring. */
+.basemap-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.85);
+}
+
 /* The map filling the whole app window. !important beats each map's own
    size rules (min-height, max-height, a fixed shape, flex, border-radius)
    whatever their selector. */
