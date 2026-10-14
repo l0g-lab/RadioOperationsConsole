@@ -105,11 +105,24 @@ pub fn radar_frame_times(capabilities: &str, now: DateTime<Utc>) -> Vec<String> 
     times
 }
 
-/// The radar loop's scan times, oldest first (RADAR-011).
-pub async fn fetch_radar_frames() -> Result<Vec<String>, Box<dyn Error>> {
+/// Where a radar station's super-resolution reflectivity is served
+/// (RADAR-020), or None for anything that isn't a station id ("kevx"), so
+/// nothing else can be slipped into the URL.
+pub fn station_radar_wms(station: &str) -> Option<String> {
+    (station.len() == 4 && station.bytes().all(|b| b.is_ascii_lowercase()))
+        .then(|| format!("https://opengeo.ncep.noaa.gov/geoserver/{station}/{station}_sr_bref/ows"))
+}
+
+/// The radar loop's scan times, oldest first (RADAR-011): the national
+/// mosaic's, or one station's when zoomed in close (RADAR-020).
+pub async fn fetch_radar_frames(station: Option<&str>) -> Result<Vec<String>, Box<dyn Error>> {
+    let url = match station {
+        Some(s) => station_radar_wms(s).ok_or("Not a radar station id")?,
+        None => RADAR_WMS.to_string(),
+    };
     let c = client(Duration::from_secs(5), Some(Duration::from_secs(15)))?;
     let resp = c
-        .get(RADAR_WMS)
+        .get(url)
         .query(&[("service", "WMS"), ("version", "1.3.0"), ("request", "GetCapabilities")])
         .header("User-Agent", USER_AGENT)
         .send()
@@ -422,8 +435,22 @@ mod tests {
     #[test]
     #[ignore]
     fn reads_the_live_radar_scan_times() {
-        let frames = tauri::async_runtime::block_on(fetch_radar_frames()).unwrap();
+        let frames = tauri::async_runtime::block_on(fetch_radar_frames(None)).unwrap();
         assert!(frames.len() >= 5, "{frames:?}");
+        let frames = tauri::async_runtime::block_on(fetch_radar_frames(Some("kevx"))).unwrap();
+        assert!(frames.len() >= 3, "{frames:?}");
+    }
+
+    #[test]
+    fn only_station_ids_make_a_station_radar_url() {
+        assert_eq!(
+            station_radar_wms("kevx").as_deref(),
+            Some("https://opengeo.ncep.noaa.gov/geoserver/kevx/kevx_sr_bref/ows")
+        );
+        assert!(station_radar_wms("KEVX").is_none());
+        assert!(station_radar_wms("../x").is_none());
+        assert!(station_radar_wms("kevxx").is_none());
+        assert!(station_radar_wms("").is_none());
     }
 
     #[test]

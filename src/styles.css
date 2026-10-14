@@ -658,6 +658,19 @@ details > summary {
   color: var(--al);
 }
 
+/* A small outline in the alert's color: how it's drawn on the radar
+   (RADAR-019). Also in the radar's popups. */
+.alert-swatch {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 18px;
+  height: 11px;
+  border: 3px solid;
+  border-radius: 2px;
+  box-sizing: border-box;
+  box-shadow: 0 0 0 1px rgba(127, 127, 127, 0.6);
+}
+
 .weather-alert-until {
   margin-left: auto;
   color: var(--text-dim);
@@ -4131,25 +4144,65 @@ path.radar-center {
   stroke-width: 2;
 }
 
-/* Alert areas: warnings red, the rest amber, as in the Alerts list. */
-path.radar-alert {
-  fill-opacity: 0.08;
-  stroke-width: 2;
+/* The alerts under a click on the radar's shapes (RADAR-019): each with its
+   outline's color, red/amber name as in the Alerts list, and NWS's text. */
+.radar-alerts-here {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 220px;
+  font-size: calc(13px * var(--font-scale));
 }
 
-path.radar-alert-danger {
-  fill: var(--danger, #e05252);
-  stroke: var(--danger, #e05252);
+.radar-alert-here:not(.weather-alert-danger) {
+  --al: var(--warning, #e8a33d);
 }
 
-path.radar-alert-warning {
-  fill: var(--warning, #e8a33d);
-  stroke: var(--warning, #e8a33d);
-  stroke-dasharray: 6 4;
+.radar-alert-here-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* In Full view, the loop's controls and the scan's time on the map itself,
-   in the free bottom-left corner (RADAR-017). */
+.radar-alert-here-head strong {
+  color: var(--al);
+}
+
+.radar-alert-here-until {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* A long list of zones (marine ones especially) cut to three lines; the
+   whole list shows on hover. */
+.radar-alert-here-area {
+  margin: 2px 0 0 24px;
+  color: var(--text-dim);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+
+.radar-alert-here .weather-alert-headline,
+.radar-alert-here details {
+  margin: 4px 0 0 24px;
+}
+
+.radar-alert-here summary {
+  cursor: pointer;
+  color: var(--text-dim);
+}
+
+.radar-alert-here details p {
+  margin: 6px 0 0;
+}
+
+/* In Full view, the loop's controls, the scan's time, the opacity and Alerts
+   on the map itself, in the free bottom-left corner (RADAR-017). */
 .radar-fullview-strip {
   position: absolute;
   left: 10px;
@@ -4165,6 +4218,11 @@ path.radar-alert-warning {
   color: var(--text);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   font-size: calc(13px * var(--font-scale));
+}
+
+.radar-fullview-strip .radar-opacity,
+.radar-fullview-strip .checkbox-row {
+  margin-left: 8px;
 }
 
 /* Export and Import under the repeaters and the nets (shared-lists.md). */

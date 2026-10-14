@@ -44,6 +44,36 @@ pub async fn fetch_nws_alerts(
     Ok(v)
 }
 
+/// Whether `id` looks like an NWS alert id ("urn:oid:2.49.0.1.840.0.…"), so
+/// nothing else can be slipped into the request's path.
+pub fn is_nws_alert_id(id: &str) -> bool {
+    id.starts_with("urn:oid:")
+        && id.len() <= 200
+        && id[8..]
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_')
+}
+
+/// One NWS alert by its id, as a GeoJSON feature: for a warning drawn on the
+/// radar that isn't among the area's own alerts (RADAR-019).
+pub async fn fetch_nws_alert(nws_api_key: Option<&str>, id: &str) -> Result<Value, Box<dyn Error>> {
+    if !is_nws_alert_id(id) {
+        return Err(Box::from("Not an NWS alert id"));
+    }
+    let mut req = http_client()?
+        .get(format!("https://api.weather.gov/alerts/{id}"))
+        .header("User-Agent", USER_AGENT)
+        .header("Accept", "application/geo+json, application/json");
+    if let Some(key) = nws_api_key {
+        req = req.header("X-API-Key", key);
+    }
+    let resp = req.send().await?;
+    if !resp.status().is_success() {
+        return Err(Box::from(format!("NWS API HTTP error: {}", resp.status())));
+    }
+    Ok(resp.json().await?)
+}
+
 /// Fetches the current textual forecast for a coordinate via the two-step
 /// NWS API dance: `/points/{lat,lon}` resolves the forecast URL for that
 /// point's zone, then that URL returns the actual forecast periods
@@ -330,6 +360,22 @@ fn qrz_info_from_fields(fields: &HashMap<String, String>) -> Option<QrzCallsignI
         exact_lon,
         geoloc,
     })
+}
+
+#[cfg(test)]
+mod nws_alert_id_tests {
+    use super::is_nws_alert_id;
+
+    #[test]
+    fn only_nws_alert_ids_are_accepted() {
+        assert!(is_nws_alert_id(
+            "urn:oid:2.49.0.1.840.0.68c97062064dbecd5c2000e0be838047d0c5167c.001.1"
+        ));
+        assert!(!is_nws_alert_id("urn:oid:../../points/30,-85"));
+        assert!(!is_nws_alert_id("urn:oid:1?x=1"));
+        assert!(!is_nws_alert_id("https://example.com/"));
+        assert!(!is_nws_alert_id(""));
+    }
 }
 
 #[cfg(test)]

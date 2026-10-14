@@ -82,14 +82,33 @@ pub async fn fetch_nws_alerts(
         .map_err(|e| e.to_string())
 }
 
-/// The radar loop's scan times, oldest first (RADAR-011). Fetched here, not
-/// by the window, like the app's other online requests.
+/// One NWS alert by its id, for a warning clicked on the radar that isn't
+/// among the area's own alerts (RADAR-019).
 #[tauri::command]
-pub async fn fetch_radar_frames() -> Result<Vec<String>, String> {
+pub async fn fetch_nws_alert(state: State<'_, AppState>, id: String) -> Result<Value, String> {
     if crate::net::working_offline() {
         return Err(crate::net::WORKING_OFFLINE_MESSAGE.to_string());
     }
-    crate::weather::fetch_radar_frames().await.map_err(|e| e.to_string())
+    let key = {
+        let settings = state.settings.lock().unwrap();
+        (!settings.nws_api_key.is_empty()).then(|| settings.nws_api_key.clone())
+    };
+    connectors::fetch_nws_alert(key.as_deref(), &id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// The radar loop's scan times, oldest first (RADAR-011): the national
+/// mosaic's, or `station`'s when zoomed in close (RADAR-020). Fetched here,
+/// not by the window, like the app's other online requests.
+#[tauri::command]
+pub async fn fetch_radar_frames(station: Option<String>) -> Result<Vec<String>, String> {
+    if crate::net::working_offline() {
+        return Err(crate::net::WORKING_OFFLINE_MESSAGE.to_string());
+    }
+    crate::weather::fetch_radar_frames(station.as_deref())
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// What it's doing now at a point: the nearest NWS station's latest reading,

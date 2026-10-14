@@ -13,6 +13,27 @@ top. Each release's section here is also its description on the
   dark room, and works offline from the same saved tiles. Satellite is USGS
   aerial imagery with street names on top (US only, and it can't zoom in
   quite as far as the street map).
+- **The radar shows every storm warning in view,** not just ones covering
+  your area: tornado, severe thunderstorm, flash flood and marine warnings
+  are outlined as on radar.weather.gov. They show and hide with *Alerts*.
+- **Click an alert's outline on the radar to see what it is.** A popup gives
+  the alert, its area, when it ends, its headline and NWS's full text. Where
+  outlines overlap, it lists each one under the click.
+- **Alerts are colored to match.** Each outline is in the color NWS uses for
+  that kind of alert, and the Alerts list shows a small swatch in the same
+  color by each alert that's outlined.
+- **Sharper radar close in.** Zoomed in to county level and closer, the radar
+  switches to the nearest radar station's high-resolution scans, as
+  radar.weather.gov does, and names the station by the time ("KEVX · 22:10").
+  Farther out it's the national picture as before. It's also drawn at your
+  screen's full sharpness.
+- **The radar's Opacity slider and Alerts checkbox are on the map in Full
+  view** too, beside the loop's buttons.
+
+### Fixed
+- **The radar loop no longer gets stuck** after its five-minute refresh.
+  After a pan or zoom it keeps showing the last picture until the new one
+  arrives, rather than blanking, stretching or stalling.
 
 ## [2.7.0] - 2026-10-08
 

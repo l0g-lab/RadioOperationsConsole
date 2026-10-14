@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { conditionOf, precipLevel, tempBand, windLevel, type Condition } from "../../forecastStyle";
 import { fahrenheit, windText } from "../../netWeather";
-import { alertLevel, areaText, paragraphs, sortAlerts, untilText, type NwsAlert } from "../../nwsAlerts";
+import { alertColor, alertFromFeature, alertLevel, areaText, paragraphs, sortAlerts, untilText, type NwsAlert } from "../../nwsAlerts";
 
 interface NwsForecastPeriod {
   name?: string;
@@ -116,7 +116,10 @@ function ForecastRow({ p }: { p: NwsForecastPeriod }) {
   );
 }
 
-/** One alert on a line (red for a warning, amber otherwise); click for NWS's full text. */
+/**
+ * One alert on a line (red for a warning, amber otherwise), with a swatch of
+ * its outline's color when it's outlined on the radar; click for NWS's full text.
+ */
 function AlertRow({ a }: { a: NwsAlert }) {
   const [open, setOpen] = useState(false);
   const level = alertLevel(a.event);
@@ -128,6 +131,14 @@ function AlertRow({ a }: { a: NwsAlert }) {
         {open ? <ChevronDown className="weather-alert-chevron" /> : <ChevronRight className="weather-alert-chevron" />}
         <TriangleAlert className="weather-alert-icon" aria-hidden />
         <span className="weather-alert-event">{a.event ?? "Alert"}</span>
+        {a.geometry && (
+          <span
+            className="alert-swatch"
+            style={{ borderColor: alertColor(a.event) }}
+            title="Outlined on the radar in this color"
+            aria-label="outlined on the radar"
+          />
+        )}
         {until && <span className="weather-alert-until">{until}</span>}
       </button>
       {area && (
@@ -283,7 +294,7 @@ export default function WeatherTab() {
     api.fetchNwsAlerts().then((v) =>
       sortAlerts(
         ((v as { features?: { properties?: NwsAlert; geometry?: NwsAlert["geometry"] }[] }).features ?? []).map(
-          (x) => ({ ...(x.properties ?? {}), geometry: x.geometry ?? null })
+          alertFromFeature
         )
       )
     );

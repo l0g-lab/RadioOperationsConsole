@@ -501,6 +501,9 @@ export const clearWeatherArea = () => invoke<AppSettings>("clear_weather_area");
 export const setWeatherAreaCoords = (lat: number, lon: number, label: string | null) =>
   invoke<AppSettings>("set_weather_area_coords", { lat, lon, label });
 
+/** One NWS alert by its id ("urn:oid:…"), as a GeoJSON feature (RADAR-019). */
+export const fetchNwsAlert = (id: string) => invoke<unknown>("fetch_nws_alert", { id });
+
 /** Active alerts at a point, or the weather area of interest without one. */
 export const fetchNwsAlerts = (point?: { lat: number; lon: number }) =>
   invoke<unknown>("fetch_nws_alerts", { lat: point?.lat ?? null, lon: point?.lon ?? null });
@@ -508,7 +511,7 @@ export const fetchNwsAlerts = (point?: { lat: number; lon: number }) =>
 export const fetchNwsForecast = () => invoke<unknown>("fetch_nws_forecast");
 
 /** The radar loop's scan times (ISO, oldest first): the last hour, about every 4 minutes. */
-export const fetchRadarFrames = () => invoke<string[]>("fetch_radar_frames");
+export const fetchRadarFrames = (station?: string) => invoke<string[]>("fetch_radar_frames", { station: station ?? null });
 
 /** The nearest station's latest reading at a point, or null if none has reported. */
 export const fetchCurrentWeather = (lat: number, lon: number) =>

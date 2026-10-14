@@ -72,11 +72,13 @@ each still matter for not trying it again.
   they're in — unless the computer asks for reduced motion, when it starts
   paused on the latest: play/pause, an earlier and a later scan, and the shown
   scan's local time and age ("19:42, 4 min ago"). Pausing or stepping stops
-  the loop until played again. The loop MUST NOT move to a scan before its
-  picture has arrived (or failed), loading a few ahead, so it waits on a good
-  frame rather than flash a blank one. The loop rests briefly on the latest scan. The
-  list of scans MUST be fetched by the application's backend, like its other
-  online requests, and *Refresh* fetches it again.
+  the loop until played again. The loop MUST NOT move to a scan before it has
+  a picture (skipping any NOAA turned away), so it waits on a good frame rather
+  than flash a blank one; a refreshed list of scans MUST be looped at once.
+  The loop rests briefly on the latest scan, and takes about ten seconds
+  whatever the number of scans (a station's are fewer). The list of scans
+  MUST be fetched by the application's backend, like its other online
+  requests, and *Refresh* fetches it again.
 - **RADAR-014:** While shown and online, the radar MUST check for new scans
   every five minutes, adding them to the loop and unloading scans that have
   aged out of the hour, so a radar left up stays current.
@@ -86,21 +88,56 @@ each still matter for not trying it again.
 - **RADAR-016:** Each scan MUST be one picture of exactly the map's view (a
   WMS GetMap for its bounds and size), not a dozen tiles — about 30 requests a
   loop instead of hundreds, which NOAA's delivery network throttles — redrawn
-  for a new view once a pan or zoom has finished. If NOAA turns a picture
-  away, the radar MUST say its server is busy and that it will try again at
+  for a new view once a pan or zoom has finished — the current scan's first —
+  at the screen's own pixel density, so it isn't blown up on a high-resolution
+  screen. Until a scan's new picture arrives its last one MUST stay, in its
+  place, so a pan or zoom never blanks the radar, stretches it, or stalls the
+  loop. If NOAA turns a picture away, the radar MUST say its server is busy and that it will try again at
   the next refresh, rather than show nothing.
+- **RADAR-020:** From zoom 9 in, where the national mosaic's 1 km blocks
+  show, the radar MUST be the nearest NEXRAD station's super-resolution
+  reflectivity (`<id>/<id>_sr_bref`, about four times finer), as
+  radar.weather.gov does — the station shown kept while it's within 150 km of
+  the view's middle, so a pan doesn't flip between two — and the national
+  mosaic farther out or with no station in range. The status MUST name the
+  station ("KEVX · 22:10, 4 min ago"). A station with no scans in the last
+  hour MUST fall back to the national mosaic. On changing radar, the last
+  one's picture MUST stay until the new one's arrives. The stations and
+  their positions are built in (from NWS's /radar/stations).
 - **RADAR-017:** In Full view, where the panel's controls are hidden behind
   the map, a small strip in the map's bottom-left corner MUST give the loop's
-  earlier / play-pause / later and the shown scan's time (or why there's no
-  radar). Pressing, double-clicking, or scrolling on it MUST NOT pan or zoom
+  earlier / play-pause / later, the shown scan's time (or why there's no
+  radar), the opacity slider (`RADAR-012`), and the Alerts checkbox
+  (`RADAR-013`, `RADAR-018`). Pressing, double-clicking, or scrolling on it MUST NOT pan or zoom
   the map.
 - **RADAR-012:** An opacity slider MUST let the map show through the radar;
   the choice is remembered on this computer.
 - **RADAR-013:** The areas of the NWS alerts in effect MUST be outlined on the
-  map — warnings in red, watches, advisories, and statements in amber (dashed),
-  as in the Alerts list — each naming its alert, areas, and end when clicked,
-  and can be hidden. Alerts given only by whole counties (no outline) MUST be
-  counted in a note pointing to the Alerts list.
+  map, each in its kind's NWS color (`RADAR-019`) — warnings solid, watches,
+  advisories, and statements dashed — and can be hidden. Alerts given only by
+  whole counties (no outline) MUST be counted in a note pointing to the
+  Alerts list.
+- **RADAR-018:** Every storm-based warning in effect anywhere the map shows
+  (tornado, severe thunderstorm, flash flood, special marine, snow squall),
+  not only those covering the area, MUST be drawn as a shape like the area's
+  own alerts — from NOAA's `wwa` WFS (`warnings` layer) for the view's
+  bounds, at NOAA's latest refresh (`IDP_FileDate`, the newest record's, as
+  radar.weather.gov asks; NOAA keeps every refresh side by side) — over the
+  radar, asked for again when the view settles and on each refresh
+  (`RADAR-014`), each once, the list's copy winning where it's the same event
+  (VTEC), and shown or hidden with the area's alerts. Watches and advisories
+  by county are left off: drawn by county they'd cover the radar. NOAA's own
+  start and end times are the office's local time mislabeled UTC, so ends
+  come from VTEC, and ended warnings are left out.
+- **RADAR-019:** Every alert MUST be shown in the color NWS gives its kind on
+  its hazard map — the five storm warnings in radar.weather.gov's colors —
+  over a light halo, on the radar and as a small outline swatch by each alert
+  in the Alerts list that's outlined there, so an outline can be matched to
+  its alert. Pointing at a shape MUST thicken it, and clicking it MUST open a
+  popup of that alert (every shape under the click, where they overlap): its
+  color, name (red/amber as in the list), area, end, headline, and NWS's full
+  text a click away; for a warning not in the list, NWS's text is fetched by
+  id. Clicking where there's no shape does nothing.
 
 ## Freshness and failure
 
@@ -140,8 +177,14 @@ Scenario: Zooming in on a storm
 
 Scenario: A warning's area is outlined
   Given a Severe Thunderstorm Warning with an area is in effect
-  Then its area is outlined in red on the radar map
-  And clicking it names the warning, its counties, and when it ends
+  Then its area is outlined in yellow on the radar map
+  And the Alerts list shows a yellow swatch by it
+  And clicking it shows the warning, its counties, when it ends, and NWS's text
+
+Scenario: A warning in the next county
+  Given a Tornado Warning in effect in view but not covering the area
+  Then it's outlined in red on the radar map
+  And clicking it shows the Tornado Warning with NWS's text
 
 Scenario: Working offline
   Given the operator is working offline

@@ -130,6 +130,7 @@ fn main() {
             commands::clear_weather_area,
             commands::set_weather_area_coords,
             commands::fetch_nws_alerts,
+            commands::fetch_nws_alert,
             commands::fetch_nws_forecast,
             commands::fetch_current_weather,
             commands::fetch_radar_frames,
