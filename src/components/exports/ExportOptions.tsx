@@ -183,6 +183,9 @@ export default function ExportOptions({
   const noCheckins = checkins.length === 0;
   const relay = isRelay(activity.activity_type);
   const noRelayed = relayed.length === 0;
+  // A net's messages are its check-ins' traffic (RELAY-052).
+  const relayTitle = relay ? "Relayed messages" : "Traffic";
+  const relayWhat = relay ? "relayed messages" : "traffic items";
   const noReports = reports.length === 0;
   const chosenReport = reports.find((r) => r.id === reportId);
   const contacts = adifContacts(checkins, operatorCall);
@@ -207,30 +210,34 @@ export default function ExportOptions({
         {(relay || !noRelayed) && (
           <Row
             notify={notify}
-            title="Relayed messages"
-            count={plural(relayed.length, "message", "messages")}
-            note="Each message, how it came in, and whether, when and how it was passed on."
+            title={relayTitle}
+            count={relay ? plural(relayed.length, "message", "messages") : plural(relayed.length, "item", "items")}
+            note={
+              relay
+                ? "Each message, how it came in, and whether, when and how it was passed on."
+                : "Each check-in's traffic, how it came in, and whether, when and how it was passed on."
+            }
             actions={[
               {
                 label: "Show CSV",
-                unavailable: noRelayed ? "There are no relayed messages yet, so there's nothing to show." : undefined,
+                unavailable: noRelayed ? `There are no ${relayWhat} yet, so there's nothing to show.` : undefined,
                 title: "See it as a table, exactly as the CSV file will hold it",
                 onClick: () =>
                   setCsvPreview({
-                    heading: `Relayed messages — ${activity.title}`,
-                    filename: exportFilename(activity, "Relayed messages", "csv"),
+                    heading: `${relayTitle} — ${activity.title}`,
+                    filename: exportFilename(activity, relayTitle, "csv"),
                     csv: relayMessagesToCsv(relayed),
-                    what: "the relayed messages",
+                    what: `the ${relayWhat}`,
                   }),
               },
               {
                 label: "CSV",
-                unavailable: noRelayed ? "There are no relayed messages yet, so there's nothing to export." : undefined,
+                unavailable: noRelayed ? `There are no ${relayWhat} yet, so there's nothing to export.` : undefined,
                 onClick: () =>
                   save(
-                    exportFilename(activity, "Relayed messages", "csv"),
+                    exportFilename(activity, relayTitle, "csv"),
                     relayMessagesToCsv(relayed),
-                    "the relayed messages"
+                    `the ${relayWhat}`
                   ),
               },
             ]}

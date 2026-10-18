@@ -3507,6 +3507,27 @@ button.online-pill-working-offline:hover {
   font-size: calc(12px * var(--font-scale));
 }
 
+/* Where the traffic went or how it's going ("→ EOC via RTTY"), beside
+   Handled (RELAY-051): secondary, and the first to give way when tight. */
+.checkin-row-traffic-progress {
+  flex: 0 1000 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(12px * var(--font-scale));
+  color: var(--text-dim);
+}
+
+.checkin-row.selected .checkin-row-traffic-progress {
+  color: var(--on-accent);
+}
+
+/* The selected check-in's traffic, under the roster (CheckinTraffic.tsx). */
+.checkin-traffic {
+  margin-top: 10px;
+}
+
 /* A spotter report's notes, on its row (SpotterReportRoster.tsx). */
 /* Wraps to a second line like check-in traffic, cut short with "…" after
    that (in full on hovering), within the height the Time and Hazard

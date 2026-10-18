@@ -313,8 +313,7 @@ pub fn set_checkin_traffic_handled(
     operator_id: Option<String>,
 ) -> Result<(), String> {
     let repo = state.repo.lock().unwrap();
-    repo.set_checkin_traffic_handled(&checkin_id, handled)
-        .map_err(|e| e.to_string())?;
+    repo.set_checkin_traffic_handled(&checkin_id, handled, operator_id.as_deref())?;
     let data = serde_json::json!({ "handled": handled }).to_string();
     repo.create_audit_event(
         "checkin",

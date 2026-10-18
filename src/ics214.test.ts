@@ -11,7 +11,7 @@ import {
   resourcesFromRecords,
   type ActivityRecords,
 } from "./ics214";
-import type { Activity, ActivitySummary, Checkin, HistoryEntry, Ics214Details, SpotterReport } from "./types";
+import type { Activity, ActivitySummary, Checkin, HistoryEntry, Ics214Details, RelayMessage, RelayStep, SpotterReport } from "./types";
 
 // October 3, 2026, local time.
 const at = (h: number, m = 0) => new Date(2026, 9, 3, h, m).toISOString();
@@ -81,6 +81,22 @@ const handled = (id: string, when: string, on = true, operator = "Pat"): History
   activity_title: "",
 });
 
+const traffic = (checkin: string, from: string, message: string, steps: RelayStep[]): RelayMessage => ({
+  id: `m-${checkin}`,
+  activity_id: "a1",
+  received_at: at(9, 5),
+  from_station: from,
+  for_station: "",
+  message,
+  received_via: "",
+  reply_to: null,
+  status: steps.length ? "passed" : "held",
+  steps,
+  voided_at: "",
+  void_reason: "",
+  checkin_id: checkin,
+});
+
 function records(): ActivityRecords[] {
   return [
     {
@@ -90,15 +106,15 @@ function records(): ActivityRecords[] {
         { id: "c1", call_sign: "KD4ABC", traffic: "Shelter needs water" } as Checkin,
         { id: "c2", call_sign: "W1AW", traffic: "" } as Checkin,
       ],
-      history: [
-        handled("c1", at(9, 20)),
-        // Marked, then un-marked: not handled.
-        handled("c2", at(9, 21)),
-        handled("c2", at(9, 22), false),
-        // A check-in removed since: left out.
-        handled("gone", at(9, 23)),
-      ],
+      history: [handled("c1", at(9, 20))],
       reports: [],
+      // The check-ins' traffic (RELAY-052): c1's passed on, c2's still held.
+      relay: [
+        traffic("c1", "KD4ABC", "Shelter needs water", [
+          { id: "s1", kind: "passed", at: at(9, 20), station: "", via: "", note: "" },
+        ]),
+        traffic("c2", "W1AW", "", []),
+      ],
     },
     {
       activity: activity({

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
-import type { Activity, Checkin } from "../../types";
+import type { Activity, Checkin, RelayMessage } from "../../types";
 import { QRZ_ERR_NOT_CONFIGURED, ERR_OFFLINE } from "../../types";
 import { howPlaced, placeText } from "../../placeText";
 import { placeCheckinLater } from "../../checkinLocation";
@@ -23,6 +23,9 @@ import { RangeColumns, RangeEditRow, RangeRow } from "./roster/RangeRows";
 import { CheckinEditRow } from "./roster/CheckinEditRow";
 import type { Place } from "./roster/shared";
 import { isSkywarn } from "../../activityTypes";
+import { trafficProgress } from "../../relay";
+import { viaChoicesFrom } from "../relay/RelaySteps";
+import CheckinTraffic from "./CheckinTraffic";
 
 interface Props {
   activity: Activity;
@@ -87,6 +90,22 @@ export default function CheckinRoster({
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const selectedCheckin = checkins.find((c) => c.id === selectedCheckinId) ?? null;
+  // The check-ins' traffic, with what's been done to pass it on (RELAY-051).
+  const [traffic, setTraffic] = useState<RelayMessage[]>([]);
+  const anyTraffic = checkins.some((c) => c.traffic_message_id);
+  useEffect(() => {
+    if (!anyTraffic) return setTraffic([]);
+    let cancelled = false;
+    api
+      .listRelayMessages(activity.id)
+      .then((m) => !cancelled && setTraffic(m.filter((x) => x.checkin_id)))
+      .catch(() => !cancelled && setTraffic([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [activity.id, checkins, anyTraffic]);
+  const trafficById = new Map(traffic.map((m) => [m.id, m]));
+  const selectedTraffic = selectedCheckin ? trafficById.get(selectedCheckin.traffic_message_id) : undefined;
   // A note from net control isn't a station: no location or call-sign lookup (NETOPS-060).
   const selectedIsNote = selectedCheckin?.station_kind === "net_control";
   const selectedIsGmrs = selectedCheckin
@@ -391,6 +410,10 @@ export default function CheckinRoster({
                 <NetRow
                   key={c.id}
                   {...row}
+                  trafficProgress={(() => {
+                    const m = trafficById.get(c.traffic_message_id);
+                    return m ? trafficProgress(m) : "";
+                  })()}
                   onTrafficHandled={(handled) => handleTrafficHandled(c.id, handled)}
                   reports={skywarn ? (reportsByCheckin?.get(c.id) ?? []) : undefined}
                   onReport={skywarn && !readOnly && onReport && c.station_kind !== "net_control" ? () => onReport(c) : undefined}
@@ -440,6 +463,20 @@ export default function CheckinRoster({
               <button onClick={() => onSelectCheckin(null)}>Clear selection</button>
             </div>
           )}
+
+        {selectedCheckin && selectedTraffic && !editingCheckinId && removingCheckinId !== selectedCheckin.id && (
+          <CheckinTraffic
+            checkin={selectedCheckin}
+            message={selectedTraffic}
+            stationChoices={[
+              ...checkins.filter((c) => c.station_kind !== "net_control").map((c) => c.call_sign),
+              ...traffic.flatMap((m) => m.steps.map((s) => s.station)),
+            ]}
+            viaChoices={viaChoicesFrom(activity.frequency, traffic)}
+            operatorId={operatorId}
+            onChanged={onCheckinsChanged}
+          />
+        )}
 
         {locationError && <p className="weather-area-error">{locationError}</p>}
 

@@ -187,7 +187,10 @@ in a separate list.
 
 - **NETOPS-050:** A check-in MUST carry a "has traffic" flag, optional traffic
   details, and a "handled" mark. This is the traffic-none or traffic-listed
-  state of the net (`SCOPE`, weekly-net capability).
+  state of the net (`SCOPE`, weekly-net capability). The traffic is kept as a
+  message linked to the check-in, the same as a relay's, so it can also be
+  recorded passed to whom and how, tried and failed, or not passed
+  ([relay-station.md](relay-station.md), `RELAY-050`–`052`).
 - **NETOPS-051:** The check-in entry form MUST always show a traffic field,
   with no separate checkbox. A check-in has traffic exactly when something is
   entered there; left blank, it has none.
@@ -198,7 +201,8 @@ in a separate list.
   without having to open it: shortened if long, in full on hovering, and
   marked out until handled.
 - **NETOPS-054:** Beside the traffic MUST be a "Handled" checkbox, which is
-  recorded with an audit event (`AUDIT-001`).
+  recorded with an audit event (`AUDIT-001`). Ticking it records the traffic
+  passed, now, with nothing more asked; unticking takes that back.
 - **NETOPS-055:** Traffic details and the handled state MUST be included in
   the CSV roster export.
 - **NETOPS-056:** The activity summary and end-of-net step MUST count check-ins
@@ -226,7 +230,8 @@ History.
 ## Explicitly out of scope for this slice
 
 - Opening/closing scripts (tracked against baseline steps 3, 4, 9, 10).
-- Traffic delivery/disposition beyond the handled mark (baseline steps 6, 8).
+- Traffic delivery/disposition beyond the handled mark (baseline steps 6, 8)
+  — since built: see [relay-station.md](relay-station.md), `RELAY-050`–`052`.
 - Net conclusion and summary generation (baseline step 10) — since built; see
   [activity-lifecycle-and-wrap-up.md](activity-lifecycle-and-wrap-up.md).
 - QRZ-based name enrichment (`UX-CI-003`) — deferred until the QRZ connector

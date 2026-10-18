@@ -6,6 +6,32 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+**What works differently:**
+- Traffic on a check-in can now be followed through, on any net: select
+  the check-in to record it passed to whom and how (say, by JS8Call or
+  RTTY), an attempt that failed, or that it couldn't be passed, the same
+  way a relay station does. Logging a check-in with traffic is unchanged,
+  and ticking Handled is still all it takes; the rest is there only when
+  you want it.
+
+This upgrade changes the database: traffic already on check-ins is moved
+over, handled traffic recorded as passed when it was marked. A copy of the
+database is saved before the upgrade; 2.8.0 can't open the upgraded data.
+
+### Added
+- **Where a check-in's traffic went.** Selecting a check-in with traffic
+  shows it with *Passed…*, *Attempt failed…* and *Couldn't pass…*. Its row
+  then says where it went ("→ EOC via RTTY"), that it wasn't passed, or how
+  many attempts failed. The ICS 309 and ICS 214 include it, and a net's
+  Exports & forms has its traffic as CSV.
+
+### Changed
+- **The ICS 309 says how traffic was passed, and what couldn't be.** A
+  message passed on ends with how it went ("… (via RTTY)"), and one given
+  up on gets its own line ("Not passed to EOC: no path"). This applies to
+  relay stations as well as nets.
+- JS8Call, RTTY, PSK31 and FT8 are offered as ways traffic was passed.
+
 ## [2.8.0] - 2026-10-13
 
 **What works differently:**

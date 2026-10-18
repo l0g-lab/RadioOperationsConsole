@@ -172,10 +172,19 @@ export interface Checkin {
   location_manual: boolean;
   /** How the map point was arrived at (LOCRES-064), or "" when not known (placeText.ts `HOW`). */
   location_how: string;
-  /** The station has traffic to pass; `traffic` holds the details, if any yet. */
+  /**
+   * The station has traffic to pass: a message linked to the check-in
+   * (RELAY-050), whose text is `traffic`. On a note from net control,
+   * `traffic` is the note.
+   */
   has_traffic: boolean;
   traffic: string;
+  /** Passed on. Traffic that couldn't be passed isn't handled. */
   traffic_handled: boolean;
+  /** The traffic's message (a `RelayMessage`), or "" with none. */
+  traffic_message_id: string;
+  /** "" with no traffic. */
+  traffic_status: RelayStatus | "";
   /** Radio details of a contact (station logs); "" when not recorded. */
   frequency: string;
   mode: string;
@@ -719,6 +728,8 @@ export interface RelayMessage extends RelayMessageInput {
   steps: RelayStep[];
   voided_at: string;
   void_reason: string;
+  /** The check-in whose traffic this is (RELAY-050), or null for a relay's own message. */
+  checkin_id: string | null;
 }
 
 /** An activity an operator is named in (`OperatorUsage`). */

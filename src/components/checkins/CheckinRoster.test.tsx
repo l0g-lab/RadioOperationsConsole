@@ -1,12 +1,15 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Activity, Checkin } from "../../types";
+import type { Activity, Checkin, RelayMessage } from "../../types";
 
 vi.mock("../../api", () => ({
   listVoidedCheckins: vi.fn(() => Promise.resolve([])),
   updateCheckin: vi.fn(() => Promise.resolve()),
   setCheckinTrafficHandled: vi.fn(() => Promise.resolve()),
+  listRelayMessages: vi.fn(() => Promise.resolve([])),
+  addRelayStep: vi.fn(() => Promise.resolve("s1")),
+  undoRelayStep: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("../../locationResolution", () => ({
   resolveOfflineLocationAsync: vi.fn(() => Promise.resolve(null)),
@@ -54,6 +57,8 @@ function contact(overrides: Partial<Checkin>): Checkin {
     has_traffic: false,
     traffic: "",
     traffic_handled: false,
+    traffic_message_id: "",
+    traffic_status: "",
     frequency: "146.550",
     mode: "FM",
     rst_sent: "59",
@@ -395,6 +400,70 @@ describe("CheckinRoster as a net", () => {
     const args = vi.mocked(api.updateCheckin).mock.calls[0];
     expect(args.slice(0, 2)).toEqual(["t1", "W2TRF"]);
     expect(args.slice(10, 13)).toEqual([true, "Need water", null]);
+  });
+
+  describe("passing traffic on (RELAY-051)", () => {
+    const HELD = { ...WITH_TRAFFIC, traffic_message_id: "m1", traffic_status: "held" as const };
+    const message = (o: Partial<RelayMessage> = {}): RelayMessage => ({
+      id: "m1",
+      activity_id: "net1",
+      received_at: "2026-10-03T14:00:00Z",
+      from_station: "W2TRF",
+      for_station: "",
+      message: "Need a generator",
+      received_via: "146.520",
+      reply_to: null,
+      status: "held",
+      steps: [],
+      voided_at: "",
+      void_reason: "",
+      checkin_id: "t1",
+      ...o,
+    });
+    const renderWith = (checkin: Checkin, selected: string | null) =>
+      render(
+        <CheckinRoster
+          activity={NET}
+          operatorId="op1"
+          onOpenExports={() => {}}
+          checkins={[checkin]}
+          qrzConfigured={false}
+          offlineCallsAvailable={false}
+          selectedCheckinId={selected}
+          onSelectCheckin={() => {}}
+          onCheckinsChanged={() => {}}
+          onShowMap={() => {}}
+        />
+      );
+
+    it("nothing more is asked until the check-in is selected", async () => {
+      vi.mocked(api.listRelayMessages).mockResolvedValue([message()]);
+      renderWith(HELD, null);
+      await screen.findByText("Need a generator");
+      expect(screen.queryByRole("button", { name: "Passed…" })).not.toBeInTheDocument();
+    });
+
+    it("records who it went to and how, from the selected check-in", async () => {
+      vi.mocked(api.listRelayMessages).mockResolvedValue([message()]);
+      vi.mocked(api.addRelayStep).mockClear();
+      const user = userEvent.setup();
+      renderWith(HELD, "t1");
+      await user.click(await screen.findByRole("button", { name: "Passed…" }));
+      await user.type(screen.getByRole("combobox", { name: "Passed to" }), "AAA9GW");
+      await user.type(screen.getByRole("combobox", { name: "Via" }), "RTTY{Enter}");
+      expect(api.addRelayStep).toHaveBeenCalledWith(
+        "m1",
+        expect.objectContaining({ kind: "passed", station: "AAA9GW", via: "RTTY" }),
+        "op1"
+      );
+    });
+
+    it("shows on the row where it went", async () => {
+      const passed = { id: "s1", kind: "passed" as const, at: "2026-10-03T14:20:00Z", station: "AAA9GW", via: "RTTY", note: "" };
+      vi.mocked(api.listRelayMessages).mockResolvedValue([message({ status: "passed", steps: [passed] })]);
+      renderWith({ ...HELD, traffic_status: "passed", traffic_handled: true }, null);
+      expect(await screen.findByText("→ AAA9GW via RTTY")).toBeInTheDocument();
+    });
   });
 
   it("clearing the traffic means the station has none", async () => {

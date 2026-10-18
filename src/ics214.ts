@@ -30,7 +30,7 @@ export interface ActivityRecords {
   checkins: Checkin[];
   history: HistoryEntry[];
   reports: SpotterReport[];
-  /** A relay station's messages (relay.ts). */
+  /** Its messages (relay.ts): a relay's own, and its check-ins' traffic. */
   relay?: RelayMessage[];
 }
 
@@ -79,7 +79,7 @@ export function generateLines(records: ActivityRecords[], from: string, to: stri
     if (inPeriod(at)) lines.push({ at: new Date(at).toISOString(), text, source });
   };
 
-  for (const { activity: act, summary, checkins, history, reports, relay = [] } of records) {
+  for (const { activity: act, summary, reports, relay = [] } of records) {
     const on = act.frequency ? ` on ${act.frequency}` : "";
     add(act.opened_at, `Opened ${act.title} (${activityTypeLabel(act.activity_type)})${on}`, `start:${act.id}`);
 
@@ -100,27 +100,7 @@ export function generateLines(records: ActivityRecords[], from: string, to: stri
       if (notes) add(act.closed_at, `${act.title} closing notes: ${notes}`, `notes:${act.id}`);
     }
 
-    // Traffic marked handled (the most recent mark for each check-in).
-    const byId = new Map(checkins.map((c) => [c.id, c]));
-    const handled = new Map<string, string>();
-    for (const e of history) {
-      if (e.entity_type !== "checkin" || e.action !== "traffic_handled") continue;
-      let on = false;
-      try {
-        on = Boolean(JSON.parse(e.data)?.handled);
-      } catch {
-        on = false;
-      }
-      if (on) handled.set(e.entity_id, e.created_at);
-      else handled.delete(e.entity_id);
-    }
-    for (const [id, at] of handled) {
-      const c = byId.get(id);
-      if (!c) continue; // removed since
-      const what = c.traffic ? `: ${c.traffic}` : "";
-      add(at, `Handled traffic from ${c.call_sign}${what}`, `traffic:${id}`);
-    }
-
+    // Relayed messages, and check-ins' traffic passed on (RELAY-042, RELAY-052).
     lines.push(...relay214Lines(relay, from, to));
 
     for (const r of reports) {

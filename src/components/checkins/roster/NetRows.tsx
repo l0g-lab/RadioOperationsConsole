@@ -51,10 +51,13 @@ export function NetRow({
   selected,
   onSelect,
   onTrafficHandled,
+  trafficProgress = "",
   reports,
   onReport,
 }: RowProps & {
   onTrafficHandled: (handled: boolean) => void;
+  /** How passing the traffic on is going, beyond Handled: "→ EOC via RTTY" (RELAY-051). */
+  trafficProgress?: string;
   /** Hazards of the reports linked to this check-in, oldest first (SKYWARN). */
   reports?: string[];
   /** Takes a report from this station (SKYWARN, while the net is open). */
@@ -95,7 +98,15 @@ export function NetRow({
             <span className="checkin-row-traffic-text" title={c.traffic || undefined}>
               {c.traffic || <em>Traffic — no details yet</em>}
             </span>
-            <label className="checkbox-row traffic-handled" onClick={(e) => e.stopPropagation()}>
+            <label
+              className="checkbox-row traffic-handled"
+              onClick={(e) => e.stopPropagation()}
+              title={
+                c.traffic_handled
+                  ? "Untick to take it back"
+                  : "Tick once it's passed on. Select the row to say to whom and how, or record a failed attempt."
+              }
+            >
               <input
                 type="checkbox"
                 checked={c.traffic_handled}
@@ -103,6 +114,7 @@ export function NetRow({
               />
               Handled
             </label>
+            {trafficProgress && <span className="checkin-row-traffic-progress">{trafficProgress}</span>}
           </>
         )}
         {reports && reports.length > 0 && (

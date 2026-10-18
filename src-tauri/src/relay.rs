@@ -66,6 +66,9 @@ pub struct RelayMessage {
     pub steps: Vec<RelayStep>,
     pub voided_at: String,
     pub void_reason: String,
+    /// The check-in whose traffic this is (RELAY-050), if any. Its text and
+    /// sender come from the check-in and are changed there.
+    pub checkin_id: Option<String>,
 }
 
 pub const STEP_KINDS: [&str; 3] = ["attempt", "passed", "not_passed"];
@@ -96,8 +99,9 @@ pub fn clean_message(mut m: RelayMessageInput) -> Result<RelayMessageInput, Stri
 }
 
 /// Checks and tidies a step as entered (RELAY-020–022). `received_at` is
-/// the message's, which the step can't come before.
-pub fn clean_step(mut s: RelayStepInput, received_at: &str) -> Result<RelayStepInput, String> {
+/// the message's, which the step can't come before. A check-in's traffic
+/// (`from_checkin`) can be passed without saying to whom or how (RELAY-051).
+pub fn clean_step(mut s: RelayStepInput, received_at: &str, from_checkin: bool) -> Result<RelayStepInput, String> {
     for text in [&mut s.kind, &mut s.station, &mut s.via, &mut s.note] {
         *text = text.trim().to_string();
     }
@@ -113,8 +117,8 @@ pub fn clean_step(mut s: RelayStepInput, received_at: &str) -> Result<RelayStepI
     s.at = at.to_rfc3339();
     match s.kind.as_str() {
         "attempt" if s.via.is_empty() => Err("How did you try to pass it? A frequency, repeater, or other means.".into()),
-        "passed" if s.station.is_empty() => Err("Who did you pass it to?".into()),
-        "passed" if s.via.is_empty() => Err("How was it passed? A frequency, repeater, or other means.".into()),
+        "passed" if s.station.is_empty() && !from_checkin => Err("Who did you pass it to?".into()),
+        "passed" if s.via.is_empty() && !from_checkin => Err("How was it passed? A frequency, repeater, or other means.".into()),
         "not_passed" if s.note.is_empty() => Err("Say why it couldn't be passed.".into()),
         _ => Ok(s),
     }
@@ -129,7 +133,10 @@ pub fn status_of(steps: &[RelayStep]) -> &'static str {
     }
 }
 
-const MESSAGE_COLS: &str = "id, activity_id, received_at, from_station, for_station, message, coalesce(received_via,''), reply_to, coalesce(voided_at,''), coalesce(void_reason,'')";
+const MESSAGE_COLS: &str = "id, activity_id, received_at, from_station, for_station, message, coalesce(received_via,''), reply_to, coalesce(voided_at,''), coalesce(void_reason,''), checkin_id";
+
+/// Leaves out the traffic of removed check-ins: it goes and comes back with them.
+const LIVE_CHECKIN: &str = "(checkin_id IS NULL OR checkin_id IN (SELECT id FROM checkins WHERE voided_at IS NULL))";
 
 fn blank(s: &str) -> Option<&str> {
     if s.is_empty() { None } else { Some(s) }
@@ -166,6 +173,7 @@ impl Repository {
                     steps: Vec::new(),
                     voided_at: r.get(8)?,
                     void_reason: r.get(9)?,
+                    checkin_id: r.get(10)?,
                 })
             })?
             .collect::<rusqlite::Result<_>>()?;
@@ -178,14 +186,15 @@ impl Repository {
             .collect()
     }
 
-    /// An activity's messages, oldest first.
+    /// An activity's messages, oldest first, with its check-ins' traffic.
     pub fn list_relay_messages(&self, activity_id: &str) -> rusqlite::Result<Vec<RelayMessage>> {
-        self.relay_messages_where("activity_id = ?1 AND voided_at IS NULL", activity_id)
+        self.relay_messages_where(&format!("activity_id = ?1 AND voided_at IS NULL AND {LIVE_CHECKIN}"), activity_id)
     }
 
-    /// An activity's removed messages, which can be restored.
+    /// An activity's removed messages, which can be restored. A check-in's
+    /// cleared traffic isn't among them: it's typed again on the check-in.
     pub fn list_removed_relay_messages(&self, activity_id: &str) -> rusqlite::Result<Vec<RelayMessage>> {
-        self.relay_messages_where("activity_id = ?1 AND voided_at IS NOT NULL", activity_id)
+        self.relay_messages_where("activity_id = ?1 AND voided_at IS NOT NULL AND checkin_id IS NULL", activity_id)
     }
 
     pub fn get_relay_message(&self, id: &str) -> rusqlite::Result<RelayMessage> {
@@ -340,15 +349,15 @@ mod tests {
         assert!(bad(|m| m.received_at = "10am".into()).contains("time received"));
 
         let received = &m.received_at;
-        assert!(clean_step(step("passed", "2026-10-03T14:10:00Z"), received).is_ok());
-        assert!(clean_step(step("passed", "2026-10-03T13:59:00Z"), received).unwrap_err().contains("before"));
-        assert!(clean_step(step("lost", "2026-10-03T14:10:00Z"), received).is_err());
+        assert!(clean_step(step("passed", "2026-10-03T14:10:00Z"), received, false).is_ok());
+        assert!(clean_step(step("passed", "2026-10-03T13:59:00Z"), received, false).unwrap_err().contains("before"));
+        assert!(clean_step(step("lost", "2026-10-03T14:10:00Z"), received, false).is_err());
         let mut no_station = step("passed", "2026-10-03T14:10:00Z");
         no_station.station = "".into();
-        assert!(clean_step(no_station, received).unwrap_err().contains("Who"));
+        assert!(clean_step(no_station, received, false).unwrap_err().contains("Who"));
         let mut no_reason = step("not_passed", "2026-10-03T14:10:00Z");
         no_reason.note = "".into();
-        assert!(clean_step(no_reason, received).unwrap_err().contains("why"));
+        assert!(clean_step(no_reason, received, false).unwrap_err().contains("why"));
     }
 
     #[test]
@@ -367,13 +376,13 @@ mod tests {
         let id = r.create_relay_message(&a, &m, None).unwrap();
         assert_eq!(r.get_relay_message(&id).unwrap().status, "held");
 
-        let attempt = clean_step(step("attempt", "2026-10-03T14:10:00Z"), &m.received_at).unwrap();
+        let attempt = clean_step(step("attempt", "2026-10-03T14:10:00Z"), &m.received_at, false).unwrap();
         r.add_relay_step(&id, &attempt, None).unwrap();
         assert_eq!(r.get_relay_message(&id).unwrap().status, "held");
 
         let mut by_phone = step("passed", "2026-10-03T14:25:00Z");
         by_phone.via = "Phone".into();
-        let passed = r.add_relay_step(&id, &clean_step(by_phone, &m.received_at).unwrap(), None).unwrap();
+        let passed = r.add_relay_step(&id, &clean_step(by_phone, &m.received_at, false).unwrap(), None).unwrap();
         let msg = r.get_relay_message(&id).unwrap();
         assert_eq!(msg.status, "passed");
         assert_eq!(msg.steps.iter().map(|s| s.kind.as_str()).collect::<Vec<_>>(), ["attempt", "passed"]);

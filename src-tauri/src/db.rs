@@ -144,6 +144,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0035_location_how.sql",
         include_str!("../migrations/0035_location_how.sql"),
     ),
+    (
+        "0036_checkin_traffic_messages.sql",
+        include_str!("../migrations/0036_checkin_traffic_messages.sql"),
+    ),
 ];
 
 /// Whether this build knows the migration, i.e. a database that has it wasn't
@@ -361,6 +365,47 @@ mod tests {
         let copy = Connection::open(saved.unwrap().path.unwrap()).unwrap();
         let title: String = copy.query_row("SELECT title FROM activity_templates", [], |r| r.get(0)).unwrap();
         assert_eq!(title, "Tuesday Net");
+    }
+
+    #[test]
+    fn traffic_on_checkins_becomes_messages_on_upgrade() {
+        // RELAY-050: a database from before 0036, with traffic handled, held,
+        // on a removed check-in, and a note from net control.
+        let conn = Connection::open_in_memory().unwrap();
+        let upto = MIGRATIONS.iter().position(|(v, _)| *v == "0036_checkin_traffic_messages.sql").unwrap();
+        apply_migrations(&conn, &MIGRATIONS[..upto]).unwrap();
+        conn.execute_batch(
+            "INSERT INTO operators(id, display_name, created_at) VALUES ('op', 'Pat', 't');
+             INSERT INTO activities(id, title, type, state, created_at, frequency) VALUES ('a', 'Net', 'directed_net', 'active', 't', '146.940');
+             INSERT INTO checkins(id, activity_id, call_sign, checked_in_at, entered_at, has_traffic, traffic, traffic_handled)
+                 VALUES ('done', 'a', 'W1AW', '2026-10-01T19:00:00+00:00', 't', 1, 'For EOC', 1),
+                        ('held', 'a', 'K4ABC', '2026-10-01T19:01:00+00:00', 't', 1, NULL, 0),
+                        ('none', 'a', 'N0ONE', '2026-10-01T19:02:00+00:00', 't', 0, NULL, 0),
+                        ('gone', 'a', 'W9GON', '2026-10-01T19:03:00+00:00', 't', 1, 'Removed', 0);
+             UPDATE checkins SET voided_at = 't' WHERE id = 'gone';
+             INSERT INTO checkins(id, activity_id, call_sign, checked_in_at, entered_at, has_traffic, traffic, station_kind)
+                 VALUES ('ncs', 'a', 'NET CONTROL', '2026-10-01T19:04:00+00:00', 't', 0, 'QSY to backup', 'net_control');
+             INSERT INTO audit_events(id, entity_type, entity_id, action, data, operator_id, created_at)
+                 VALUES ('e1', 'checkin', 'done', 'traffic_handled', '{\"handled\":true}', 'op', '2026-10-01T19:30:00+00:00');",
+        )
+        .unwrap();
+        run_migrations(&conn).unwrap();
+
+        let repo = crate::repo::Repository::new(conn);
+        let done = repo.get_checkin("done").unwrap();
+        assert_eq!((done.has_traffic, done.traffic.as_str(), done.traffic_handled), (true, "For EOC", true));
+        let m = repo.get_relay_message(&done.traffic_message_id).unwrap();
+        assert_eq!((m.from_station.as_str(), m.received_via.as_str(), m.status.as_str()), ("W1AW", "146.940", "passed"));
+        assert_eq!(m.steps[0].at, "2026-10-01T19:30:00+00:00", "passed when it was marked handled");
+        let held = repo.get_checkin("held").unwrap();
+        assert_eq!((held.has_traffic, held.traffic.as_str(), held.traffic_status.as_str()), (true, "", "held"));
+        assert!(!repo.get_checkin("none").unwrap().has_traffic);
+        assert!(repo.get_checkin("gone").unwrap().has_traffic, "kept for a restore");
+        let ncs = repo.get_checkin("ncs").unwrap();
+        assert_eq!((ncs.has_traffic, ncs.traffic.as_str()), (false, "QSY to backup"));
+        assert_eq!(repo.list_relay_messages("a").unwrap().len(), 2, "the removed check-in's is left out");
+        let s = repo.activity_summary("a").unwrap();
+        assert_eq!((s.traffic_items, s.open_traffic_items, s.relay_messages), (2, 1, 0));
     }
 
     #[test]

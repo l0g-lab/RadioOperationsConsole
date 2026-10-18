@@ -3,12 +3,16 @@ use crate::relay::{clean_message, clean_step, RelayMessage, RelayMessageInput, R
 use crate::repo::Repository;
 use tauri::State;
 
-/// Changes are refused once the message's activity is closed.
+/// Changes are refused once the message's activity is closed. A check-in's
+/// traffic is changed or removed on the check-in itself (RELAY-050).
 fn ensure_message_open(repo: &Repository, message_id: &str) -> Result<String, String> {
     let activity_id = repo
         .activity_id_of_relay_message(message_id)
         .ok_or("That message no longer exists.")?;
     ensure_open(repo, &activity_id)?;
+    if repo.get_relay_message(message_id).map_err(|e| e.to_string())?.checkin_id.is_some() {
+        return Err("This is a check-in's traffic: change it on the check-in.".into());
+    }
     Ok(activity_id)
 }
 
@@ -86,7 +90,7 @@ pub fn add_relay_step(
 ) -> Result<String, String> {
     let repo = state.repo.lock().unwrap();
     let message = repo.get_relay_message(&message_id).map_err(|e| e.to_string())?;
-    let s = clean_step(step, &message.received_at)?;
+    let s = clean_step(step, &message.received_at, message.checkin_id.is_some())?;
     let id = repo.add_relay_step(&message_id, &s, operator_id.as_deref())?;
     let mut data = serde_json::to_value(&s).unwrap_or_default();
     data["step_id"] = serde_json::Value::String(id.clone());
@@ -131,4 +135,23 @@ pub fn restore_relay_message(state: State<AppState>, message_id: String, operato
     ensure_message_open(&repo, &message_id)?;
     repo.restore_relay_message(&message_id).map_err(|e| e.to_string())?;
     audit(&repo, &message_id, "restore", serde_json::json!({}), operator_id.as_deref())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::repo::ContactDetails;
+
+    #[test]
+    fn a_checkins_traffic_is_changed_on_the_checkin_not_as_a_message() {
+        // RELAY-050
+        let path = std::env::temp_dir().join(format!("roc-relaycmd-{}.db", uuid::Uuid::new_v4()));
+        let r = Repository::new(crate::db::open_db(&path).unwrap());
+        let a = r.create_activity("Net", "directed_net", None, None).unwrap();
+        let c = r
+            .create_checkin(&a, "W1AW", None, None, None, None, None, None, None, None, true, Some("For EOC"), &ContactDetails::default())
+            .unwrap();
+        let m = r.get_checkin(&c).unwrap().traffic_message_id;
+        assert!(ensure_message_open(&r, &m).unwrap_err().contains("on the check-in"));
+    }
 }

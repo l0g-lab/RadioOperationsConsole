@@ -44,6 +44,8 @@ function checkin(overrides: Partial<Checkin> = {}): Checkin {
     has_traffic: false,
     traffic: "",
     traffic_handled: false,
+    traffic_message_id: "",
+    traffic_status: "",
     frequency: "",
     mode: "",
     rst_sent: "",

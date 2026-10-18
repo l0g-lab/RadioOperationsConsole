@@ -200,10 +200,11 @@ function Form309({
   useEffect(() => {
     Promise.all(
       all.map(async (a) => {
-        // A relay station logs messages in and out instead of check-ins (RELAY-041).
+        // A relay station logs messages in and out instead of check-ins
+        // (RELAY-041); a net, its check-ins' traffic passed on (RELAY-052).
         const [c, m] = await Promise.all([
           api.listCheckins(a.id).catch(() => [] as Checkin[]),
-          isRelay(a.activity_type) ? api.listRelayMessages(a.id).catch(() => [] as RelayMessage[]) : [],
+          api.listRelayMessages(a.id).catch(() => [] as RelayMessage[]),
         ]);
         return [a.id, { checkins: c, relayed: m }] as const;
       })
@@ -221,7 +222,9 @@ function Form309({
           const r = records.get(a.id);
           if (!r) return [];
           const to = callFor?.(a) || netControl;
-          return isRelay(a.activity_type) ? relay309Entries(r.relayed, to) : comms309Entries(r.checkins, to);
+          return isRelay(a.activity_type)
+            ? relay309Entries(r.relayed, to)
+            : [...comms309Entries(r.checkins, to), ...relay309Entries(r.relayed.filter((m) => m.checkin_id), to)];
         })
         .sort((x, y) => x.at - y.at),
     // eslint-disable-next-line react-hooks/exhaustive-deps

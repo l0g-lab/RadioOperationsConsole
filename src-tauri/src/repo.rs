@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -143,10 +143,17 @@ pub struct Checkin {
     /// How the map point was arrived at (LOCRES-064): "pin", "zip", "crossing"…,
     /// or "" when not known.
     pub location_how: String,
-    /// The station has traffic to pass; `traffic` holds the details, if any yet.
+    /// The station has traffic to pass: a message linked to the check-in
+    /// (RELAY-050), whose text is `traffic`. On a note from net control,
+    /// `traffic` is the note.
     pub has_traffic: bool,
     pub traffic: String,
+    /// Passed on. Traffic that couldn't be passed isn't handled.
     pub traffic_handled: bool,
+    /// The traffic's message, or "" with none.
+    pub traffic_message_id: String,
+    /// "held", "passed" or "not_passed"; "" with no traffic.
+    pub traffic_status: String,
     /// Radio details of a contact (station logs); empty when not recorded.
     pub frequency: String,
     pub mode: String,
@@ -215,8 +222,24 @@ const STATIONS_ONLY: &str = "coalesce(station_kind,'') <> 'net_control'";
 /// Columns `map_alert` reads, in order.
 const ALERT_COLUMNS: &str = "id, nws_id, event, headline, area_desc, severity, effective, ends, attached_at";
 
-/// Columns `map_checkin` reads, in order.
-const CHECKIN_COLUMNS: &str = "id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), has_traffic, coalesce(traffic,''), traffic_handled, coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,''), coalesce(station_kind,''), coalesce(cross_street,''), location_manual, location_how";
+/// Check-ins with their traffic (RELAY-050): `t` is the linked message, unless
+/// removed, and `t.outcome` how it was settled, if it was ("passed" or
+/// "not_passed"). A check-in has at most one live message (an index makes
+/// sure, migration 0036), so this never repeats a check-in.
+const CHECKINS_WITH_TRAFFIC: &str = "checkins LEFT JOIN (
+        SELECT m.id, m.checkin_id, m.message,
+            (SELECT s.kind FROM relay_steps s WHERE s.message_id = m.id AND s.voided_at IS NULL AND s.kind != 'attempt'
+             ORDER BY s.at DESC, s.rowid DESC LIMIT 1) AS outcome
+        FROM relay_messages m WHERE m.checkin_id IS NOT NULL AND m.voided_at IS NULL
+    ) t ON t.checkin_id = checkins.id";
+
+/// Columns `map_checkin` reads, in order, from `CHECKINS_WITH_TRAFFIC`.
+const CHECKIN_COLUMNS: &str = "checkins.id, call_sign, coalesce(name,''), coalesce(qth_location,''), coalesce(grid_square,''), coalesce(address,''), checked_in_at, location_lat, location_lon, coalesce(location_label,''), \
+    t.id IS NOT NULL, \
+    CASE WHEN coalesce(station_kind,'') = 'net_control' THEN coalesce(traffic,'') ELSE coalesce(t.message,'') END, \
+    coalesce(t.outcome,'') = 'passed', \
+    coalesce(frequency,''), coalesce(mode,''), coalesce(rst_sent,''), coalesce(rst_received,''), coalesce(power,''), coalesce(antenna,''), coalesce(notes,''), coalesce(station_kind,''), coalesce(cross_street,''), location_manual, location_how, \
+    coalesce(t.id,''), CASE WHEN t.id IS NULL THEN '' ELSE coalesce(t.outcome,'held') END";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct SpotterReport {
@@ -682,14 +705,58 @@ impl Repository {
         // was entered is always now.
         let at = ContactDetails::field(&contact.contacted_at).unwrap_or(&now);
         let f = ContactDetails::field;
+        let note = f(&contact.station_kind) == Some("net_control");
         self.conn.execute(
-            "INSERT INTO checkins(id, activity_id, call_sign, name, qth_location, grid_square, address, checked_in_at, entered_at, operator_id, location_lat, location_lon, location_label, has_traffic, traffic, frequency, mode, rst_sent, rst_received, power, antenna, notes, station_kind, cross_street) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24)",
-            params![id, activity_id, call_sign, name, qth_location, grid_square, address, at, now, operator_id, location_lat, location_lon, location_label, has_traffic,
+            "INSERT INTO checkins(id, activity_id, call_sign, name, qth_location, grid_square, address, checked_in_at, entered_at, operator_id, location_lat, location_lon, location_label, traffic, frequency, mode, rst_sent, rst_received, power, antenna, notes, station_kind, cross_street) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23)",
+            params![id, activity_id, call_sign, name, qth_location, grid_square, address, at, now, operator_id, location_lat, location_lon, location_label,
                 // A note from net control is its text, though it isn't traffic (NETOPS-060).
-                if has_traffic || f(&contact.station_kind) == Some("net_control") { traffic } else { None },
+                if note { traffic } else { None },
                 f(&contact.frequency), f(&contact.mode), f(&contact.rst_sent), f(&contact.rst_received), f(&contact.power), f(&contact.antenna), f(&contact.notes), f(&contact.station_kind), f(&contact.cross_street)],
         )?;
+        if has_traffic && !note {
+            self.sync_checkin_traffic(&id, Some(traffic.unwrap_or("")), operator_id)?;
+        }
         Ok(id)
+    }
+
+    /// Keeps a check-in's traffic message in step with what's on the check-in
+    /// (RELAY-050): `Some` text creates or updates it, from the station that
+    /// checked in; `None` removes it, so traffic typed again starts afresh.
+    fn sync_checkin_traffic(&self, checkin_id: &str, text: Option<&str>, operator_id: Option<&str>) -> rusqlite::Result<()> {
+        let live: Option<String> = self
+            .conn
+            .query_row(
+                "SELECT id FROM relay_messages WHERE checkin_id = ?1 AND voided_at IS NULL ORDER BY rowid DESC LIMIT 1",
+                params![checkin_id],
+                |r| r.get(0),
+            )
+            .optional()?;
+        let now = Utc::now().to_rfc3339();
+        match (text.map(str::trim), live) {
+            (Some(t), Some(m)) => {
+                self.conn.execute(
+                    "UPDATE relay_messages SET message = ?1, from_station = (SELECT call_sign FROM checkins WHERE id = ?2) WHERE id = ?3",
+                    params![t, checkin_id, m],
+                )?;
+            }
+            (Some(t), None) => {
+                // Received when the station checked in, on the net's frequency.
+                self.conn.execute(
+                    "INSERT INTO relay_messages(id, activity_id, operator_id, received_at, from_station, for_station, message, received_via, created_at, checkin_id) \
+                     SELECT ?1, c.activity_id, ?2, c.checked_in_at, c.call_sign, '', ?3, nullif(trim(coalesce(a.frequency,'')),''), ?4, c.id \
+                     FROM checkins c JOIN activities a ON a.id = c.activity_id WHERE c.id = ?5",
+                    params![Uuid::new_v4().to_string(), operator_id, t, now, checkin_id],
+                )?;
+            }
+            (None, Some(m)) => {
+                self.conn.execute(
+                    "UPDATE relay_messages SET voided_at = ?1, void_reason = 'Traffic cleared from the check-in' WHERE id = ?2",
+                    params![now, m],
+                )?;
+            }
+            (None, None) => {}
+        }
+        Ok(())
     }
 
     fn map_checkin(r: &rusqlite::Row) -> rusqlite::Result<Checkin> {
@@ -718,11 +785,13 @@ impl Repository {
             cross_street: r.get(21)?,
             location_manual: r.get(22)?,
             location_how: r.get(23)?,
+            traffic_message_id: r.get(24)?,
+            traffic_status: r.get(25)?,
         })
     }
 
     pub fn list_checkins(&self, activity_id: &str) -> rusqlite::Result<Vec<Checkin>> {
-        let mut stmt = self.conn.prepare(&format!("SELECT {CHECKIN_COLUMNS} FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL ORDER BY checked_in_at DESC"))?;
+        let mut stmt = self.conn.prepare(&format!("SELECT {CHECKIN_COLUMNS} FROM {CHECKINS_WITH_TRAFFIC} WHERE activity_id = ?1 AND voided_at IS NULL ORDER BY checked_in_at DESC"))?;
         let rows = stmt.query_map(params![activity_id], Self::map_checkin)?;
         let mut v = Vec::new();
         for r in rows {
@@ -732,7 +801,7 @@ impl Repository {
     }
 
     pub fn list_voided_checkins(&self, activity_id: &str) -> rusqlite::Result<Vec<Checkin>> {
-        let mut stmt = self.conn.prepare(&format!("SELECT {CHECKIN_COLUMNS} FROM checkins WHERE activity_id = ?1 AND voided_at IS NOT NULL ORDER BY voided_at DESC"))?;
+        let mut stmt = self.conn.prepare(&format!("SELECT {CHECKIN_COLUMNS} FROM {CHECKINS_WITH_TRAFFIC} WHERE activity_id = ?1 AND voided_at IS NOT NULL ORDER BY voided_at DESC"))?;
         let rows = stmt.query_map(params![activity_id], Self::map_checkin)?;
         let mut v = Vec::new();
         for r in rows {
@@ -743,7 +812,7 @@ impl Repository {
 
     pub fn get_checkin(&self, id: &str) -> rusqlite::Result<Checkin> {
         self.conn.query_row(
-            &format!("SELECT {CHECKIN_COLUMNS} FROM checkins WHERE id = ?1"),
+            &format!("SELECT {CHECKIN_COLUMNS} FROM {CHECKINS_WITH_TRAFFIC} WHERE checkins.id = ?1"),
             params![id],
             Self::map_checkin,
         )
@@ -765,12 +834,10 @@ impl Repository {
         traffic: Option<&str>,
         contact: Option<&ContactDetails>,
     ) -> rusqlite::Result<()> {
-        // Clearing "has traffic" also clears its details and handled mark.
         self.conn.execute(
-            "UPDATE checkins SET call_sign = ?1, name = ?2, qth_location = ?3, grid_square = ?4, address = ?5, location_lat = ?6, location_lon = ?7, location_label = ?8, has_traffic = ?9, \
-             traffic = CASE WHEN ?9 OR coalesce(station_kind,'') = 'net_control' THEN ?10 END, \
-             traffic_handled = CASE WHEN ?9 THEN traffic_handled ELSE 0 END WHERE id = ?11",
-            params![call_sign, name, qth_location, grid_square, address, location_lat, location_lon, location_label, has_traffic, traffic, id],
+            "UPDATE checkins SET call_sign = ?1, name = ?2, qth_location = ?3, grid_square = ?4, address = ?5, location_lat = ?6, location_lon = ?7, location_label = ?8, \
+             traffic = CASE WHEN coalesce(station_kind,'') = 'net_control' THEN ?9 END WHERE id = ?10",
+            params![call_sign, name, qth_location, grid_square, address, location_lat, location_lon, location_label, traffic, id],
         )?;
         // No contact details given (e.g. a call-sign lookup filling in a
         // name) leaves them as they are; given, they replace what's there.
@@ -781,6 +848,14 @@ impl Repository {
                 params![f(&c.frequency), f(&c.mode), f(&c.rst_sent), f(&c.rst_received), f(&c.power), f(&c.antenna), f(&c.notes), f(&c.contacted_at), f(&c.station_kind), f(&c.cross_street), id],
             )?;
         }
+        // Clearing the traffic removes it, with whatever was done to pass it on.
+        let note: bool = self.conn.query_row(
+            "SELECT coalesce(station_kind,'') = 'net_control' FROM checkins WHERE id = ?1",
+            params![id],
+            |r| r.get(0),
+        )?;
+        let text = if has_traffic && !note { Some(traffic.unwrap_or("")) } else { None };
+        self.sync_checkin_traffic(id, text, None)?;
         Ok(())
     }
 
@@ -829,11 +904,40 @@ impl Repository {
         Ok(StationHistory { count, last })
     }
 
-    pub fn set_checkin_traffic_handled(&self, id: &str, handled: bool) -> rusqlite::Result<()> {
-        self.conn.execute(
-            "UPDATE checkins SET traffic_handled = ?1 WHERE id = ?2 AND has_traffic = 1",
-            params![handled, id],
-        )?;
+    /// Ticking Handled passes the traffic on, now, with nothing more said
+    /// (RELAY-051), even if it had been given up on; unticking takes back
+    /// however it was settled. Failed attempts stay either way.
+    pub fn set_checkin_traffic_handled(&self, id: &str, handled: bool, operator_id: Option<&str>) -> Result<(), String> {
+        let c = self.get_checkin(id).map_err(|e| e.to_string())?;
+        if c.traffic_message_id.is_empty() {
+            return Err("That check-in has no traffic.".into());
+        }
+        let now = Utc::now().to_rfc3339();
+        if handled {
+            if c.traffic_status != "passed" {
+                // Got through after all: it's no longer "couldn't pass".
+                self.conn
+                    .execute(
+                        "UPDATE relay_steps SET voided_at = ?1 WHERE message_id = ?2 AND voided_at IS NULL AND kind = 'not_passed'",
+                        params![now, c.traffic_message_id],
+                    )
+                    .map_err(|e| e.to_string())?;
+                self.conn
+                    .execute(
+                        "INSERT INTO relay_steps(id, message_id, operator_id, kind, at, station, created_at) \
+                         SELECT ?1, id, ?2, 'passed', max(?3, received_at), nullif(for_station,''), ?3 FROM relay_messages WHERE id = ?4",
+                        params![Uuid::new_v4().to_string(), operator_id, now, c.traffic_message_id],
+                    )
+                    .map_err(|e| e.to_string())?;
+            }
+        } else {
+            self.conn
+                .execute(
+                    "UPDATE relay_steps SET voided_at = ?1 WHERE message_id = ?2 AND voided_at IS NULL AND kind != 'attempt'",
+                    params![now, c.traffic_message_id],
+                )
+                .map_err(|e| e.to_string())?;
+        }
         Ok(())
     }
 
@@ -1392,15 +1496,18 @@ impl Repository {
             last_checkin_at: last.unwrap_or_default(),
             hazards,
             spotter_reports: one("SELECT COUNT(*) FROM spotter_reports WHERE activity_id = ?1 AND voided_at IS NULL"),
+            // A check-in's traffic counts as its traffic, not as a relayed message.
             traffic_items: one(&format!(
-                "SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND has_traffic = 1 AND {STATIONS_ONLY}"
+                "SELECT COUNT(*) FROM {CHECKINS_WITH_TRAFFIC} WHERE activity_id = ?1 AND voided_at IS NULL AND t.id IS NOT NULL AND {STATIONS_ONLY}"
             )),
+            // Not handled: still held, or couldn't be passed.
             open_traffic_items: one(&format!(
-                "SELECT COUNT(*) FROM checkins WHERE activity_id = ?1 AND voided_at IS NULL AND has_traffic = 1 AND traffic_handled = 0 AND {STATIONS_ONLY}"
+                "SELECT COUNT(*) FROM {CHECKINS_WITH_TRAFFIC} WHERE activity_id = ?1 AND voided_at IS NULL AND t.id IS NOT NULL \
+                 AND coalesce(t.outcome,'') <> 'passed' AND {STATIONS_ONLY}"
             )),
-            relay_messages: one("SELECT COUNT(*) FROM relay_messages WHERE activity_id = ?1 AND voided_at IS NULL"),
-            held_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND NOT {RELAY_HAS_OUTCOME}")),
-            unpassed_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND {RELAY_LAST_OUTCOME} = 'not_passed'")),
+            relay_messages: one("SELECT COUNT(*) FROM relay_messages WHERE activity_id = ?1 AND voided_at IS NULL AND checkin_id IS NULL"),
+            held_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND m.checkin_id IS NULL AND NOT {RELAY_HAS_OUTCOME}")),
+            unpassed_relay_messages: one(&format!("SELECT COUNT(*) FROM relay_messages m WHERE m.activity_id = ?1 AND m.voided_at IS NULL AND m.checkin_id IS NULL AND {RELAY_LAST_OUTCOME} = 'not_passed'")),
             weather: self.list_activity_weather(id).unwrap_or_default(),
             largest_hail: largest("Hail"),
             strongest_wind: largest("Wind Damage"),
@@ -1624,7 +1731,8 @@ impl Repository {
                     WHEN 'activity' THEN (SELECT title FROM activities WHERE id = h.entity_id)
                     WHEN 'checkin' THEN (SELECT upper(call_sign) FROM checkins WHERE id = h.entity_id)
                     WHEN 'spotter_report' THEN (SELECT hazard_type || CASE WHEN coalesce(reporter, '') != '' THEN ' from ' || reporter ELSE '' END FROM spotter_reports WHERE id = h.entity_id)
-                    WHEN 'relay_message' THEN (SELECT from_station || ' for ' || for_station FROM relay_messages WHERE id = h.entity_id)
+                    WHEN 'relay_message' THEN (SELECT CASE WHEN checkin_id IS NOT NULL THEN 'Traffic from ' ELSE '' END || from_station
+                        || CASE WHEN for_station <> '' THEN ' for ' || for_station ELSE '' END FROM relay_messages WHERE id = h.entity_id)
                     WHEN 'operator' THEN (SELECT display_name || CASE WHEN coalesce(call_sign, '') != '' THEN ' (' || call_sign || ')' ELSE '' END FROM operators WHERE id = h.entity_id)
                     WHEN 'repeater' THEN (SELECT name FROM repeaters WHERE id = h.entity_id)
                     WHEN 'net_listing' THEN (SELECT name FROM net_listings WHERE id = h.entity_id)
@@ -1664,6 +1772,7 @@ impl Repository {
 #[cfg(test)]
 mod lifecycle_tests {
     use super::*;
+    use crate::relay::RelayStepInput;
 
     fn repo() -> Repository {
         let path = std::env::temp_dir().join(format!("roc-life-{}.db", Uuid::new_v4()));
@@ -1916,7 +2025,7 @@ mod lifecycle_tests {
         // Two stations with traffic (one handled), plus one with none.
         let t1 = r.create_checkin(&id, "W2TRF", None, None, None, None, None, None, None, None, true, Some("Need generator"), &ContactDetails::default()).unwrap();
         r.create_checkin(&id, "W3TRF", None, None, None, None, None, None, None, None, true, None, &ContactDetails::default()).unwrap();
-        r.set_checkin_traffic_handled(&t1, true).unwrap();
+        r.set_checkin_traffic_handled(&t1, true, None).unwrap();
         r.create_audit_event("activity", &id, "activity_entry", Some("Net opened"), None).unwrap();
 
         let s = r.activity_summary(&id).unwrap();
@@ -1929,6 +2038,82 @@ mod lifecycle_tests {
         // The Activities table's count leaves out the removed one too (UX-OPS-015).
         assert_eq!(r.get_activity(&id).unwrap().record_count, 5);
         assert_eq!(r.list_activities().unwrap().iter().find(|a| a.id == id).unwrap().record_count, 5);
+    }
+
+    #[test]
+    fn a_checkins_traffic_is_a_message_passed_on_like_a_relays() {
+        // RELAY-050, RELAY-051
+        let r = repo();
+        let id = r.create_activity("MARS net", "simple_net", None, Some("5.330")).unwrap();
+        let none = ContactDetails::default();
+        let c = r.create_checkin(&id, "AAA4XX", None, None, None, None, None, None, None, None, true, Some("Sitrep for EOC"), &none).unwrap();
+        let ck = r.get_checkin(&c).unwrap();
+        assert!(ck.has_traffic && !ck.traffic_handled);
+        assert_eq!((ck.traffic.as_str(), ck.traffic_status.as_str()), ("Sitrep for EOC", "held"));
+        let m = r.get_relay_message(&ck.traffic_message_id).unwrap();
+        assert_eq!(m.checkin_id.as_deref(), Some(c.as_str()));
+        assert_eq!((m.from_station.as_str(), m.received_via.as_str(), m.received_at.as_str()), ("AAA4XX", "5.330", ck.checked_in_at.as_str()));
+
+        // A failed attempt keeps it held; passing it digitally settles it.
+        let attempt = RelayStepInput { kind: "attempt".into(), at: Utc::now().to_rfc3339(), via: "JS8Call".into(), ..Default::default() };
+        r.add_relay_step(&m.id, &crate::relay::clean_step(attempt, &m.received_at, true).unwrap(), None).unwrap();
+        assert_eq!(r.get_checkin(&c).unwrap().traffic_status, "held");
+        r.set_checkin_traffic_handled(&c, true, None).unwrap();
+        let ck = r.get_checkin(&c).unwrap();
+        assert!(ck.traffic_handled);
+        assert_eq!(ck.traffic_status, "passed");
+        // Unticking takes back the outcome, not the attempt.
+        r.set_checkin_traffic_handled(&c, false, None).unwrap();
+        let m = r.get_relay_message(&m.id).unwrap();
+        assert_eq!((m.status.as_str(), m.steps.len()), ("held", 1));
+
+        // Couldn't pass isn't handled, and is still open traffic at the end.
+        let gave_up = RelayStepInput { kind: "not_passed".into(), at: Utc::now().to_rfc3339(), note: "No path".into(), ..Default::default() };
+        r.add_relay_step(&m.id, &crate::relay::clean_step(gave_up, &m.received_at, true).unwrap(), None).unwrap();
+        let ck = r.get_checkin(&c).unwrap();
+        assert_eq!((ck.traffic_status.as_str(), ck.traffic_handled), ("not_passed", false));
+        assert_eq!(r.activity_summary(&id).unwrap().open_traffic_items, 1);
+        // Ticked after all: passed, no longer given up on.
+        r.set_checkin_traffic_handled(&c, true, None).unwrap();
+        let ck = r.get_checkin(&c).unwrap();
+        assert_eq!((ck.traffic_status.as_str(), ck.traffic_handled), ("passed", true));
+        assert_eq!(r.activity_summary(&id).unwrap().open_traffic_items, 0);
+        r.set_checkin_traffic_handled(&c, false, None).unwrap();
+        let m = r.get_relay_message(&m.id).unwrap();
+
+        // Correcting the call sign and text follows through to the message.
+        r.update_checkin(&c, "AAA4XY", None, None, None, None, None, None, None, true, Some("Sitrep for EOC, 2 pages"), None).unwrap();
+        let m = r.get_relay_message(&m.id).unwrap();
+        assert_eq!((m.from_station.as_str(), m.message.as_str()), ("AAA4XY", "Sitrep for EOC, 2 pages"));
+
+        // A check-in's traffic is traffic in the summary, not a relayed message.
+        let s = r.activity_summary(&id).unwrap();
+        assert_eq!((s.traffic_items, s.open_traffic_items, s.relay_messages), (1, 1, 0));
+
+        // A removed check-in takes its traffic with it, and brings it back.
+        r.void_checkin(&c, None).unwrap();
+        assert!(r.list_relay_messages(&id).unwrap().is_empty());
+        r.restore_checkin(&c).unwrap();
+        assert_eq!(r.list_relay_messages(&id).unwrap().len(), 1);
+
+        // Clearing the traffic removes it; typing it again starts afresh.
+        r.update_checkin(&c, "AAA4XY", None, None, None, None, None, None, None, false, None, None).unwrap();
+        let ck = r.get_checkin(&c).unwrap();
+        assert!(!ck.has_traffic && ck.traffic.is_empty() && ck.traffic_message_id.is_empty());
+        assert!(r.list_relay_messages(&id).unwrap().is_empty());
+        assert!(r.list_removed_relay_messages(&id).unwrap().is_empty(), "not restorable as a message");
+        assert!(r.set_checkin_traffic_handled(&c, true, None).is_err());
+        r.update_checkin(&c, "AAA4XY", None, None, None, None, None, None, None, true, Some("New traffic"), None).unwrap();
+        let ck = r.get_checkin(&c).unwrap();
+        assert_eq!((ck.traffic.as_str(), ck.traffic_status.as_str()), ("New traffic", "held"));
+        assert_ne!(ck.traffic_message_id, m.id);
+
+        // A note from net control stays a note.
+        let ncs = ContactDetails { station_kind: Some("net_control".into()), ..Default::default() };
+        let n = r.create_checkin(&id, "NET CONTROL", None, None, None, None, None, None, None, None, false, Some("QSY to backup"), &ncs).unwrap();
+        let n = r.get_checkin(&n).unwrap();
+        assert_eq!((n.traffic.as_str(), n.has_traffic), ("QSY to backup", false));
+        assert_eq!(r.list_relay_messages(&id).unwrap().len(), 1);
     }
 
     #[test]

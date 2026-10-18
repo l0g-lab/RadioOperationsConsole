@@ -1,41 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import * as api from "../../api";
 import type { Activity, RelayMessage, RelayStep, RelayStepKind } from "../../types";
-import { relayStatusLabel } from "../../relay";
-import { formatContactTime, parseContactTime } from "../../utils";
+import { formatContactTime } from "../../utils";
+import { enterSaves, HeldActions, MessageCard, StepForm, TIME_HINT, timeOrNow, viaChoicesFrom, when } from "./RelaySteps";
 import { RemoveConfirmBar, RemovedPanel } from "../RemoveControls";
 import { Send } from "lucide-react";
 import SortToggle from "../SortToggle";
 import SuggestInput, { earlierEntries } from "../SuggestInput";
 import { sortByTime, useSortOrder } from "../../hooks/useSortOrder";
-
-/** Other ways traffic gets passed, offered alongside the frequencies already used. */
-const OTHER_MEANS = ["Phone", "Winlink", "In person", "Runner"];
-
-/** "14:05", with the date in front when it isn't today. */
-function when(iso: string): string {
-  const full = formatContactTime(iso);
-  if (!full) return iso;
-  const today = formatContactTime(new Date()).slice(0, 10);
-  return full.slice(0, 10) === today ? full.slice(11, 16) : full.slice(0, 16);
-}
-
-/** A typed time, or now when left blank. */
-function timeOrNow(text: string): string | null {
-  if (!text.trim()) return new Date().toISOString();
-  const t = parseContactTime(text);
-  return t.kind === "ok" ? t.iso : null;
-}
-
-const TIME_HINT = "YYYY-MM-DD HH:MM, or HH:MM for today. Blank for now.";
-
-function stepText(s: RelayStep): string {
-  if (s.kind === "passed") return `Passed to ${s.station} via ${s.via}`;
-  if (s.kind === "attempt") {
-    return `Attempt failed via ${s.via}${s.station ? ` to ${s.station}` : ""}${s.note ? `: ${s.note}` : ""}`;
-  }
-  return `Not passed: ${s.note}`;
-}
 
 interface Draft {
   at: string;
@@ -44,15 +16,6 @@ interface Draft {
   via: string;
   message: string;
   replyTo: RelayMessage | null;
-}
-
-interface StepDraft {
-  messageId: string;
-  kind: RelayStepKind;
-  at: string;
-  station: string;
-  via: string;
-  note: string;
 }
 
 /**
@@ -82,10 +45,9 @@ export default function RelayWorkspace({
   const [showRemoved, setShowRemoved] = useState(false);
   const [draft, setDraft] = useState<Draft>(blankDraft);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [step, setStep] = useState<StepDraft | null>(null);
+  const [step, setStep] = useState<{ messageId: string; kind: RelayStepKind } | null>(null);
   const [removing, setRemoving] = useState<{ id: string; reason: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [stepError, setStepError] = useState<string | null>(null);
   const fromRef = useRef<HTMLInputElement>(null);
 
   function refresh() {
@@ -108,15 +70,7 @@ export default function RelayWorkspace({
   const sorted = sortByTime(messages, (m) => m.received_at, order);
   const held = sorted.filter((m) => m.status === "held");
   const done = sorted.filter((m) => m.status !== "held");
-  const viaChoices = Array.from(
-    new Set(
-      [
-        activity.frequency,
-        ...messages.flatMap((m) => [m.received_via, ...m.steps.map((s) => s.via)]),
-        ...OTHER_MEANS,
-      ].filter(Boolean)
-    )
-  );
+  const viaChoices = viaChoicesFrom(activity.frequency, messages);
   // Everyone named so far, sender, addressee or next hop, to fill in again:
   // the same few stations and tactical names come up all session.
   const stationChoices = messages.flatMap((m) => [
@@ -184,26 +138,7 @@ export default function RelayWorkspace({
   }
 
   function openStep(m: RelayMessage, kind: RelayStepKind) {
-    setStep({ messageId: m.id, kind, at: "", station: kind === "not_passed" ? "" : m.for_station, via: "", note: "" });
-    setStepError(null);
-  }
-
-  async function saveStep() {
-    if (!step) return;
-    const at = timeOrNow(step.at);
-    if (!at) return setStepError(`"${step.at}" isn't a time. ${TIME_HINT}`);
-    try {
-      await api.addRelayStep(
-        step.messageId,
-        { kind: step.kind, at, station: step.station, via: step.via, note: step.note },
-        operatorId
-      );
-    } catch (e) {
-      return setStepError(String(e));
-    }
-    setStep(null);
-    setStepError(null);
-    refresh();
+    setStep({ messageId: m.id, kind });
   }
 
   async function undo(s: RelayStep) {
@@ -236,115 +171,30 @@ export default function RelayWorkspace({
     refresh();
   }
 
-  const enterSaves = (save: () => void) => (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.nativeEvent.isComposing && (e.target as HTMLElement).tagName === "INPUT") {
-      e.preventDefault();
-      save();
-    }
-  };
-
-  function stepForm(m: RelayMessage) {
-    if (!step || step.messageId !== m.id) return null;
-    const set = (k: keyof StepDraft, v: string) => setStep({ ...step, [k]: v });
-    const title =
-      step.kind === "passed" ? "Passed on" : step.kind === "attempt" ? "Attempt failed" : "Couldn't pass";
-    return (
-      <div className="relay-step-form" onKeyDown={enterSaves(saveStep)}>
-        <strong>{title}</strong>
-        <div className="inline-form">
-          <label>
-            Time
-            <input
-              value={step.at}
-              placeholder={formatContactTime(new Date()).slice(0, 16)}
-              title={TIME_HINT}
-              onChange={(e) => set("at", e.target.value)}
-            />
-          </label>
-          {step.kind !== "not_passed" && (
-            <>
-              <label>
-                {step.kind === "passed" ? "Passed to" : "Tried to reach"}
-                <SuggestInput
-                  id="relay-step-station"
-                  listLabel="Stations"
-                  value={step.station}
-                  onChange={(v) => set("station", v)}
-                  suggest={(t) => earlierEntries(t, stationChoices)}
-                  autoFocus
-                />
-              </label>
-              <label>
-                Via
-                <SuggestInput
-                  id="relay-step-via"
-                  listLabel="Ways passed"
-                  value={step.via}
-                  placeholder="Frequency, phone…"
-                  onChange={(v) => set("via", v)}
-                  suggest={(t) => earlierEntries(t, viaChoices)}
-                />
-              </label>
-            </>
-          )}
-          {step.kind !== "passed" && (
-            <label className="relay-step-note">
-              {step.kind === "attempt" ? "What happened (optional)" : "Why"}
-              <input
-                value={step.note}
-                placeholder={step.kind === "attempt" ? "e.g. No contact" : "e.g. EOC closed; no path"}
-                onChange={(e) => set("note", e.target.value)}
-                autoFocus={step.kind === "not_passed"}
-              />
-            </label>
-          )}
-        </div>
-        <div className="inline-form">
-          <button className="primary" onClick={saveStep}>
-            Save
-          </button>
-          <button onClick={() => setStep(null)}>Cancel</button>
-          {stepError && (
-            <span className="weather-area-error" role="alert">
-              {stepError}
-            </span>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   function card(m: RelayMessage) {
     const original = m.reply_to ? byId.get(m.reply_to) : undefined;
     const replies = messages.filter((r) => r.reply_to === m.id);
     return (
-      <div key={m.id} className={`relay-message relay-message-${m.status}`}>
-        <div className="relay-message-head">
-          <span className="relay-time">{when(m.received_at)}</span>
-          <span>
-            <strong>{m.from_station}</strong> → <strong>{m.for_station}</strong>
-          </span>
-          {m.received_via && <span className="settings-hint">on {m.received_via}</span>}
-          {original && (
+      <MessageCard
+        key={m.id}
+        message={m}
+        title={
+          <>
+            <span className="relay-time">{when(m.received_at)}</span>
+            <span>
+              <strong>{m.from_station}</strong> → <strong>{m.for_station}</strong>
+            </span>
+          </>
+        }
+        extra={
+          original && (
             <span className="settings-hint">
               reply to {original.from_station}'s message of {when(original.received_at)}
             </span>
-          )}
-          <span className={`relay-status relay-status-${m.status}`}>{relayStatusLabel(m.status)}</span>
-        </div>
-        <div className="relay-message-text">{m.message}</div>
-        {m.steps.length > 0 && (
-          <ul className="relay-steps">
-            {m.steps.map((s) => (
-              <li key={s.id}>
-                <span className="relay-time">{when(s.at)}</span> {stepText(s)}
-                <button className="link-button" onClick={() => undo(s)} title="Take back a step recorded by mistake">
-                  Undo
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+          )
+        }
+        onUndo={undo}
+      >
         {replies.length > 0 && (
           <div className="settings-hint">
             Reply logged: {replies.map((r) => `${when(r.received_at)} from ${r.from_station}`).join("; ")}
@@ -354,13 +204,7 @@ export default function RelayWorkspace({
         {(m.status === "held" || !readOnly) && (
           <div className="inline-form relay-actions">
             {m.status === "held" ? (
-              <>
-                <button className="primary" onClick={() => openStep(m, "passed")}>
-                  Passed…
-                </button>
-                <button onClick={() => openStep(m, "attempt")}>Attempt failed…</button>
-                <button onClick={() => openStep(m, "not_passed")}>Couldn't pass…</button>
-              </>
+              <HeldActions onStep={(kind) => openStep(m, kind)} />
             ) : (
               <>
                 <button onClick={() => reply(m)} title="Log the answer coming back, with From and For swapped">
@@ -381,8 +225,22 @@ export default function RelayWorkspace({
             onCancel={() => setRemoving(null)}
           />
         )}
-        {stepForm(m)}
-      </div>
+        {step?.messageId === m.id && (
+          <StepForm
+            key={step.kind}
+            message={m}
+            kind={step.kind}
+            stationChoices={stationChoices}
+            viaChoices={viaChoices}
+            operatorId={operatorId}
+            onSaved={() => {
+              setStep(null);
+              refresh();
+            }}
+            onCancel={() => setStep(null)}
+          />
+        )}
+      </MessageCard>
     );
   }
 
