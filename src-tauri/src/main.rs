@@ -11,6 +11,7 @@ mod events;
 mod geocode;
 mod ics214;
 mod relay;
+mod space_weather;
 mod net;
 mod net_listings;
 mod places;
@@ -132,6 +133,7 @@ fn main() {
             commands::fetch_nws_alerts,
             commands::fetch_nws_alert,
             commands::fetch_nws_forecast,
+            commands::fetch_hf_conditions,
             commands::fetch_current_weather,
             commands::fetch_radar_frames,
             commands::start_aprs_is_stream,

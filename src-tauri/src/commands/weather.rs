@@ -142,3 +142,17 @@ pub async fn fetch_nws_forecast(state: State<'_, AppState>) -> Result<Value, Str
         .await
         .map_err(|e| e.to_string())
 }
+
+/// HF conditions for the Weather tab (HFC-010): space weather from NOAA
+/// SWPC, with D-RAP's absorption at the weather area when one is set.
+#[tauri::command]
+pub async fn fetch_hf_conditions(state: State<'_, AppState>) -> Result<crate::space_weather::HfConditions, String> {
+    if crate::net::working_offline() {
+        return Err(crate::net::WORKING_OFFLINE_MESSAGE.to_string());
+    }
+    let area = {
+        let settings = state.settings.lock().unwrap();
+        settings.weather_area_lat.zip(settings.weather_area_lon)
+    };
+    crate::space_weather::fetch(area).await.map_err(|e| e.to_string())
+}

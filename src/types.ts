@@ -760,3 +760,41 @@ export interface EventRecord {
   /** YYYY-MM-DD, or "". */
   date: string;
 }
+
+/** One day of NOAA's space weather outlook (hf-conditions.md, HFC-005). */
+export interface HfOutlookDay {
+  /** YYYY-MM-DD, UTC. */
+  date: string;
+  /** The highest G scale expected. */
+  g: number;
+  /** Chance of an R1–R2 and of an R3-or-worse blackout, in percent. */
+  r_minor_pct: number | null;
+  r_major_pct: number | null;
+}
+
+/** D-RAP at the weather area (HFC-004). */
+export interface HfAbsorption {
+  /** The highest frequency absorbed by 1 dB or more, in MHz (0 for none). */
+  mhz: number;
+  valid_at: string;
+  /** D-RAP's words, "Normal X-ray Background" unless something's happening. */
+  xray: string;
+  proton: string;
+  recovery: string;
+}
+
+/** HF conditions from NOAA SWPC (hf-conditions.md). Times are RFC 3339. */
+export interface HfConditions {
+  flux: number | null;
+  flux_at: string;
+  kp: number | null;
+  a_index: number | null;
+  kp_at: string;
+  /** The R, S and G scales now, 0–5. */
+  r: number;
+  s: number;
+  g: number;
+  scales_at: string;
+  outlook: HfOutlookDay[];
+  absorption: HfAbsorption | null;
+}

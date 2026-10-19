@@ -1,13 +1,14 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppSettings } from "../../types";
+import type { AppSettings, HfConditions } from "../../types";
 
 vi.mock("../../api", () => ({
   getSettings: vi.fn(),
   fetchNwsAlerts: vi.fn(),
   fetchNwsForecast: vi.fn(),
   fetchCurrentWeather: vi.fn(),
+  fetchHfConditions: vi.fn(),
 }));
 vi.mock("../../workOffline", () => ({
   useWorkOffline: vi.fn(() => false),
@@ -46,6 +47,21 @@ const period = (name: string) => ({
   temperatureUnit: "F",
 });
 
+/** A quiet day on HF (hf-conditions.md). */
+const QUIET_HF: HfConditions = {
+  flux: 137,
+  flux_at: "2026-10-18T20:00:00+00:00",
+  kp: 1.67,
+  a_index: 6,
+  kp_at: "2026-10-18T18:00:00+00:00",
+  r: 0,
+  s: 0,
+  g: 0,
+  scales_at: "2026-10-18T23:44:00+00:00",
+  outlook: [],
+  absorption: { mhz: 0, valid_at: "", xray: "Normal X-ray Background", proton: "Normal Proton Background", recovery: "" },
+};
+
 describe("WeatherTab (NWSA-013)", () => {
   beforeEach(() => {
     vi.mocked(useWorkOffline).mockReturnValue(false);
@@ -74,6 +90,8 @@ describe("WeatherTab (NWSA-013)", () => {
         },
       ],
     });
+    vi.mocked(api.fetchHfConditions).mockReset();
+    vi.mocked(api.fetchHfConditions).mockResolvedValue(QUIET_HF);
     vi.mocked(api.fetchNwsForecast).mockReset();
     vi.mocked(api.fetchNwsForecast).mockResolvedValue({
       properties: { periods: ["Tonight", "Tuesday", "Tuesday Night", "Wednesday", "Wednesday Night"].map(period) },
@@ -181,6 +199,49 @@ describe("WeatherTab (NWSA-013)", () => {
     expect(await screen.findByText(/The weather needs the internet/)).toBeInTheDocument();
     expect(api.fetchCurrentWeather).not.toHaveBeenCalled();
     expect(api.fetchNwsAlerts).not.toHaveBeenCalled();
+    expect(api.fetchHfConditions).not.toHaveBeenCalled();
+  });
+
+  describe("HF conditions (hf-conditions.md)", () => {
+    it("is one line on a quiet day, fetched on opening and on Refresh (HFC-001, HFC-010)", async () => {
+      const user = userEvent.setup();
+      render(<WeatherTab />);
+      const line = await screen.findByText((_, el) => el?.className === "hf-summary");
+      expect(line.textContent).toBe("Quiet · Solar flux 137 good · K 2 quiet · A 6 quiet");
+      expect(screen.getByTitle(/opens the upper HF bands/)).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Refresh" }));
+      expect(api.fetchHfConditions).toHaveBeenCalledTimes(2);
+    });
+
+    it("says what's wrong during a flare (HFC-003, HFC-004)", async () => {
+      vi.mocked(api.fetchHfConditions).mockResolvedValue({
+        ...QUIET_HF,
+        r: 2,
+        absorption: { ...QUIET_HF.absorption!, mhz: 9, xray: "R2 (Moderate) Radio Blackout in progress" },
+      });
+      render(<WeatherTab />);
+      const line = await screen.findByText((_, el) => el?.className === "hf-summary");
+      expect(line.textContent).toBe("Solar flux 137 good · K 2 quiet · A 6 quiet");
+      expect(screen.getByText(/^R2 \(moderate\) radio blackout/)).toBeInTheDocument();
+      expect(screen.getByText(/^HF below 9 MHz weakened by absorption here/)).toBeInTheDocument();
+    });
+
+    it("checks again every 15 minutes, keeping the last reading when it can't (HFC-010, HFC-011)", async () => {
+      vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+      try {
+        render(<WeatherTab />);
+        await screen.findByText((_, el) => el?.className === "hf-summary");
+        vi.mocked(api.fetchHfConditions).mockRejectedValue("HTTP 503");
+        await act(async () => {
+          vi.advanceTimersByTime(15 * 60_000);
+        });
+        expect(api.fetchHfConditions).toHaveBeenCalledTimes(2);
+        expect(await screen.findByText(/space weather service couldn't be reached — showing the last reading/)).toBeInTheDocument();
+        expect(screen.getByText((_, el) => el?.className === "hf-summary").textContent).toMatch(/^Quiet · Solar flux 137/);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   it("says the service couldn't be reached, without its error text", async () => {

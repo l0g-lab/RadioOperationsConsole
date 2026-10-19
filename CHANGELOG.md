@@ -31,6 +31,13 @@ database is saved before the upgrade; 2.8.0 can't open the upgraded data.
   up on gets its own line ("Not passed to EOC: no path"). This applies to
   relay stations as well as nets.
 - JS8Call, RTTY, PSK31 and FT8 are offered as ways traffic was passed.
+- **HF conditions on the Weather tab**, from NOAA's Space Weather
+  Prediction Center: solar flux and the K and A indexes on one line when
+  it's quiet, each with a word for what it means ("137 good", "K 2 quiet")
+  and a line more on hovering. When it isn't, it says what's happening in plain words (a
+  radio blackout, a geomagnetic storm), whether HF is being absorbed at
+  your area during a flare and for how long, and any storm forecast for
+  the next couple of days. Checked every 15 minutes while the tab is open.
 
 ## [2.8.0] - 2026-10-13
 

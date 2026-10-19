@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  HfConditions,
   HistoryEntry,
   CurrentWeather,
   Activity,
@@ -509,6 +510,9 @@ export const fetchNwsAlerts = (point?: { lat: number; lon: number }) =>
   invoke<unknown>("fetch_nws_alerts", { lat: point?.lat ?? null, lon: point?.lon ?? null });
 
 export const fetchNwsForecast = () => invoke<unknown>("fetch_nws_forecast");
+
+/** Space weather for HF, with absorption at the weather area (hf-conditions.md). */
+export const fetchHfConditions = () => invoke<HfConditions>("fetch_hf_conditions");
 
 /** The radar loop's scan times (ISO, oldest first): the last hour, about every 4 minutes. */
 export const fetchRadarFrames = (station?: string) => invoke<string[]>("fetch_radar_frames", { station: station ?? null });

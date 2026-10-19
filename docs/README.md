@@ -67,7 +67,8 @@ stay consistent, and it changes along with the app.
 30. [features/net-listings.md](features/net-listings.md)
 31. [features/saved-places.md](features/saved-places.md)
 32. [features/shared-lists.md](features/shared-lists.md)
-33. [agent/BUILD_PROTOCOL.md](agent/BUILD_PROTOCOL.md)
+33. [features/hf-conditions.md](features/hf-conditions.md)
+34. [agent/BUILD_PROTOCOL.md](agent/BUILD_PROTOCOL.md)
 
 ## Normative language
 

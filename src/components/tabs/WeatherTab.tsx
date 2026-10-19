@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "../../api";
-import type { AppSettings, CurrentWeather } from "../../types";
+import type { AppSettings, CurrentWeather, HfConditions } from "../../types";
 import { ERR_OFFLINE } from "../../types";
 import { offlineMessage, useWorkOffline } from "../../workOffline";
 import { pad2 } from "../../utils";
@@ -22,6 +22,7 @@ import {
   MapPin,
   Moon,
   Radar,
+  RadioTower,
   RefreshCw,
   Sun,
   Thermometer,
@@ -31,6 +32,7 @@ import {
 } from "lucide-react";
 import { conditionOf, precipLevel, tempBand, windLevel, type Condition } from "../../forecastStyle";
 import { fahrenheit, windText } from "../../netWeather";
+import { hfFacts, hfLines, isQuiet } from "../../hfConditions";
 import { alertColor, alertFromFeature, alertLevel, areaText, paragraphs, sortAlerts, untilText, type NwsAlert } from "../../nwsAlerts";
 
 interface NwsForecastPeriod {
@@ -251,6 +253,63 @@ function AreaEditor({
   );
 }
 
+/** How often HF conditions are fetched again while the tab is open (HFC-010). */
+const HF_REFRESH_MS = 15 * 60_000;
+
+/** "18:00", local, from a reading's time; "" when there isn't one. */
+const at = (iso: string) => (iso && !Number.isNaN(new Date(iso).getTime()) ? hm(new Date(iso)) : "");
+
+/**
+ * HF conditions (hf-conditions.md): one line when it's quiet (HFC-001),
+ * growing only with something to say. A failed fetch keeps what was shown
+ * and says so (HFC-011).
+ */
+function HfPanel({ hf }: { hf: { data?: HfConditions; error?: string; at?: Date } | null }) {
+  const c = hf?.data;
+  const lines = c ? hfLines(c) : [];
+  return (
+    <div className="panel">
+      <div className="panel-header-row">
+        <h3>
+          <RadioTower className="heading-icon" />
+          HF conditions
+        </h3>
+        {hf?.at && (
+          <span className="settings-hint" title="From NOAA's Space Weather Prediction Center, checked every 15 minutes">
+            NOAA SWPC · checked {hm(hf.at)}
+          </span>
+        )}
+      </div>
+      {c ? (
+        <>
+          {/* Each reading with a word for what it means; why, on hovering (HFC-002). */}
+          <p className="hf-summary">
+            {isQuiet(c, lines) && <span>Quiet · </span>}
+            {hfFacts(c).map((f, i) => (
+              <span key={f.text} title={f.at && at(f.at) ? `${f.hint}\nMeasured ${at(f.at)}.` : f.hint}>
+                {i > 0 && " · "}
+                {f.text} <span className="hf-word">{f.word}</span>
+              </span>
+            ))}
+          </p>
+          {lines.map((l) => (
+            <p key={l.text} className={`hf-line hf-line-${l.level}`}>
+              {l.text}
+            </p>
+          ))}
+        </>
+      ) : !hf?.error ? (
+        <p className="settings-hint">Loading…</p>
+      ) : null}
+      {hf?.error && (
+        <p className="weather-area-error" title={hf.error}>
+          The space weather service couldn't be reached{c ? " — showing the last reading" : ""}.
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** One fetch's state: what came back, or that it failed (NWS's own message on hovering). */
 type Fetched<T> = { data: T } | { error: string } | null;
 
@@ -276,6 +335,7 @@ export default function WeatherTab() {
   // When the alerts were last checked (they're checked every five minutes too).
   const [alertsAt, setAlertsAt] = useState<Date | null>(null);
   const [showAllForecast, setShowAllForecast] = useState(false);
+  const [hf, setHf] = useState<{ data?: HfConditions; error?: string; at?: Date } | null>(null);
 
   const lat = settings?.weather_area_lat ?? null;
   const lon = settings?.weather_area_lon ?? null;
@@ -299,9 +359,17 @@ export default function WeatherTab() {
       )
     );
 
+  /** HF conditions again; a failure keeps the last reading (HFC-011). */
+  const fetchHf = () =>
+    api
+      .fetchHfConditions()
+      .then((data) => setHf({ data, at: new Date() }))
+      .catch((e) => setHf((prev) => ({ ...prev, error: String(e) })));
+
   async function refresh() {
     if (lat == null || lon == null) return;
     setLoading(true);
+    void fetchHf();
     const wrap = <T,>(p: Promise<T>): Promise<Fetched<T>> =>
       p.then((data) => ({ data })).catch((e) => ({ error: String(e) }));
     const [n, f, a] = await Promise.all([
@@ -334,6 +402,14 @@ export default function WeatherTab() {
         })
         .catch(() => {});
     }, RADAR_REFRESH_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat, lon, offline]);
+
+  // HF conditions are checked again every 15 minutes while the tab is open (HFC-010).
+  useEffect(() => {
+    if (!areaSet || offline) return;
+    const id = setInterval(fetchHf, HF_REFRESH_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lat, lon, offline]);
@@ -493,6 +569,8 @@ export default function WeatherTab() {
                 </>
               )}
             </div>
+
+            <HfPanel hf={hf} />
           </div>
 
           <div className="operations-column">

@@ -4275,3 +4275,25 @@ path.radar-center {
 .checkin-edit-offer {
   flex-basis: 100%;
 }
+
+/* HF conditions (WeatherTab.tsx, hf-conditions.md): one line when quiet,
+   with a line for each thing worth saying, colored like alerts (HFC-003). */
+.hf-summary {
+  margin: 0;
+}
+
+/* What a reading means ("good", "quiet"), quieter than the number. */
+.hf-word {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.hf-line {
+  margin: 6px 0 0;
+  padding-left: 8px;
+  border-left: 3px solid var(--warning, #e8a33d);
+}
+
+.hf-line-danger {
+  border-left-color: var(--danger, #ff4d6d);
+}

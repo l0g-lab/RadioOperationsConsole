@@ -50,6 +50,7 @@ reading_order:
   - docs/features/net-listings.md
   - docs/features/saved-places.md
   - docs/features/shared-lists.md
+  - docs/features/hf-conditions.md
   - docs/agent/BUILD_PROTOCOL.md
 
 # Every normative requirement ID uses one of these prefixes. When drafting a
@@ -94,6 +95,7 @@ id_prefixes:
   LOG: docs/features/station-log.md
   PLACE: docs/features/saved-places.md
   SHARE: docs/features/shared-lists.md
+  HFC: docs/features/hf-conditions.md
 
 documents:
   - id: VISION
@@ -153,6 +155,10 @@ documents:
     path: docs/features/weather-radar-display.md
     status: draft
     depends_on: [SCOPE, FEATURE_CIMAP, FEATURE_NWSA, PRINCIPLES]
+  - id: FEATURE_HFC
+    path: docs/features/hf-conditions.md
+    status: draft
+    depends_on: [SCOPE, FEATURE_NWSA, PRINCIPLES]
   - id: FEATURE_SPOT
     path: docs/features/skywarn-incidents-and-reports.md
     status: draft
