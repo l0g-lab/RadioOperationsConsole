@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.9.0] - 2026-10-18
+
 **What works differently:**
 - Traffic on a check-in can now be followed through, on any net: select
   the check-in to record it passed to whom and how (say, by JS8Call or
@@ -13,6 +15,12 @@ top. Each release's section here is also its description on the
   way a relay station does. Logging a check-in with traffic is unchanged,
   and ticking Handled is still all it takes; the rest is there only when
   you want it.
+- Handled means passed on. Traffic marked *Couldn't pass* stays unticked,
+  and the end-of-net warning still counts it.
+- The ICS 309 has more lines: traffic passed on to a named station, each
+  failed attempt, and traffic that couldn't be passed. A message passed on
+  ends with how it went ("… (via RTTY)"). This applies to relay stations
+  too, so the forms you send will look different.
 
 This upgrade changes the database: traffic already on check-ins is moved
 over, handled traffic recorded as passed when it was marked. A copy of the
@@ -24,20 +32,21 @@ database is saved before the upgrade; 2.8.0 can't open the upgraded data.
   then says where it went ("→ EOC via RTTY"), that it wasn't passed, or how
   many attempts failed. The ICS 309 and ICS 214 include it, and a net's
   Exports & forms has its traffic as CSV.
+- **HF conditions on the Weather tab**, from NOAA's Space Weather
+  Prediction Center: solar flux and the K and A indexes on one line when
+  it's quiet, each with a word for what it means ("137 good", "K 2
+  quiet") and a line more on hovering. When it isn't, it says what's
+  happening in plain words (a radio blackout, a geomagnetic storm),
+  whether HF is being absorbed at your area during a flare and for how
+  long, and any storm forecast for the next couple of days. Checked every
+  15 minutes while the tab is open.
+- JS8Call, RTTY, PSK31 and FT8 are offered as ways traffic was passed.
 
 ### Changed
 - **The ICS 309 says how traffic was passed, and what couldn't be.** A
   message passed on ends with how it went ("… (via RTTY)"), and one given
-  up on gets its own line ("Not passed to EOC: no path"). This applies to
-  relay stations as well as nets.
-- JS8Call, RTTY, PSK31 and FT8 are offered as ways traffic was passed.
-- **HF conditions on the Weather tab**, from NOAA's Space Weather
-  Prediction Center: solar flux and the K and A indexes on one line when
-  it's quiet, each with a word for what it means ("137 good", "K 2 quiet")
-  and a line more on hovering. When it isn't, it says what's happening in plain words (a
-  radio blackout, a geomagnetic storm), whether HF is being absorbed at
-  your area during a flare and for how long, and any storm forecast for
-  the next couple of days. Checked every 15 minutes while the tab is open.
+  up on gets its own line ("Not passed to EOC: no path"), for relay
+  stations as well as nets.
 
 ## [2.8.0] - 2026-10-13
 
@@ -729,7 +738,8 @@ This version updates the database: once it's run, 2.6.0 can't open the data.
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.8.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.9.0...HEAD
+[2.9.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.5.4...v2.6.0
