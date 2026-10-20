@@ -6,6 +6,8 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.9.1] - 2026-10-19
+
 **What works differently:**
 - The Nets page is a fixed week: its days are headed by name and always
   run Sunday to Saturday, instead of starting from today
@@ -752,7 +754,8 @@ This version updates the database: once it's run, 2.6.0 can't open the data.
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.9.0...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.9.1...HEAD
+[2.9.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.9.0...v2.9.1
 [2.9.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.6.0...v2.7.0
