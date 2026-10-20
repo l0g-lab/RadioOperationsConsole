@@ -30,4 +30,10 @@ describe("mhzFromText", () => {
     expect(mhzFromText("146.520 simplex")).toBe(146.52);
     expect(mhzFromText("Echolink")).toBeNull();
   });
+
+  it("skips the digits of a call sign", () => {
+    expect(mhzFromText("W4URG 444.325 +5.000 PL 156.7")).toBe(444.325);
+    expect(mhzFromText("4X1AB 145.500")).toBe(145.5);
+    expect(mhzFromText("146.52MHz")).toBe(146.52);
+  });
 });

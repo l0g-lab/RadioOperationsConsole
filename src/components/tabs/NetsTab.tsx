@@ -5,11 +5,11 @@ import { haversineKm } from "../../geo";
 import { formatRepeater, tuningDetails } from "../../repeaters";
 import {
   comingUp,
-  describeNext,
   describeSchedule,
   isoDate,
+  monthlyWeeks,
   startsIn,
-  weekAhead,
+  weekView,
   type Meeting,
 } from "../../netSchedule";
 import NetListingForm, { EMPTY_LISTING } from "../nets/NetListingForm";
@@ -34,10 +34,6 @@ interface Props {
 function detailsOf(l: NetListing): NetListingDetails {
   const { id: _id, retired_at: _retired, ...details } = l;
   return details;
-}
-
-function hhmm(d: Date): string {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 /**
@@ -98,8 +94,9 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
       v.toLowerCase().includes(query)
     );
   });
-  const week = weekAhead(matching, now);
-  const next = comingUp(week);
+  const week = weekView(matching, now);
+  // Nets on now or within 12 hours; the box is left out when there are none (NETL-025).
+  const next = comingUp(matching, now);
   const editingListing = listings.find((l) => l.id === editing) ?? null;
 
   async function save(id: string | null, details: NetListingDetails) {
@@ -217,16 +214,30 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
     );
   }
 
-  /** One meeting on one line: when, name, where to tune; ▶ to run it, ⓘ for the rest. */
-  function row(l: NetListing, meeting: Meeting | null, when: string, key: string) {
+  /**
+   * One net on one line: when, name, where to tune; ▶ to run it, ⓘ for the
+   * rest. `underway` and `over` only ever mark today's lines.
+   */
+  function row(
+    l: NetListing,
+    meeting: Meeting | null,
+    when: string,
+    key: string,
+    { underway = false, over = false } = {}
+  ) {
     const open = openRows.has(key);
+    const weeks = monthlyWeeks(l);
     return (
-      <div key={key} className={"net-row" + (meeting?.underway ? " net-row-underway" : "")}>
+      <div
+        key={key}
+        className={"net-row" + (underway ? " net-row-underway" : "") + (over ? " net-row-over" : "")}
+      >
         <span className="net-row-when checkin-row-mono">{when}</span>
         <strong className="net-row-name">
-                <ActivityTypeIcon type={l.activity_type} />
-                {l.name}
-              </strong>
+          <ActivityTypeIcon type={l.activity_type} />
+          {l.name}
+          {weeks && <span className="net-row-weeks">{weeks}</span>}
+        </strong>
         {tuneLine(l)}
         <span className="net-row-actions">
           {startButton(l, meeting)}
@@ -245,7 +256,7 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
     );
   }
 
-  const timeRange = (m: Meeting, l: NetListing) => (l.end_time ? `${hhmm(m.start)}–${hhmm(m.end)}` : hhmm(m.start));
+  const timeRange = (l: NetListing) => (l.end_time ? `${l.start_time}–${l.end_time}` : l.start_time);
 
   return (
     <div className="panel nets-panel">
@@ -344,29 +355,27 @@ export default function NetsTab({ operators, selectedOperatorId, onStartActivity
       )}
       {matching.length > 0 && (
         <div className="net-schedule">
-          {/* Days without nets are left out. */}
-          {week.days
-            .filter((day) => day.entries.length > 0)
-            .map((day) => (
-              <section
-                key={day.label}
-                className={"net-day" + (day.label.startsWith("Today") ? " net-day-today" : "")}
-                aria-label={day.label}
-              >
-                <h4 className="net-day-heading">{day.label}</h4>
-                {day.entries.map((e) =>
-                  row(e.listing, e.meeting, timeRange(e.meeting, e.listing), `${day.label}-${e.listing.id}`)
-                )}
-              </section>
-            ))}
-          {week.later.length > 0 && (
-            <section className="net-day" aria-label="Later">
-              <h4 className="net-day-heading">Later</h4>
-              {week.later.map((e) =>
-                row(e.listing, e.meeting, describeNext(e.meeting, now), `later-${e.listing.id}`)
-              )}
+          {/* Sunday to Saturday, the same whatever day it is; days without nets are left out (NETL-020). */}
+          {week.days.filter((day) => day.entries.length > 0).map((day) => (
+            <section
+              key={day.name}
+              className={"net-day" + (day.today ? " net-day-today" : "")}
+              aria-label={day.name}
+              aria-current={day.today ? "date" : undefined}
+            >
+              <h4 className="net-day-heading">
+                {day.name}
+                {day.today && " · Today"}
+              </h4>
+              {day.entries.map((e) => {
+                const isToday = day.today && e.meeting != null && isoDate(e.meeting.start) === isoDate(now);
+                return row(e.listing, e.meeting, timeRange(e.listing), `${day.name}-${e.listing.id}`, {
+                  underway: isToday && e.meeting!.underway,
+                  over: e.overToday,
+                });
+              })}
             </section>
-          )}
+          ))}
           {week.asNeeded.length > 0 && (
             <section className="net-day" aria-label="As needed">
               <h4 className="net-day-heading">As needed</h4>

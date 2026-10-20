@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comingUp, describeNext, describeSchedule, meetsOn, nextMeeting, startsIn, weekAhead } from "./netSchedule";
+import { comingUp, describeSchedule, meetsOn, monthlyWeeks, nextMeeting, startsIn, weekView } from "./netSchedule";
 import type { NetListing } from "./types";
 
 function listing(overrides: Partial<NetListing> = {}): NetListing {
@@ -66,64 +66,62 @@ describe("nextMeeting (NETL-003, NETL-004, NETL-020)", () => {
   });
 });
 
-describe("weekAhead (NETL-020)", () => {
+describe("weekView (NETL-020)", () => {
   const ids = (entries: { listing: NetListing }[]) => entries.map((e) => e.listing.id);
+  const LISTINGS = [
+    listing({ id: "weekdays", name: "Weekday Net", weekdays: [1, 2, 3, 4, 5], start_time: "07:00", end_time: "07:30" }),
+    listing({ id: "now", name: "Monday Net", weekdays: [1] }),
+    listing({ id: "late", name: "Late Net", weekdays: [1, 3], start_time: "21:00", end_time: "" }),
+  ];
 
-  it("lists each day's nets by start time, under every day they meet", () => {
-    const now = at(5, 19, 10); // Monday 19:10
-    const week = weekAhead(
-      [
-        listing({ id: "weekdays", name: "Weekday Net", weekdays: [1, 2, 3, 4, 5], start_time: "07:00", end_time: "07:30" }),
-        listing({ id: "now", name: "Monday Net", weekdays: [1] }),
-        listing({ id: "late", name: "Late Net", weekdays: [1, 3], start_time: "21:00", end_time: "" }),
-      ],
-      now
-    );
-    expect(week.days.map((d) => d.label)).toEqual([
-      "Today · Mon Oct 5",
-      "Tomorrow · Tue Oct 6",
-      "Wed Oct 7",
-      "Thu Oct 8",
-      "Fri Oct 9",
-      "Sat Oct 10",
-      "Sun Oct 11",
-    ]);
-    // Today: the 07:00 net is over; the one under way comes first.
-    expect(ids(week.days[0].entries)).toEqual(["now", "late"]);
-    expect(week.days[0].entries[0].meeting.underway).toBe(true);
-    expect(ids(week.days[2].entries)).toEqual(["weekdays", "late"]);
-    expect(week.days[5].entries).toEqual([]);
+  it("is Sunday to Saturday whatever the day, each net under every weekday it meets, by time", () => {
+    const monday = weekView(LISTINGS, at(5, 19, 10)); // Monday 19:10
+    const friday = weekView(LISTINGS, at(9, 12)); // Friday noon
+    for (const week of [monday, friday]) {
+      expect(week.days.map((d) => d.name)).toEqual([
+        "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+      ]);
+      expect(ids(week.days[1].entries)).toEqual(["weekdays", "now", "late"]);
+      expect(ids(week.days[3].entries)).toEqual(["weekdays", "late"]);
+      expect(week.days[0].entries).toEqual([]);
+    }
+    expect(monday.days.map((d) => d.today)).toEqual([false, true, false, false, false, false, false]);
+    expect(friday.days[5].today).toBe(true);
   });
 
-  it("puts nets that don't meet this week under later, and as needed last by name", () => {
-    const now = at(2, 9); // Friday, October 2
-    const week = weekAhead(
+  it("keeps today's nets, marking those over and under way, each at its next meeting on that weekday", () => {
+    const week = weekView(LISTINGS, at(5, 19, 10)); // Monday 19:10
+    const [over, now, late] = week.days[1].entries;
+    expect(over.overToday).toBe(true);
+    expect(over.meeting?.start).toEqual(at(12, 7, 0)); // next Monday
+    expect(now.overToday).toBe(false);
+    expect(now.meeting?.underway).toBe(true);
+    expect(late.meeting?.start).toEqual(at(5, 21, 0));
+    expect(week.days[3].entries[0].meeting?.start).toEqual(at(7, 7, 0)); // Wednesday
+  });
+
+  it("lists monthly nets under their weekday, and as needed apart by name", () => {
+    const week = weekView(
       [
         listing({ id: "b", name: "Bravo", schedule_kind: "as_needed" }),
         listing({ id: "last-sun", schedule_kind: "monthly", weekdays: [0], weeks: ["last"] }),
         listing({ id: "a", name: "alpha", schedule_kind: "as_needed" }),
-        listing({ id: "2nd-thu", schedule_kind: "monthly", weekdays: [4], weeks: ["2"] }),
       ],
-      now
+      at(2, 9) // Friday, October 2
     );
-    // The 2nd Thursday (October 8) is within the week; the last Sunday (the 25th) isn't.
-    expect(ids(week.days[6].entries)).toEqual(["2nd-thu"]);
-    expect(ids(week.later)).toEqual(["last-sun"]);
-    expect(week.later[0].meeting.start).toEqual(at(25, 19, 0));
+    expect(ids(week.days[0].entries)).toEqual(["last-sun"]);
+    expect(week.days[0].entries[0].meeting?.start).toEqual(at(25, 19, 0));
     expect(week.asNeeded.map((l) => l.id)).toEqual(["a", "b"]);
+  });
+
+  it("names a monthly net's weeks", () => {
+    expect(monthlyWeeks(listing({ schedule_kind: "monthly", weeks: ["2", "4"] }))).toBe("2nd & 4th");
+    expect(monthlyWeeks(listing({ schedule_kind: "monthly", weeks: ["last"] }))).toBe("last");
+    expect(monthlyWeeks(listing())).toBe("");
   });
 });
 
 describe("describing (NETL-021)", () => {
-  const now = at(2, 9); // Friday morning
-
-  it("says when a net next meets in plain terms", () => {
-    expect(describeNext({ start: at(2, 19), end: at(2, 20), underway: false }, now)).toBe("Today 19:00");
-    expect(describeNext({ start: at(3, 8, 30), end: at(3, 9), underway: false }, now)).toBe("Tomorrow 08:30");
-    expect(describeNext({ start: at(8, 20), end: at(8, 21), underway: false }, now)).toBe("Thu Oct 8, 20:00");
-    expect(describeNext({ start: at(2, 8), end: at(2, 9, 30), underway: true }, now)).toBe("Under way until 09:30");
-  });
-
   it("describes schedules", () => {
     expect(describeSchedule(listing())).toBe("Tuesdays 19:00–19:30");
     expect(describeSchedule(listing({ weekdays: [1, 2, 3, 4, 5], end_time: "" }))).toBe("Mon–Fri 19:00");
@@ -141,18 +139,16 @@ describe("describing (NETL-021)", () => {
 describe("coming up (NETL-025)", () => {
   const now = at(2, 9); // Friday 09:00
 
-  it("lists the next nets, each once, soonest first, then later ones", () => {
-    const week = weekAhead(
-      [
-        listing({ id: "am", name: "Morning Net", weekdays: [1, 2, 3, 4, 5], start_time: "08:30", end_time: "09:30" }),
-        listing({ id: "tue" }),
-        listing({ id: "sat", name: "Saturday Net", weekdays: [6], start_time: "10:00" }),
-        listing({ id: "mon", name: "Monthly Net", schedule_kind: "monthly", weekdays: [4], weeks: ["2"], start_time: "20:00" }),
-      ],
-      now
-    );
-    expect(comingUp(week).map((e) => e.listing.id)).toEqual(["am", "sat", "tue"]);
-    expect(comingUp(week, 4).map((e) => e.listing.id)).toEqual(["am", "sat", "tue", "mon"]);
+  it("lists the nets on now or within 12 hours, each once, soonest first", () => {
+    const listings = [
+      listing({ id: "am", name: "Morning Net", weekdays: [1, 2, 3, 4, 5], start_time: "08:30", end_time: "09:30" }),
+      listing({ id: "tue" }),
+      listing({ id: "sat", name: "Saturday Net", weekdays: [6], start_time: "10:00" }),
+      listing({ id: "mon", name: "Monthly Net", schedule_kind: "monthly", weekdays: [4], weeks: ["2"], start_time: "20:00" }),
+    ];
+    // Friday 09:00: the Morning Net is on; Saturday's 10:00 is 25 hours off.
+    expect(comingUp(listings, now).map((e) => e.listing.id)).toEqual(["am"]);
+    expect(comingUp(listings, now, 26).map((e) => e.listing.id)).toEqual(["am", "sat"]);
   });
 
   it("says when each starts at a glance", () => {

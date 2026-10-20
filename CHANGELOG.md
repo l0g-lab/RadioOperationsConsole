@@ -6,6 +6,20 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+**What works differently:**
+- The Nets page is a fixed week: its days are headed by name and always
+  run Sunday to Saturday, instead of starting from today
+  ("Today · Mon Oct 19", "Tomorrow …"). Today is marked, and its nets
+  that are over stay listed, dimmed. Monthly nets sit under their weekday
+  with which weeks they meet ("2nd & 4th") instead of under "Later".
+- The Coming up box lists only the nets on now or starting within 12
+  hours, and is left out when there are none. The Nets page uses the
+  full width of the window.
+
+### Fixed
+- A frequency typed with a call sign in front ("W4URG 444.325") showed the
+  wrong band (80m, from the "4" in the call sign) on nets and activities.
+
 ## [2.9.0] - 2026-10-18
 
 **What works differently:**

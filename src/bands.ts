@@ -44,8 +44,12 @@ export function bandOf(mhz: number | null | undefined): Band | null {
   return hit ? { label: hit[2], group: hit[3] } : null;
 }
 
-/** The first number in typed frequency text, as MHz: "28.400 USB" -> 28.4. */
+/**
+ * The first number in typed frequency text, as MHz: "28.400 USB" -> 28.4,
+ * "W4URG 444.325 +5.000" -> 444.325. Digits inside a call sign ("W4URG",
+ * "4X1AB") aren't a frequency; a unit after one is fine ("146.52MHz").
+ */
 export function mhzFromText(text: string): number | null {
-  const m = text.match(/\d+(?:\.\d+)?/);
+  const m = text.match(/(?<![A-Za-z\d.])\d+(?:\.\d+)?(?![A-Za-z]*\d)/);
   return m ? Number(m[0]) : null;
 }

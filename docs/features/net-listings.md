@@ -76,15 +76,14 @@ who attended.
   Settings so the keyboard shortcuts of the tabs used while running a net
   don't change. The tab MUST work the same whatever activity is focused,
   or none.
-- **NETL-020:** Listings MUST be shown as the coming week, one heading per
-  day starting today ("Today · Fri Oct 2", "Tomorrow · Sat Oct 3", "Sun Oct
-  4"), each day's nets in start-time order. A net that meets on several of
-  those days MUST be listed under each; a day with no nets is left out.
-  Today MUST leave out nets already over, and mark one under way (between
-  its start and end time, or for an hour after it starts when it has no end
-  time). After the week come scheduled nets that don't meet in it, under
-  "Later" with their next meeting ("Sun Oct 25, 19:00"), then "as needed"
-  nets by name.
+- **NETL-020:** Listings MUST be shown as a fixed week, Sunday to Saturday,
+  that looks the same whatever day it is: one heading per weekday by name
+  ("Thursday"), a weekday with no nets left out, each weekday's nets in
+  start-time order. A net that meets on several
+  weekdays MUST be listed under each, and a monthly net under its weekday
+  with which weeks it meets ("2nd & 4th"). Today's heading MUST be marked;
+  its nets MUST stay listed, one under way marked and one already over
+  dimmed. "As needed" nets come last, by name.
 - **NETL-021:** Each meeting MUST take one line: its time, its name, and its
   repeater with the repeater's one-line frequency ("W4ABC Orlando 146.940
   -0.600 PL 100.0"), or the listing's own frequency text; then ▶ (Start
@@ -97,11 +96,12 @@ who attended.
 - **NETL-024:** When the current operator has a location and the listing's
   repeater has one, the listing MUST show how far the repeater is ("14.2 mi
   away"), as a guide to whether it's in reach, in its details (`NETL-021`).
-- **NETL-025:** Above the week, a **Coming up** box MUST list the next three
-  nets, each once at its next meeting, soonest first: "On now · until 08:00"
-  in green for one under way, "in 25 min" or "in 2 h 10 min" within 12
-  hours, else "Tomorrow 07:30", "Wed 21:00", or the date — each with ▶. A
-  net starting within the hour MUST show its time in amber (still to do).
+- **NETL-025:** Above the week, a **Coming up** box MUST list the nets on
+  now or starting within 12 hours, each once at its next meeting, soonest
+  first: "On now · until 08:00" in green for one under way, else "in 25
+  min" or "in 2 h 10 min" — each with ▶. A net starting within the hour
+  MUST show its time in amber (still to do). With no such nets the box is
+  left out.
 - **NETL-026:** Each line MUST show, at a glance, which radio it needs and
   what kind of net it is: a band chip before the repeater, worked out from
   the frequency ("2m", "70cm", "10m", "GMRS", "MURS", "CB"), colored by group

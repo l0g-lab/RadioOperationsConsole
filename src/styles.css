@@ -2407,8 +2407,9 @@ button.online-pill-working-offline:hover {
 
 /* ---- Net listings (NetsTab.tsx) ---- */
 
+/* Full width, Coming up and the week alike. */
 .nets-panel {
-  max-width: 1100px;
+  max-width: none;
 }
 
 .net-list {
@@ -2573,7 +2574,20 @@ button.online-pill-working-offline:hover {
   font-weight: 600;
 }
 
-/* The week ahead: one heading per day (NETL-020). */
+/* Which weeks a monthly net meets, after its name: "2nd & 4th". */
+.net-row-weeks {
+  margin-left: 8px;
+  color: var(--text-dim);
+  font-weight: 400;
+  font-size: calc(12px * var(--font-scale));
+}
+
+/* Today's nets already over. */
+.net-row-over {
+  opacity: 0.55;
+}
+
+/* The week, Sunday to Saturday: one heading per day (NETL-020). */
 .net-schedule {
   display: flex;
   flex-direction: column;

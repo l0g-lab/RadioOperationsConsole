@@ -69,24 +69,35 @@ export function nextMeeting(l: NetListingDetails, now: Date): Meeting | null {
   return null;
 }
 
-/** One net meeting on a given day. */
+/** One net meeting. */
 export interface DayEntry {
   listing: NetListing;
   meeting: Meeting;
 }
 
-/** One day of the week ahead, with its nets in time order. */
-export interface ScheduleDay {
-  date: Date;
-  /** "Today · Fri Oct 2", "Tomorrow · Sat Oct 3", "Sun Oct 4". */
-  label: string;
-  entries: DayEntry[];
+/** One net under one weekday of the week. */
+export interface WeekEntry {
+  listing: NetListing;
+  /** Its next meeting on this weekday (today's while not over); null if none in reach. */
+  meeting: Meeting | null;
+  /** Met earlier today and is over. */
+  overToday: boolean;
 }
 
-export interface WeekAhead {
-  days: ScheduleDay[];
-  /** Scheduled nets that don't meet in those days (most monthly ones), by next meeting. */
-  later: DayEntry[];
+/** One weekday of the week, the same whatever day it is. */
+export interface WeekDay {
+  /** 0 = Sunday. */
+  weekday: number;
+  /** "Sunday". */
+  name: string;
+  today: boolean;
+  /** By start time, then name. */
+  entries: WeekEntry[];
+}
+
+export interface WeekView {
+  /** Sunday to Saturday. */
+  days: WeekDay[];
   /** "As needed" nets, by name. */
   asNeeded: NetListing[];
 }
@@ -94,75 +105,72 @@ export interface WeekAhead {
 const byName = (a: NetListing, b: NetListing) =>
   a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 
+const hasTime = (l: NetListingDetails) => l.schedule_kind !== "as_needed" && /^\d\d:\d\d$/.test(l.start_time);
+
+/** A meeting on `day` at the listing's times. */
+function meetingOn(l: NetListingDetails, day: Date, now: Date): Meeting {
+  const start = at(day, l.start_time);
+  const end = l.end_time ? at(day, l.end_time) : new Date(start.getTime() + ASSUMED_MINUTES * 60_000);
+  return { start, end, underway: start <= now && now < end };
+}
+
+/** The net's next meeting on this weekday that isn't over, from today on. */
+function nextOnWeekday(l: NetListingDetails, weekday: number, now: Date): Meeting | null {
+  for (let i = (weekday - now.getDay() + 7) % 7; i <= LOOKAHEAD_DAYS; i += 7) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    if (!meetsOn(l, day)) continue;
+    const m = meetingOn(l, day, now);
+    if (m.end > now) return m;
+  }
+  return null;
+}
+
 /**
- * The nets of the coming days, one entry per day, each day's nets by start
- * time; a net that meets on several days is listed under each. Today leaves
- * out nets already over (NETL-020).
+ * The nets by weekday, Sunday to Saturday, so the week looks the same
+ * whatever day it is (NETL-020): each net under every weekday it meets on
+ * (a monthly net too), by start time. Today is marked; its nets carry
+ * today's meeting, and one already over says so.
  */
-export function weekAhead(listings: NetListing[], now: Date, dayCount = 7): WeekAhead {
-  const days: ScheduleDay[] = [];
-  const seen = new Set<string>();
-  for (let i = 0; i < dayCount; i++) {
-    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
-    const entries: DayEntry[] = [];
-    for (const listing of listings) {
-      if (!/^\d\d:\d\d$/.test(listing.start_time) || !meetsOn(listing, date)) continue;
-      const start = at(date, listing.start_time);
-      const end = listing.end_time
-        ? at(date, listing.end_time)
-        : new Date(start.getTime() + ASSUMED_MINUTES * 60_000);
-      if (end <= now) continue;
-      entries.push({ listing, meeting: { start, end, underway: start <= now } });
-      seen.add(listing.id);
-    }
-    entries.sort(
-      (a, b) => a.meeting.start.getTime() - b.meeting.start.getTime() || byName(a.listing, b.listing)
-    );
-    const name = `${DAY_SHORT[date.getDay()]} ${MONTH_SHORT[date.getMonth()]} ${date.getDate()}`;
-    days.push({ date, label: i === 0 ? `Today · ${name}` : i === 1 ? `Tomorrow · ${name}` : name, entries });
-  }
-  const later: DayEntry[] = [];
-  for (const listing of listings) {
-    if (seen.has(listing.id)) continue;
-    const meeting = nextMeeting(listing, now);
-    if (meeting) later.push({ listing, meeting });
-  }
-  later.sort((a, b) => a.meeting.start.getTime() - b.meeting.start.getTime());
+export function weekView(listings: NetListing[], now: Date): WeekView {
+  const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const scheduled = listings.filter(hasTime);
+  const days = DAY_NAMES.map((name, weekday) => {
+    const today = weekday === now.getDay();
+    const entries = scheduled
+      .filter((l) => l.weekdays.includes(weekday))
+      .map((listing) => ({
+        listing,
+        meeting: nextOnWeekday(listing, weekday, now),
+        overToday: today && meetsOn(listing, todayDate) && meetingOn(listing, todayDate, now).end <= now,
+      }))
+      .sort((a, b) => a.listing.start_time.localeCompare(b.listing.start_time) || byName(a.listing, b.listing));
+    return { weekday, name, today, entries };
+  });
   const asNeeded = listings.filter((l) => l.schedule_kind === "as_needed").sort(byName);
-  return { days, later, asNeeded };
+  return { days, asNeeded };
+}
+
+/** Which weeks of the month a monthly net meets: "2nd & 4th", "last"; "" when weekly. */
+export function monthlyWeeks(l: NetListingDetails): string {
+  return l.schedule_kind === "monthly" ? andList(l.weeks.map((w) => WEEK_NAMES[w] ?? w)) : "";
 }
 
 function hhmm(d: Date): string {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
-/** "Under way until 19:30", "Today 19:00", "Tomorrow 20:30", "Thu Oct 8, 20:00" (NETL-021). */
-export function describeNext(m: Meeting, now: Date): string {
-  if (m.underway) return `Under way until ${hhmm(m.end)}`;
-  const days = Math.round(
-    (new Date(m.start.getFullYear(), m.start.getMonth(), m.start.getDate()).getTime() -
-      new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) /
-      86_400_000
-  );
-  if (days === 0) return `Today ${hhmm(m.start)}`;
-  if (days === 1) return `Tomorrow ${hhmm(m.start)}`;
-  return `${DAY_SHORT[m.start.getDay()]} ${MONTH_SHORT[m.start.getMonth()]} ${m.start.getDate()}, ${hhmm(m.start)}`;
-}
-
 /**
- * The next few nets from now for "Coming up" (NETL-025): each net once, at
- * its next meeting, soonest first — the week's days, then later ones.
+ * The nets for "Coming up" (NETL-025): those on now or starting within the
+ * next `hours`, each once at its next meeting, soonest first.
  */
-export function comingUp(week: WeekAhead, count = 3): DayEntry[] {
-  const seen = new Set<string>();
-  const out: DayEntry[] = [];
-  for (const e of [...week.days.flatMap((d) => d.entries), ...week.later]) {
-    if (seen.has(e.listing.id)) continue;
-    seen.add(e.listing.id);
-    out.push(e);
-    if (out.length === count) break;
-  }
-  return out;
+export function comingUp(listings: NetListing[], now: Date, hours = 12): DayEntry[] {
+  const until = now.getTime() + hours * 60 * 60_000;
+  return listings
+    .flatMap((listing) => {
+      const meeting = nextMeeting(listing, now);
+      return meeting && meeting.start.getTime() < until ? [{ listing, meeting }] : [];
+    })
+    .sort((a, b) => a.meeting.start.getTime() - b.meeting.start.getTime() || byName(a.listing, b.listing));
 }
 
 /**
