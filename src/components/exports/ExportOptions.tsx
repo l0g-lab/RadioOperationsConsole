@@ -215,9 +215,6 @@ export default function ExportOptions({
     <div className="export-list">
       <section className="export-section">
         <h4 className="export-section-title">Records and reports</h4>
-        <p className="settings-hint">
-          The activity's own data, as spreadsheets and readable text. Use View to see one before saving it.
-        </p>
         {!noRelayed && (
           <Row
             notify={notify}
@@ -425,7 +422,6 @@ export default function ExportOptions({
 
       <section className="export-section">
         <h4 className="export-section-title">ICS forms</h4>
-        <p className="settings-hint">Standard forms for agencies, each ready to load into Winlink Express or print.</p>
         {!noReports && (
           <Row
             notify={notify}
