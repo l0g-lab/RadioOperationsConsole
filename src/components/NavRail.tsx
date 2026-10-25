@@ -5,7 +5,7 @@ import { activityRow, recordText } from "../activityList";
 import { isLog } from "../activityTypes";
 import { useMinuteClock } from "../hooks/useMinuteClock";
 import ActivityTypeIcon from "./ActivityTypeIcon";
-import { ListChecks } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, ListChecks } from "lucide-react";
 
 /** Tabs that show the focused activity; choosing one in the rail from any other tab goes to Operations. */
 const ACTIVITY_TABS: Tab[] = ["Operations", "Check-ins", "Spotter Reports"];
@@ -16,6 +16,9 @@ export const RAIL_MIN = 180;
 export const RAIL_MAX = 480;
 const RAIL_STEP = 20;
 const WIDTH_KEY = "roc-nav-rail-width";
+const COLLAPSED_KEY = "roc-nav-rail-collapsed";
+/** Collapsed to its icons (UX-035). */
+export const RAIL_COLLAPSED = 52;
 
 const clampWidth = (w: number) => Math.round(Math.min(RAIL_MAX, Math.max(RAIL_MIN, w)));
 
@@ -32,6 +35,22 @@ function loadWidth(): number {
 function saveWidth(w: number) {
   try {
     localStorage.setItem(WIDTH_KEY, String(w));
+  } catch {
+    // Still applies for this session.
+  }
+}
+
+function loadCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveCollapsed(collapsed: boolean) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
   } catch {
     // Still applies for this session.
   }
@@ -66,7 +85,8 @@ interface NavRailProps {
 /**
  * The tabs down the left side: "All activities" at the top for the full list
  * (search, coming up, closed), then the tabs, with the nets open now under
- * Operations so they're in sight and a click away from any tab.
+ * Operations so they're in sight and a click away from any tab. It can
+ * collapse to its icons, each named on hovering, for more room.
  */
 export default function NavRail({
   current,
@@ -83,6 +103,13 @@ export default function NavRail({
   const now = useMinuteClock();
   const listed = railActivities(activities, selectedActivityId);
   const [width, setWidth] = useState(loadWidth);
+  const [collapsed, setCollapsed] = useState(loadCollapsed);
+  const toggleCollapsed = () => {
+    setCollapsed(!collapsed);
+    saveCollapsed(!collapsed);
+  };
+  // Collapsed, a button shows only its icon, so it's named on hovering and to screen readers.
+  const named = (label: string) => (collapsed ? { title: label, "aria-label": label } : {});
   // Where a drag of the edge started: the pointer's x and the width then.
   const drag = useRef<{ x: number; width: number } | null>(null);
   const resize = (w: number) => {
@@ -99,7 +126,10 @@ export default function NavRail({
   };
 
   return (
-    <div className="nav-rail-wrap" style={{ width }}>
+    <div
+      className={"nav-rail-wrap" + (collapsed ? " collapsed" : "")}
+      style={{ width: collapsed ? RAIL_COLLAPSED : width }}
+    >
       <nav className="nav-rail" aria-label="Tabs">
         <ul className="nav-tabs">
           {/* Not a tab, so Ctrl+1 stays Operations. */}
@@ -108,9 +138,10 @@ export default function NavRail({
               className={"tab-button" + (activityListOpen ? " selected" : "")}
               aria-current={activityListOpen ? "page" : undefined}
               onClick={onOpenActivityList}
+              {...named("All activities")}
             >
               <ListChecks className="tab-icon" />
-              All activities
+              <span className="tab-label">All activities</span>
             </button>
             <button className="nav-new-activity" onClick={onNewActivity} title="New activity" aria-label="New activity">
               +<span className="nav-new-label"> New</span>
@@ -125,11 +156,12 @@ export default function NavRail({
                   className={"tab-button" + (selected ? " selected" : "")}
                   aria-current={selected ? "page" : undefined}
                   onClick={() => onSelect(t)}
+                  {...named(labels[t] ?? t)}
                 >
                   <Icon className="tab-icon" />
-                  {labels[t] ?? t}
+                  <span className="tab-label">{labels[t] ?? t}</span>
                 </button>
-                {t === "Operations" && listed.length > 0 && (
+                {t === "Operations" && !collapsed && listed.length > 0 && (
                   <ul className="activity-list nav-activities" aria-label="Open activities">
                     {listed.map((a) => {
                       const { state, tone } = activityRow(a, now);
@@ -161,41 +193,52 @@ export default function NavRail({
             );
           })}
         </ul>
+        <button
+          className="nav-rail-collapse"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expand side bar" : "Collapse side bar"}
+          title={collapsed ? "Expand side bar" : "Collapse side bar"}
+        >
+          {collapsed ? <ChevronsRight aria-hidden /> : <ChevronsLeft aria-hidden />}
+          {!collapsed && <span>Collapse</span>}
+        </button>
       </nav>
-      <div
-        className="nav-rail-resizer"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Side bar width"
-        aria-valuenow={width}
-        aria-valuemin={RAIL_MIN}
-        aria-valuemax={RAIL_MAX}
-        tabIndex={0}
-        title="Drag to resize; double-click for the default"
-        onPointerDown={(e) => {
-          e.preventDefault();
-          e.currentTarget.setPointerCapture(e.pointerId);
-          drag.current = { x: e.clientX, width };
-        }}
-        onPointerMove={(e) => {
-          if (drag.current) setWidth(clampWidth(drag.current.width + e.clientX - drag.current.x));
-        }}
-        onPointerUp={(e) => {
-          if (!drag.current) return;
-          resize(drag.current.width + e.clientX - drag.current.x);
-          drag.current = null;
-        }}
-        onDoubleClick={() => resize(RAIL_DEFAULT)}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      {!collapsed && (
+        <div
+          className="nav-rail-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Side bar width"
+          aria-valuenow={width}
+          aria-valuemin={RAIL_MIN}
+          aria-valuemax={RAIL_MAX}
+          tabIndex={0}
+          title="Drag to resize; double-click for the default"
+          onPointerDown={(e) => {
             e.preventDefault();
-            resize(width + (e.key === "ArrowRight" ? RAIL_STEP : -RAIL_STEP));
-          } else if (e.key === "Home" || e.key === "End") {
-            e.preventDefault();
-            resize(e.key === "End" ? RAIL_MAX : RAIL_MIN);
-          }
-        }}
-      />
+            e.currentTarget.setPointerCapture(e.pointerId);
+            drag.current = { x: e.clientX, width };
+          }}
+          onPointerMove={(e) => {
+            if (drag.current) setWidth(clampWidth(drag.current.width + e.clientX - drag.current.x));
+          }}
+          onPointerUp={(e) => {
+            if (!drag.current) return;
+            resize(drag.current.width + e.clientX - drag.current.x);
+            drag.current = null;
+          }}
+          onDoubleClick={() => resize(RAIL_DEFAULT)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+              e.preventDefault();
+              resize(width + (e.key === "ArrowRight" ? RAIL_STEP : -RAIL_STEP));
+            } else if (e.key === "Home" || e.key === "End") {
+              e.preventDefault();
+              resize(e.key === "End" ? RAIL_MAX : RAIL_MIN);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

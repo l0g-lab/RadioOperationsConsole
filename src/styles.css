@@ -289,6 +289,52 @@ select:disabled {
   min-width: 0;
   overflow-y: auto;
   padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Collapse / expand, at the foot of the side bar (UX-035). */
+.nav-rail-collapse {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 6px 8px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  text-align: left;
+}
+
+.nav-rail-collapse svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+/* Collapsed to its icons: labels and the open nets hidden, each icon
+   centred and named on hovering. */
+.nav-rail-wrap.collapsed .nav-rail {
+  padding: 10px 6px;
+}
+
+.nav-rail-wrap.collapsed .tab-label {
+  display: none;
+}
+
+.nav-rail-wrap.collapsed .tab-button,
+.nav-rail-wrap.collapsed .nav-rail-collapse {
+  justify-content: center;
+  padding: 7px 0;
+}
+
+.nav-rail-wrap.collapsed .nav-tabs > li.nav-all-activities {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.nav-rail-wrap.collapsed .nav-new-activity {
+  padding: 2px 0;
 }
 
 /* The right edge, dragged to resize (UX-033): a few pixels wide over the

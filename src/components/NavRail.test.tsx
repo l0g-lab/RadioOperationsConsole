@@ -119,4 +119,18 @@ describe("NavRail (UX-030)", () => {
     expect(onNewActivity).toHaveBeenCalled();
     expect(onOpenActivityList).not.toHaveBeenCalled();
   });
+
+  it("collapses to its icons, each named on hovering, and remembers it (UX-035)", async () => {
+    localStorage.removeItem("roc-nav-rail-collapsed");
+    renderRail("Operations", "a");
+    expect(screen.getByRole("list", { name: "Open activities" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Collapse side bar" }));
+    expect(localStorage.getItem("roc-nav-rail-collapsed")).toBe("1");
+    expect(screen.getByRole("button", { name: "Weather" })).toHaveAttribute("title", "Weather");
+    expect(screen.queryByRole("list", { name: "Open activities" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("separator", { name: "Side bar width" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Expand side bar" }));
+    expect(localStorage.getItem("roc-nav-rail-collapsed")).toBe("0");
+    expect(screen.getByRole("list", { name: "Open activities" })).toBeInTheDocument();
+  });
 });

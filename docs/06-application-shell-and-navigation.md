@@ -45,6 +45,11 @@ tabs, opens the full list (`UX-OPS-001`, `UX-OPS-015`–`017`) in place of the O
 - **UX-034:** Beside **All activities**, a **+ New** button MUST open the
   new-activity form on the Operations tab from any tab, shortened to "+"
   when the side bar is narrow.
+- **UX-035:** A button at the foot of the side bar MUST collapse it to its
+  icons (about 52px), for more room on tabs like Weather and Nets, and
+  expand it again. Collapsed, each icon MUST be named on hovering and to
+  screen readers (`UX-007`), and the open nets and the resizing edge are
+  hidden. The choice MUST be remembered on this computer.
 - **UX-031:** Under Operations, the side bar MUST list each net open now
   (not station logs), latest started first, and the focused activity if it
   isn't one of them, each with its type icon, name, and, small, its state and
