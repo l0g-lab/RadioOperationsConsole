@@ -7,6 +7,7 @@ import { netControlPoint, repeaterPoint } from "../../mapPoints";
 import CheckinEntryForm from "../checkins/CheckinEntryForm";
 import CheckinRoster from "../checkins/CheckinRoster";
 import NotStartedBanner from "../lifecycle/NotStartedBanner";
+import StartNetPrompt from "../lifecycle/StartNetPrompt";
 import ClosedBanner from "../lifecycle/ClosedBanner";
 import { isLog, isRangeCheck, isRelay, isSkywarn } from "../../activityTypes";
 import RelayWorkspace from "../relay/RelayWorkspace";
@@ -25,6 +26,8 @@ interface Props {
   onOpenCallsignDirectories: () => void;
   /** Takes a spotter report from a checked-in station, on the Spotter Reports tab (SPOT-024). */
   onTakeReport: (checkinId: string) => void;
+  /** Reload activities, after the net is started from the first check-in's prompt. */
+  onActivitiesChanged: () => void;
 }
 
 /** Each check-in's linked reports' hazards, oldest first. */
@@ -48,6 +51,7 @@ export default function CheckinsTab({
   onOpenExports,
   onOpenCallsignDirectories,
   onTakeReport,
+  onActivitiesChanged,
 }: Props) {
   const [rapidEntryMode, setRapidEntryMode] = useState(true);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
@@ -56,6 +60,10 @@ export default function CheckinsTab({
   // Whether any way of filling in call signs exists; null until known.
   const [canLookUp, setCanLookUp] = useState<boolean | null>(null);
   const [showMap, setShowMap] = useState(false);
+  // The net whose first check-in was just saved before it was started: asked to start it (LIFE-024).
+  const [askStart, setAskStart] = useState<string | null>(null);
+  // Back to the call sign once that's answered.
+  const [refocus, setRefocus] = useState(0);
 
   const focusedActivity = activities.find((a) => a.id === selectedActivityId) ?? null;
   const closed = focusedActivity?.state === "closed";
@@ -131,7 +139,13 @@ export default function CheckinsTab({
   // A new entry just appears in the roster; it isn't selected (highlighted),
   // so the next entry starts clean. Click a row to select it.
   function handleCheckinSaved() {
+    if (checkins.length === 0 && focusedActivity?.state === "scheduled" && !log) setAskStart(focusedActivity.id);
     return refreshCheckins();
+  }
+
+  function answeredStart() {
+    setAskStart(null);
+    setRefocus((n) => n + 1);
   }
 
   return (
@@ -174,9 +188,20 @@ export default function CheckinsTab({
         </p>
       )}
 
-      {focusedActivity && (
-        <NotStartedBanner activity={focusedActivity} />
-      )}
+      {focusedActivity &&
+        (askStart === focusedActivity.id && focusedActivity.state === "scheduled" ? (
+          <StartNetPrompt
+            activity={focusedActivity}
+            operatorId={selectedOperatorId}
+            onStarted={() => {
+              onActivitiesChanged();
+              answeredStart();
+            }}
+            onDismiss={answeredStart}
+          />
+        ) : (
+          <NotStartedBanner activity={focusedActivity} />
+        ))}
 
       {focusedActivity && rangeCheck && !repeater && !closed && (
         <p className="weather-area-error" role="alert">
@@ -217,7 +242,7 @@ export default function CheckinsTab({
               qrzConfigured={qrzConfigured}
               offlineCallsAvailable={offlineCallsAvailable}
               rapidEntryMode={rapidEntryMode}
-              focusCallSignSignal={focusCallSignSignal}
+              focusCallSignSignal={focusCallSignSignal + refocus}
               onSaved={handleCheckinSaved}
               log={log}
               activityFrequency={focusedActivity.frequency}

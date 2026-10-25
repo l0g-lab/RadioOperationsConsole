@@ -102,8 +102,18 @@ and stops later edits from quietly changing a net that is over.
   net hasn't started", with when it was scheduled once that's today ("19:00,
   5 min ago") — pointing to **Start net** in the top bar. It MUST NOT offer
   its own Start: nets are started and ended in one place, the top bar, so
-  operators learn where to look. It MUST NOT block logging: some nets take
+  operators learn where to look (except the first check-in's prompt,
+  `LIFE-024`). It MUST NOT block logging: some nets take
   early check-ins. A station log, never started, has none.
+- **LIFE-024:** Saving the first check-in to a net that hasn't been started
+  MUST ask, in place of that banner, "Start the net now?" with **Start now**
+  (focused, so Enter starts it) and **Not yet: early check-in** (or Escape),
+  then return focus to the call sign. Start now MUST start it as the top
+  bar's Start does. It is asked once, at the first check-in; after Not yet
+  the banner stays. This is the one Start outside the top bar
+  (`LIFE-023`): a forgotten Start is caught where the operator is looking,
+  as the net begins, rather than fixed in Edit afterwards. A station log has
+  none.
 
 ## Wrapping up a net
 

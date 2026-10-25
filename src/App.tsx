@@ -283,6 +283,7 @@ export default function App() {
                 setReportFromCheckin(id);
                 setCurrentTab("Spotter Reports");
               }}
+              onActivitiesChanged={refreshActivities}
             />
           )}
           {currentTab === "Spotter Reports" && (
