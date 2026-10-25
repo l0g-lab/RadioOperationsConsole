@@ -71,12 +71,11 @@ function Row({
 }
 
 /**
- * Every activity, in a pane beside the Operations tab (UX-OPS-015), in
- * sections in the order things happen: open now, each event as a block in
- * running order, coming up, station logs, and closed (folded). It scrolls on
- * its own, so it never pushes the selected activity down. Clicking one
- * selects it; the top bar's Activity list stays the quick way to switch from
- * any tab.
+ * Every activity, under All activities in the side bar (UX-OPS-015,
+ * UX-032), in sections in the order things happen: open now, each event as
+ * a block in running order, coming up, station logs, and closed (folded).
+ * Clicking one selects it; the side bar's open nets and the top bar's
+ * Activity list stay the quick ways to switch from any tab.
  */
 export default function ActivitiesPanel({
   activities,

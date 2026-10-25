@@ -273,20 +273,75 @@ select:disabled {
   flex-direction: column;
 }
 
-.tab-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 8px;
+/* ---- Side bar (NavRail.tsx, UX-030) ---- */
+
+/* The tabs down the left, scrolling on their own, with the nets open now
+   under Operations. */
+.nav-rail {
+  width: 200px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 10px 8px;
+}
+
+.nav-tabs,
+.nav-tabs .activity-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nav-tabs > li + li {
+  margin-top: 2px;
 }
 
 .tab-button {
-  border-radius: 3px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  /* Ten tabs fit on one line beside the Operations sidebar. */
-  padding: 4px 8px;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-color: transparent;
+  background: none;
+  text-align: left;
+}
+
+/* The tab you're on: shaded, with a green edge, like the selected activity. */
+.tab-button.selected {
+  background: var(--bg-input);
+  box-shadow: inset 3px 0 0 var(--accent);
+  color: var(--accent);
+}
+
+/* Open nets under Operations, indented to its label. */
+.nav-activities {
+  margin: 2px 0 6px 14px;
+  font-size: calc(12px * var(--font-scale));
+}
+
+.nav-activities .activity-row {
+  padding: 3px 6px;
+}
+
+.nav-activities-all {
+  width: 100%;
+  padding: 3px 6px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  text-align: left;
+}
+
+.nav-activities-all.selected {
+  background: var(--bg-input);
+  box-shadow: inset 3px 0 0 var(--accent);
+  color: var(--accent);
+}
+
+/* The full Activities list, in place of the Operations tab. */
+.activities-page {
+  max-width: 640px;
 }
 
 .tab-icon {
@@ -297,11 +352,6 @@ select:disabled {
 }
 
 .tab-button.selected .tab-icon {
-  color: var(--accent);
-}
-
-.tab-button.selected {
-  border-color: var(--accent);
   color: var(--accent);
 }
 
@@ -3639,17 +3689,7 @@ button.online-pill-working-offline:hover {
   margin-right: 5px;
 }
 
-/* ---- Activities pane (ActivitiesPanel.tsx, UX-OPS-015) ---- */
-
-/* Beside the Operations tab, scrolling on its own so the selected activity
-   stays at the top of the tab however many activities and events there are. */
-.ops-sidebar {
-  width: 320px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  border-right: 1px solid var(--border);
-  padding: 10px;
-}
+/* ---- Activities list (ActivitiesPanel.tsx, UX-OPS-015) ---- */
 
 .activities-panel {
   margin: 0;

@@ -3,6 +3,7 @@
 ## Navigation model
 
 The application opens into a persistent tabbed shell rather than a task-selection start screen.
+The tabs run down a side bar on the left (`UX-030`).
 
 Initial primary tabs:
 
@@ -24,6 +25,27 @@ not on a tab of their own.
 Traffic is recorded on the check-in it came from (`NETOPS-050`–`056`) rather than in a tab of its own.
 
 Activity types may hide, deemphasize, or badge tabs. The order and meaning of core tabs remain stable so operators do not relearn navigation between activities.
+
+## Side bar
+
+The tabs are listed down the left side rather than across the top: ten
+tabs fit without wrapping, there's room for more, and the content starts at
+the top of the window. Under Operations, the side bar lists the nets open
+now, so they stay in sight from every tab, and **All activities** opens the
+full list (`UX-OPS-001`, `UX-OPS-015`–`017`) in place of the Operations tab.
+
+- **UX-030:** The tabs MUST be listed down a side bar on the left (about
+  200px), each with its icon and label (`UX-007`), in the order of
+  "Navigation model", the current one marked. It MUST scroll on its own.
+- **UX-031:** Under Operations, the side bar MUST list each net open now
+  (not station logs), latest started first, and the focused activity if it
+  isn't one of them, each with its type icon, name, and, small, its state and
+  count of records; the focused one MUST be marked. Choosing one MUST focus
+  it, staying on Operations, Check-ins, or Spotter Reports, and going to
+  Operations from any other tab.
+- **UX-032:** **All activities** MUST show the Activities list in place of
+  the Operations tab, marked in the side bar while it shows; choosing an
+  activity there, or going to any tab, MUST leave it.
 
 ## Persistent header
 
@@ -114,20 +136,19 @@ yet built, so these are documented here as the interim source of truth.
 
 ## Operations tab layout
 
-The Operations tab has an **Activities** pane down its left side, in
-sections, for seeing what's on and choosing an activity. It scrolls on its
-own, so however many activities and events there are, the selected activity
-stays at the top of the tab; below it, the
+The **Activities** list, in sections, for seeing what's on and choosing an
+activity, is under **All activities** in the side bar (`UX-032`), in place of
+the Operations tab while it shows. The Operations tab itself has the
 selected activity (details, summary, exports and forms) on the left, and
 operators, repeaters, and places on the right. The top bar's Activity list
 (`UX-OPS-003`) stays the quick way to switch from any tab.
 
-- **UX-OPS-001:** The Activities pane MUST list every activity, and
+- **UX-OPS-001:** The Activities list MUST list every activity, and
   clicking one MUST make it the focused activity. Besides **+ New
   activity**, it MUST NOT hold editing or deletion controls; those are in
   the Selected Activity panel.
-- **UX-OPS-015:** The pane MUST sit beside the tab (about 320px), scrolling on
-  its own, never above the selected activity. Each activity MUST take two
+- **UX-OPS-015:** The list MUST be reached from **All activities** in the
+  side bar (`UX-032`); it once sat beside the Operations tab. Each activity MUST take two
   short lines: its type icon (the type on hovering), name, and state —
   *Open* in green, *Not started* in amber once its time has come, *Closed*
   dimmed — then, small and dim, its band (`NETL-026`), when it ran or is to
@@ -156,7 +177,7 @@ operators, repeaters, and places on the right. The top bar's Activity list
   application header, visible on every tab, listing each activity not yet
   closed, the 10 most recently closed, and the focused one, with its date and
   time so same-titled activities can be told apart; older ones are chosen from
-  the Activities pane on the Operations tab, which the selector points to. Other tabs MUST NOT carry their
+  **All activities** in the side bar, which the selector points to. Other tabs MUST NOT carry their
   own activity selector.
 - **UX-OPS-004:** The header MUST show the focused activity's frequency and
   offer an "Edit" action that goes to the Operations tab with that
@@ -181,7 +202,7 @@ operators, repeaters, and places on the right. The top bar's Activity list
 
 ## Activity correction and deletion
 
-Finished activities stay listed (under Closed in the Activities pane), so
+Finished activities stay listed (under Closed in the Activities list), so
 a past net is never out of sight. There is no archiving; an
 activity is removed only by permanent deletion, a separate, explicitly
 confirmed action (`AUDIT-007`–`AUDIT-011`).

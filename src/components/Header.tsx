@@ -24,13 +24,13 @@ interface HeaderProps {
 /** The Activity list's last entry, which starts a new one rather than choosing one. */
 const NEW_ACTIVITY = "__new_activity__";
 
-/** How many closed nets the top bar lists; the rest are in the Operations tab's Activities pane. */
+/** How many closed nets the top bar lists; the rest are under All activities in the side bar. */
 const RECENT_CLOSED = 10;
 
 /**
  * The activities the top bar's list offers: everything not finished, the most
  * recently closed nets, and whichever is selected. Older ones are in the
- * Operations tab's Activities list.
+ * full list (All activities, in the side bar).
  */
 export function topBarActivities(activities: Activity[], selectedId: string | null): Activity[] {
   const recent = new Set(
@@ -92,7 +92,7 @@ export default function Header({
             </option>
           ))}
           {listed.length < activities.length && (
-            <option disabled>Older nets: Operations → Activities</option>
+            <option disabled>Older nets: All activities, in the side bar</option>
           )}
           <option value={NEW_ACTIVITY}>+ New activity…</option>
         </select>

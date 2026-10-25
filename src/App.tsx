@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import * as api from "./api";
 import Header from "./components/Header";
-import TabBar from "./components/TabBar";
+import NavRail from "./components/NavRail";
 import OperationsTab from "./components/tabs/OperationsTab";
 import CheckinsTab from "./components/tabs/CheckinsTab";
 import ReportsTab from "./components/tabs/ReportsTab";
@@ -48,7 +48,18 @@ export default function App() {
   };
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [selectedCheckinId, setSelectedCheckinId] = useState<string | null>(null);
-  const [currentTab, setCurrentTab] = useState<Tab>("Operations");
+  const [currentTab, setTab] = useState<Tab>("Operations");
+  // "All activities" in the rail: the full Activities list in place of the Operations tab.
+  const [activityListOpen, setActivityListOpen] = useState(false);
+  // Going to any tab, from the rail, a shortcut or a link, leaves the full list.
+  const setCurrentTab = (tab: Tab) => {
+    setActivityListOpen(false);
+    setTab(tab);
+  };
+  const openActivityList = () => {
+    setTab("Operations");
+    setActivityListOpen(true);
+  };
   // Set by the header's Edit link; the activity panel opens its edit form and clears it.
   const [editActivityRequested, setEditActivityRequested] = useState(false);
   const [newActivityRequested, setNewActivityRequested] = useState(false);
@@ -200,30 +211,37 @@ export default function App() {
       <UpgradeBackupBanner />
       <UpdateBanner />
       <div className="app-body">
-        {currentTab === "Operations" && (
-          // Beside the tab, scrolling on its own, so the selected activity stays at the top (UX-OPS-015).
-          <aside className="ops-sidebar" aria-label="Activities">
-            <ActivitiesPanel
-              activities={activities}
-              selectedActivityId={selectedActivityId}
-              onSelectActivity={setSelectedActivityId}
-              onNewActivity={requestNewActivity}
-            />
-          </aside>
-        )}
+        <NavRail
+          current={currentTab}
+          onSelect={setCurrentTab}
+          labels={
+            selectedActivity && isLog(selectedActivity.activity_type)
+              ? { "Check-ins": "Contacts" }
+              : selectedActivity && isRelay(selectedActivity.activity_type)
+                ? { "Check-ins": "Messages" }
+                : undefined
+          }
+          activities={activities}
+          selectedActivityId={selectedActivityId}
+          onSelectActivity={setSelectedActivityId}
+          activityListOpen={activityListOpen}
+          onOpenActivityList={openActivityList}
+        />
         <main className="app-content">
-          <TabBar
-            current={currentTab}
-            onSelect={setCurrentTab}
-            labels={
-              selectedActivity && isLog(selectedActivity.activity_type)
-                ? { "Check-ins": "Contacts" }
-                : selectedActivity && isRelay(selectedActivity.activity_type)
-                  ? { "Check-ins": "Messages" }
-                  : undefined
-            }
-          />
-          {currentTab === "Operations" && (
+          {currentTab === "Operations" && activityListOpen && (
+            <div className="activities-page">
+              <ActivitiesPanel
+                activities={activities}
+                selectedActivityId={selectedActivityId}
+                onSelectActivity={(id) => {
+                  setSelectedActivityId(id);
+                  setCurrentTab("Operations");
+                }}
+                onNewActivity={requestNewActivity}
+              />
+            </div>
+          )}
+          {currentTab === "Operations" && !activityListOpen && (
             <OperationsTab
               activities={activities}
               operators={operators}

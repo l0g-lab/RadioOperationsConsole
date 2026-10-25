@@ -1,5 +1,5 @@
 /**
- * The Activities pane beside the Operations tab (UX-OPS-015): every
+ * The Activities list, under All activities in the side bar (UX-OPS-015): every
  * activity, in sections in the order things happen — open now, each event,
  * coming up, station logs, closed — or found by searching.
  */
@@ -166,7 +166,7 @@ function eventSummary(acts: Activity[], now: Date): string {
 }
 
 /**
- * The Activities pane's sections, in the order things happen (UX-OPS-015):
+ * The Activities list's sections, in the order things happen (UX-OPS-015):
  * Open now; each event still going, as its own block in running order (one
  * under way first); Coming up (soonest first, unscheduled, then nets whose
  * day passed without starting); Station logs; Closed (most recent
