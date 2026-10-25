@@ -7,7 +7,7 @@ import { netControlPoint, repeaterPoint } from "../../mapPoints";
 import CheckinEntryForm from "../checkins/CheckinEntryForm";
 import CheckinRoster from "../checkins/CheckinRoster";
 import NotStartedBanner from "../lifecycle/NotStartedBanner";
-import StartNetPrompt from "../lifecycle/StartNetPrompt";
+import StartNetPrompt, { shouldAskToStart } from "../lifecycle/StartNetPrompt";
 import ClosedBanner from "../lifecycle/ClosedBanner";
 import { isLog, isRangeCheck, isRelay, isSkywarn } from "../../activityTypes";
 import RelayWorkspace from "../relay/RelayWorkspace";
@@ -60,7 +60,7 @@ export default function CheckinsTab({
   // Whether any way of filling in call signs exists; null until known.
   const [canLookUp, setCanLookUp] = useState<boolean | null>(null);
   const [showMap, setShowMap] = useState(false);
-  // The net whose first check-in was just saved before it was started: asked to start it (LIFE-024).
+  // The net a check-in was just saved to before it was started: asked to start it (LIFE-024).
   const [askStart, setAskStart] = useState<string | null>(null);
   // Back to the call sign once that's answered.
   const [refocus, setRefocus] = useState(0);
@@ -139,7 +139,7 @@ export default function CheckinsTab({
   // A new entry just appears in the roster; it isn't selected (highlighted),
   // so the next entry starts clean. Click a row to select it.
   function handleCheckinSaved() {
-    if (checkins.length === 0 && focusedActivity?.state === "scheduled" && !log) setAskStart(focusedActivity.id);
+    if (focusedActivity && shouldAskToStart(focusedActivity)) setAskStart(focusedActivity.id);
     return refreshCheckins();
   }
 
@@ -188,20 +188,19 @@ export default function CheckinsTab({
         </p>
       )}
 
-      {focusedActivity &&
-        (askStart === focusedActivity.id && focusedActivity.state === "scheduled" ? (
-          <StartNetPrompt
-            activity={focusedActivity}
-            operatorId={selectedOperatorId}
-            onStarted={() => {
-              onActivitiesChanged();
-              answeredStart();
-            }}
-            onDismiss={answeredStart}
-          />
-        ) : (
-          <NotStartedBanner activity={focusedActivity} />
-        ))}
+      {focusedActivity && <NotStartedBanner activity={focusedActivity} />}
+
+      {focusedActivity && askStart === focusedActivity.id && focusedActivity.state === "scheduled" && (
+        <StartNetPrompt
+          activity={focusedActivity}
+          operatorId={selectedOperatorId}
+          onStarted={() => {
+            onActivitiesChanged();
+            answeredStart();
+          }}
+          onNotYet={answeredStart}
+        />
+      )}
 
       {focusedActivity && rangeCheck && !repeater && !closed && (
         <p className="weather-area-error" role="alert">

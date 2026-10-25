@@ -35,7 +35,7 @@ function stamp(iso: string, now: Date): string {
 }
 
 /** When it's scheduled, as a local Date (midnight without a time); null if none. */
-function scheduledDate(a: Activity): Date | null {
+export function scheduledDate(a: Activity): Date | null {
   const { date, time } = splitScheduledAt(a.scheduled_at);
   const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return null;

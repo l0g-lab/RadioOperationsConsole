@@ -1889,15 +1889,18 @@ details > summary {
   color: var(--text);
 }
 
-/* The first check-in's "Start the net now?" (LIFE-024): the banner, with
-   its two answers at the end. */
+/* "Start the net now?" (LIFE-024): over everything until it's answered. */
 .start-net-prompt {
-  flex-wrap: wrap;
+  width: min(480px, 92vw);
+  border-color: var(--warning, #e8a33d);
+  border-top-width: 4px;
 }
 
-.start-net-prompt-text {
-  flex: 1;
-  min-width: 220px;
+.start-net-prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .not-started-icon {

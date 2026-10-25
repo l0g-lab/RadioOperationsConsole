@@ -21,6 +21,7 @@ vi.mock("../checkins/CheckinEntryForm", () => ({
 vi.mock("../checkins/CheckinRoster", () => ({ default: () => null }));
 
 import CheckinsTab from "../tabs/CheckinsTab";
+import { clearNotYet, recordNotYet, shouldAskToStart } from "./StartNetPrompt";
 
 const net: Activity = {
   id: "n1",
@@ -64,23 +65,59 @@ function renderTab(activity: Activity, onActivitiesChanged = vi.fn()) {
 }
 
 const prompt = () => screen.queryByRole("alertdialog", { name: "Start the net now?" });
+const save = () => userEvent.click(screen.getByRole("button", { name: "Save check-in" }));
+const at = (hhmm: string) => new Date(`2026-10-24T${hhmm}:00`).getTime();
+
+describe("when to ask to start the net (LIFE-024)", () => {
+  beforeEach(clearNotYet);
+  const due = { ...net, scheduled_at: "2026-10-24 19:00" };
+
+  it("asks a net not started until it's answered Not yet; never an open net or a station log", () => {
+    expect(shouldAskToStart(net)).toBe(true);
+    expect(shouldAskToStart({ ...net, state: "active" })).toBe(false);
+    expect(shouldAskToStart({ ...net, activity_type: "station_log" })).toBe(false);
+  });
+
+  it("after an early Not yet, asks again once the scheduled time comes", () => {
+    recordNotYet(due.id, at("18:45"));
+    expect(shouldAskToStart(due, at("18:50"))).toBe(false);
+    expect(shouldAskToStart(due, at("18:59"))).toBe(false);
+    expect(shouldAskToStart(due, at("19:00"))).toBe(true);
+  });
+
+  it("otherwise asks again 10 minutes after Not yet", () => {
+    recordNotYet(due.id, at("19:02"));
+    expect(shouldAskToStart(due, at("19:11"))).toBe(false);
+    expect(shouldAskToStart(due, at("19:12"))).toBe(true);
+    recordNotYet(net.id, at("19:02"));
+    expect(shouldAskToStart({ ...net, scheduled_at: "2026-10-24" }, at("19:11"))).toBe(false);
+  });
+});
 
 describe("Start the net now? (LIFE-024)", () => {
   beforeEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    clearNotYet();
     api.listCheckins.mockResolvedValue([]);
   });
 
-  it("asks at the first check-in, with Start now focused, and Enter starts the net", async () => {
+  it("blocks after a check-in, with Start now focused, and Enter starts the net", async () => {
     const changed = renderTab(net);
     expect(prompt()).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Save check-in" }));
+    await save();
     expect(prompt()).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Start now" })).toHaveFocus();
+    expect(prompt()).toHaveAttribute("aria-modal", "true");
+    const startNow = screen.getByRole("button", { name: "Start now" });
+    expect(startNow).toHaveFocus();
     // The Enter that saved it, pressed again at once, doesn't start the net.
     await userEvent.keyboard("{Enter}");
     expect(api.startActivity).not.toHaveBeenCalled();
+    // Tab stays on its two buttons.
+    await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Not yet: early check-in" })).toHaveFocus();
+    await userEvent.tab();
+    expect(startNow).toHaveFocus();
     vi.setSystemTime(Date.now() + 600);
     await userEvent.keyboard("{Enter}");
     expect(api.startActivity).toHaveBeenCalledWith("n1", "op1");
@@ -88,32 +125,20 @@ describe("Start the net now? (LIFE-024)", () => {
     expect(prompt()).not.toBeInTheDocument();
   });
 
-  it("leaves it for early check-ins on Escape, back to the banner", async () => {
+  it("Not yet (or Escape) leaves it for early check-ins, not asking again at the next", async () => {
     renderTab(net);
-    await userEvent.click(screen.getByRole("button", { name: "Save check-in" }));
+    await save();
     await userEvent.keyboard("{Escape}");
     expect(prompt()).not.toBeInTheDocument();
     expect(api.startActivity).not.toHaveBeenCalled();
     expect(screen.getByText(/hasn't started/)).toBeInTheDocument();
-  });
-
-  it("doesn't ask after the first check-in", async () => {
-    api.listCheckins.mockResolvedValue([{ id: "c0" } as Checkin]);
-    renderTab(net);
-    await waitFor(() => expect(api.listCheckins).toHaveBeenCalled());
-    await userEvent.click(screen.getByRole("button", { name: "Save check-in" }));
+    await save();
     expect(prompt()).not.toBeInTheDocument();
   });
 
   it("doesn't ask once the net is open", async () => {
     renderTab({ ...net, state: "active" });
-    await userEvent.click(screen.getByRole("button", { name: "Save check-in" }));
-    expect(prompt()).not.toBeInTheDocument();
-  });
-
-  it("doesn't ask for a station log", async () => {
-    renderTab({ ...net, activity_type: "station_log" });
-    await userEvent.click(screen.getByRole("button", { name: "Save check-in" }));
+    await save();
     expect(prompt()).not.toBeInTheDocument();
   });
 });

@@ -105,15 +105,19 @@ and stops later edits from quietly changing a net that is over.
   operators learn where to look (except the first check-in's prompt,
   `LIFE-024`). It MUST NOT block logging: some nets take
   early check-ins. A station log, never started, has none.
-- **LIFE-024:** Saving the first check-in to a net that hasn't been started
-  MUST ask, in place of that banner, "Start the net now?" with **Start now**
-  (focused, so Enter starts it) and **Not yet: early check-in** (or Escape),
-  then return focus to the call sign. Start now MUST start it as the top
-  bar's Start does. It is asked once, at the first check-in; after Not yet
-  the banner stays. This is the one Start outside the top bar
-  (`LIFE-023`): a forgotten Start is caught where the operator is looking,
-  as the net begins, rather than fixed in Edit afterwards. A station log has
-  none.
+- **LIFE-024:** Saving a check-in to a net that hasn't been started MUST
+  ask "Start the net now?" in a dialog over everything, taking no other
+  input until it's answered: **Start now** (focused, so Enter starts it,
+  as the top bar's Start does) or **Not yet: early check-in** (or Escape),
+  then focus returns to the call sign. The Enter that saved the check-in,
+  held or pressed twice, MUST NOT start the net. It MUST ask at the first
+  check-in, and after Not yet again only at the first check-in once the
+  scheduled time has come (if Not yet was before it), or otherwise 10
+  minutes after; early check-ins aren't asked each time, so the question
+  keeps being read. Not yet is remembered while the application is open.
+  This is the one Start outside the top bar (`LIFE-023`): a forgotten Start
+  is caught as the net begins rather than fixed in Edit afterwards. A
+  station log has none.
 
 ## Wrapping up a net
 
