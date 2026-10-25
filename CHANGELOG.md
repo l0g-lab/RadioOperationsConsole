@@ -6,6 +6,35 @@ top. Each release's section here is also its description on the
 
 ## [Unreleased]
 
+## [2.10.0] - 2026-10-25
+
+**What works differently:**
+- The tabs are down a side bar on the left instead of across the top, in
+  the same order, with the same Ctrl+number shortcuts. Under Operations it
+  lists the nets open now; click one to switch to it from any tab.
+- The Activities list that sat beside the Operations tab is now **All
+  activities**, at the top of the side bar: one table across the page, a
+  row per activity with its state, type, frequency, when and how many
+  records, in the same sections, with the same search. **+ New** beside it
+  starts an activity from any tab.
+- Saving a check-in to a net that hasn't been started asks **Start the net
+  now?** in a window that waits for an answer. Enter starts it; **Not yet:
+  early check-in** (or Escape) carries on without starting. After Not yet
+  it asks again at the first check-in once the scheduled time has come, or
+  10 minutes later, not at every early check-in.
+- Exports & forms is a line per export, with buttons that say what they do
+  (View CSV, Save CSV, View ADIF, Save ADIF, View text, Save text). What
+  each one holds is behind the ⓘ beside its name. Exports with nothing in
+  them yet aren't listed, instead of showing greyed out.
+
+### Added
+- The side bar can be resized by dragging its right edge (double-click for
+  the default), or collapsed to its icons with « at its foot for more room
+  on pages like Weather and Nets. Both are remembered.
+
+### Changed
+- Shorter messages on the Operations tab where a list is empty.
+
 ## [2.9.1] - 2026-10-19
 
 **What works differently:**
@@ -754,7 +783,8 @@ This version updates the database: once it's run, 2.6.0 can't open the data.
 
 The first release.
 
-[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.9.1...HEAD
+[Unreleased]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.10.0...HEAD
+[2.10.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.9.1...v2.10.0
 [2.9.1]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.9.0...v2.9.1
 [2.9.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.8.0...v2.9.0
 [2.8.0]: https://github.com/l0g-lab/RadioOperationsConsole/compare/v2.7.0...v2.8.0
