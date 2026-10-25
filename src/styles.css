@@ -278,7 +278,7 @@ select:disabled {
 /* The tabs down the left, scrolling on their own, with the nets open now
    under Operations. */
 .nav-rail {
-  width: 200px;
+  width: 320px;
   flex-shrink: 0;
   overflow-y: auto;
   border-right: 1px solid var(--border);

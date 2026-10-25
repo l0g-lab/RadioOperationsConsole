@@ -35,7 +35,7 @@ now, so they stay in sight from every tab, and **All activities** opens the
 full list (`UX-OPS-001`, `UX-OPS-015`–`017`) in place of the Operations tab.
 
 - **UX-030:** The tabs MUST be listed down a side bar on the left (about
-  200px), each with its icon and label (`UX-007`), in the order of
+  320px), each with its icon and label (`UX-007`), in the order of
   "Navigation model", the current one marked. It MUST scroll on its own.
 - **UX-031:** Under Operations, the side bar MUST list each net open now
   (not station logs), latest started first, and the focused activity if it
