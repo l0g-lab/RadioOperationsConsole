@@ -3,9 +3,10 @@ import type { Activity } from "../../types";
 import { activitySections, recordText, searchActivities, type ActivityRow } from "../../activityList";
 import { useMinuteClock } from "../../hooks/useMinuteClock";
 import { mhzFromText } from "../../bands";
+import { activityTypeLabel } from "../../activityTypes";
 import ActivityTypeIcon from "../ActivityTypeIcon";
 import BandChip from "../BandChip";
-import { ListChecks } from "lucide-react";
+import { ChevronDown, ChevronRight, ListChecks } from "lucide-react";
 
 /** Rows shown in a section before "Show more", so years of closed nets don't make a wall. */
 const PAGE = 25;
@@ -29,10 +30,13 @@ function saveFolds(folds: Record<string, boolean>) {
   }
 }
 
+const COLUMNS = ["Name", "State", "Type", "Frequency", "When", "Records"];
+
 /**
- * One activity in two short lines: its type icon, name, and state (open in
- * green, due in amber); then, small, its band, when, how many records, how
- * long ago a missed one was due, and its event when searching.
+ * One activity as a table row: its type icon and name (a button, so it's
+ * reachable and announced as one; the event too when searching), state
+ * (open in green, due in amber), type, band and frequency, when, and how
+ * many records. A click anywhere on the row selects it.
  */
 function Row({
   row: { activity: a, when, state, tone, ago },
@@ -48,34 +52,36 @@ function Row({
   // A count once there's something to count, or once it's closed (0 then is worth seeing: often a test run).
   const count = a.record_count > 0 || a.state === "closed" ? recordText(a) : "";
   return (
-    <li>
-      <button
-        className={"activity-row" + (selected ? " selected" : "")}
-        aria-current={selected || undefined}
-        onClick={() => onSelect(a.id)}
-      >
-        <span className="activity-row-line">
+    <tr className={"activity-table-row" + (selected ? " selected" : "")} onClick={() => onSelect(a.id)}>
+      <td className="activity-table-name">
+        <button className="activity-name-button" aria-current={selected || undefined} title={a.title}>
           <ActivityTypeIcon type={a.activity_type} />
           <span className="activity-row-title">{a.title}</span>
-          <span className={`activity-row-state activity-state-${tone}`}>{state}</span>
-        </span>
-        <span className="activity-row-detail">
-          <BandChip mhz={mhzFromText(a.frequency)} />
-          {[when, count].filter(Boolean).join(" · ")}
-          {ago && <span className="activity-state-due"> · {ago}</span>}
-          {showEvent && a.event && <span> · {a.event}</span>}
-        </span>
-      </button>
-    </li>
+        </button>
+        {showEvent && a.event && <span className="activity-table-event">{a.event}</span>}
+      </td>
+      <td className={`activity-state-${tone}`}>{state}</td>
+      <td>{activityTypeLabel(a.activity_type)}</td>
+      <td>
+        <BandChip mhz={mhzFromText(a.frequency)} keepSpace />
+        {a.frequency}
+      </td>
+      <td>
+        {when}
+        {ago && <span className="activity-state-due"> · {ago}</span>}
+      </td>
+      <td>{count}</td>
+    </tr>
   );
 }
 
 /**
  * Every activity, under All activities in the side bar (UX-OPS-015,
- * UX-032), in sections in the order things happen: open now, each event as
- * a block in running order, coming up, station logs, and closed (folded).
- * Clicking one selects it; the side bar's open nets and the top bar's
- * Activity list stay the quick ways to switch from any tab.
+ * UX-032), as one table across the page, in sections in the order things
+ * happen: open now, each event as a block in running order, coming up,
+ * station logs, and closed (folded). Clicking one selects it; the side bar's
+ * open nets and the top bar's Activity list stay the quick ways to switch
+ * from any tab.
  */
 export default function ActivitiesPanel({
   activities,
@@ -111,25 +117,29 @@ export default function ActivitiesPanel({
     const limit = shown[key] ?? PAGE;
     return (
       <>
-        <ul className="activity-list" aria-label={key === "search" ? "Search results" : undefined}>
-          {rows.slice(0, limit).map((r) => (
-            <Row
-              key={r.activity.id}
-              row={r}
-              selected={r.activity.id === selectedActivityId}
-              showEvent={showEvent}
-              onSelect={onSelectActivity}
-            />
-          ))}
-        </ul>
+        {rows.slice(0, limit).map((r) => (
+          <Row
+            key={r.activity.id}
+            row={r}
+            selected={r.activity.id === selectedActivityId}
+            showEvent={showEvent}
+            onSelect={onSelectActivity}
+          />
+        ))}
         {rows.length > limit && (
-          <button className="link-button" onClick={() => setShown((s) => ({ ...s, [key]: limit + PAGE }))}>
-            Show more ({rows.length - limit})
-          </button>
+          <tr>
+            <td colSpan={COLUMNS.length}>
+              <button className="link-button" onClick={() => setShown((s) => ({ ...s, [key]: limit + PAGE }))}>
+                Show more ({rows.length - limit})
+              </button>
+            </td>
+          </tr>
         )}
       </>
     );
   };
+
+  const hasRows = searching ? results.length > 0 : sections.length > 0;
 
   return (
     <div className="panel activities-panel">
@@ -154,44 +164,62 @@ export default function ActivitiesPanel({
       )}
 
       {activities.length === 0 && <p className="checkin-empty-state">No activities yet — start with + New activity.</p>}
+      {searching && results.length === 0 && (
+        <p className="checkin-empty-state">No activities match “{query.trim()}”.</p>
+      )}
 
-      {searching ? (
-        results.length === 0 ? (
-          <p className="checkin-empty-state">No activities match “{query.trim()}”.</p>
-        ) : (
-          <section className="activity-section" aria-label="Search results">
-            <h4 className="activity-section-heading">{results.length} found</h4>
-            {rowsOf(results, "search", true)}
-          </section>
-        )
-      ) : (
-        sections.map((s) => {
-          // A folded section holding the selected activity opens, so it's never out of sight.
-          const holdsSelected = s.rows.some((r) => r.activity.id === selectedActivityId);
-          const open = holdsSelected || !(folds[s.id] ?? s.folded);
-          const event = s.id.startsWith("event:");
-          return (
-            <details
-              key={s.id}
-              className={"activity-section" + (event ? " activity-section-event" : "")}
-              open={open}
-              onToggle={(e) => {
-                const nowOpen = (e.currentTarget as HTMLDetailsElement).open;
-                if (nowOpen !== open) toggle(s.id, nowOpen);
-              }}
-            >
-              <summary className={"activity-section-heading" + (s.live ? " activity-section-live" : "")}>
-                {s.title}
-                {s.summary ? (
-                  <span className="activity-section-summary activity-section-summary-line">{s.summary}</span>
-                ) : (
-                  <span className="activity-section-summary"> ({s.rows.length})</span>
-                )}
-              </summary>
-              {rowsOf(s.rows, s.id, false)}
-            </details>
-          );
-        })
+      {hasRows && (
+        <table className="activities-table">
+          <thead>
+            <tr>
+              {COLUMNS.map((c) => (
+                <th key={c} scope="col">
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          {searching ? (
+            <tbody aria-label="Search results">
+              <tr className="activity-section-row">
+                <th colSpan={COLUMNS.length} scope="colgroup" className="activity-section-heading">
+                  {results.length} found
+                </th>
+              </tr>
+              {rowsOf(results, "search", true)}
+            </tbody>
+          ) : (
+            sections.map((s) => {
+              // A folded section holding the selected activity opens, so it's never out of sight.
+              const holdsSelected = s.rows.some((r) => r.activity.id === selectedActivityId);
+              const open = holdsSelected || !(folds[s.id] ?? s.folded);
+              const event = s.id.startsWith("event:");
+              const Chevron = open ? ChevronDown : ChevronRight;
+              return (
+                <tbody key={s.id} className={event ? "activity-section-event" : undefined}>
+                  <tr className="activity-section-row">
+                    <th colSpan={COLUMNS.length} scope="colgroup">
+                      <button
+                        className={"activity-section-heading" + (s.live ? " activity-section-live" : "")}
+                        aria-expanded={open}
+                        onClick={() => toggle(s.id, !open)}
+                      >
+                        <Chevron className="activity-section-chevron" aria-hidden />
+                        {s.title}
+                        {s.summary ? (
+                          <span className="activity-section-summary"> · {s.summary}</span>
+                        ) : (
+                          <span className="activity-section-summary"> ({s.rows.length})</span>
+                        )}
+                      </button>
+                    </th>
+                  </tr>
+                  {open && rowsOf(s.rows, s.id, false)}
+                </tbody>
+              );
+            })
+          )}
+        </table>
       )}
 
       {searching && selected && !results.some((r) => r.activity.id === selected.id) && (

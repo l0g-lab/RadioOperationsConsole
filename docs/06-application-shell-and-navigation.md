@@ -154,18 +154,21 @@ operators, repeaters, and places on the right. The top bar's Activity list
   activity**, it MUST NOT hold editing or deletion controls; those are in
   the Selected Activity panel.
 - **UX-OPS-015:** The list MUST be reached from **All activities** in the
-  side bar (`UX-032`); it once sat beside the Operations tab. Each activity MUST take two
-  short lines: its type icon (the type on hovering), name, and state —
+  side bar (`UX-032`); it once sat beside the Operations tab. It MUST be one
+  table across the page, a row per activity, with columns for its name
+  (after its type icon, the type on hovering; long names wrap), state —
   *Open* in green, *Not started* in amber once its time has come, *Closed*
-  dimmed — then, small and dim, its band (`NETL-026`), when it ran or is to
-  run ("Mon 10/5 17:46"), and how many records it holds ("14 check-ins", "3
+  dimmed — type, band (`NETL-026`) and frequency, when it ran or is to run
+  ("Mon 10/5 17:46"), and how many records it holds ("14 check-ins", "3
   messages", "12 contacts"; removed ones not counted; shown once there are
-  any, or once it's closed). The focused one MUST be marked. States MUST stay current while the
-  tab is open (checked each minute). Each row MUST be a button in a list, so
-  it is reachable and announced as one.
+  any, or once it's closed). Where the table is too narrow, the type column
+  MAY be left out, since the icon shows it. The focused one MUST be marked.
+  States MUST stay current while the list is open (checked each minute).
+  Clicking anywhere on a row MUST select it, and its name MUST be a button,
+  so it is reachable and announced as one.
 - **UX-OPS-016:** The panel MUST list activities in sections, in the order
   things happen: **Open now**; each event still going as its own block, in
-  running order, headed by its name with its day and progress under it ("Mon
+  running order, headed by its name with its day and progress beside it ("Mon
   10/5 · 1 open · 2 to go · 1 done", green while under way; `EVT-021`);
   **Coming up** (soonest first, unscheduled after, then nets whose day passed
   without being started, marked "3 wk ago" in amber); **Station logs** (`LOG-005`);

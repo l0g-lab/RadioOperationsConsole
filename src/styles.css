@@ -357,11 +357,6 @@ select:disabled {
   padding: 3px 6px;
 }
 
-/* The full Activities list, in place of the Operations tab. */
-.activities-page {
-  max-width: 640px;
-}
-
 .tab-icon {
   width: 15px;
   height: 15px;
@@ -3724,30 +3719,34 @@ button.online-pill-working-offline:hover {
 
 /* Sections: light headings, small caps text with no heavy rules; an event's
    with its day and progress under its name, green while under way. */
-.activity-section {
-  margin-top: 8px;
-}
-
 .activity-section-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin: 0;
   padding: 2px 0;
+  border: none;
+  background: none;
   color: var(--text-dim);
   font-size: calc(11px * var(--font-scale));
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: left;
   cursor: pointer;
+}
+
+.activity-section-chevron {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
 }
 
 .activity-section-summary {
   font-weight: normal;
   text-transform: none;
   letter-spacing: normal;
-}
-
-.activity-section-summary-line {
-  display: block;
-  margin-left: 14px;
+  white-space: pre;
 }
 
 .activity-section-live {
@@ -3760,8 +3759,105 @@ button.online-pill-working-offline:hover {
   list-style: none;
 }
 
-.activity-section-event .activity-list {
-  padding-left: 8px;
+/* The full list (UX-OPS-015): one table across the page, the sections as
+   bodies so every column lines up; a light rule under each row. */
+.activities-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+}
+
+.activities-table thead th {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: calc(11px * var(--font-scale));
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.activity-section-row th {
+  padding: 12px 0 2px;
+  text-align: left;
+}
+
+.activity-table-row td {
+  padding: 5px 8px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.activity-table-row:hover td {
+  background: var(--bg-input);
+}
+
+/* The selected one: shaded, with a green edge, like the side bar. */
+.activity-table-row.selected td {
+  background: var(--bg-input);
+}
+
+.activity-table-row.selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* The name takes the room left, wrapping rather than squeezing the other
+   columns. */
+.activity-table-row td.activity-table-name {
+  width: 100%;
+  min-width: 140px;
+  white-space: normal;
+}
+
+.activity-table-name .activity-row-title {
+  white-space: normal;
+}
+
+/* Narrow (the minimum window with a wide side bar): the type column goes,
+   since each name's icon shows the type. */
+.activities-panel {
+  container-type: inline-size;
+}
+
+@container (max-width: 760px) {
+  .activities-table th:nth-child(3),
+  .activities-table td:nth-child(3) {
+    display: none;
+  }
+}
+
+.activity-name-button {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+}
+
+.activity-name-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.activity-table-event {
+  margin-left: 8px;
+  color: var(--text-dim);
+  font-size: calc(12px * var(--font-scale));
+}
+
+.activity-table-row .band-chip {
+  margin-right: 6px;
+}
+
+.activity-section-event .activity-table-name {
+  padding-left: 18px;
 }
 
 /* One activity in two short lines: icon, name, state; then, small and dim,
@@ -3812,12 +3908,6 @@ button.online-pill-working-offline:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-}
-
-.activity-row-state {
-  margin-left: 8px;
-  white-space: nowrap;
-  font-size: calc(12px * var(--font-scale));
 }
 
 .activity-row-detail {
