@@ -5,6 +5,7 @@ import { activityRow, recordText } from "../activityList";
 import { isLog } from "../activityTypes";
 import { useMinuteClock } from "../hooks/useMinuteClock";
 import ActivityTypeIcon from "./ActivityTypeIcon";
+import { ListChecks } from "lucide-react";
 
 /** Tabs that show the focused activity; choosing one in the rail from any other tab goes to Operations. */
 const ACTIVITY_TABS: Tab[] = ["Operations", "Check-ins", "Spotter Reports"];
@@ -62,9 +63,9 @@ interface NavRailProps {
 }
 
 /**
- * The tabs down the left side, with the nets open now under Operations so
- * they're in sight and a click away from any tab, and "All activities" for
- * the rest (search, coming up, closed).
+ * The tabs down the left side: "All activities" at the top for the full list
+ * (search, coming up, closed), then the tabs, with the nets open now under
+ * Operations so they're in sight and a click away from any tab.
  */
 export default function NavRail({
   current,
@@ -99,6 +100,17 @@ export default function NavRail({
     <div className="nav-rail-wrap" style={{ width }}>
       <nav className="nav-rail" aria-label="Tabs">
         <ul className="nav-tabs">
+          {/* Not a tab, so Ctrl+1 stays Operations. */}
+          <li className="nav-all-activities">
+            <button
+              className={"tab-button" + (activityListOpen ? " selected" : "")}
+              aria-current={activityListOpen ? "page" : undefined}
+              onClick={onOpenActivityList}
+            >
+              <ListChecks className="tab-icon" />
+              All activities
+            </button>
+          </li>
           {TABS.map((t) => {
             const Icon = TAB_ICONS[t];
             const selected = t === current && !(t === "Operations" && activityListOpen);
@@ -112,44 +124,33 @@ export default function NavRail({
                   <Icon className="tab-icon" />
                   {labels[t] ?? t}
                 </button>
-                {t === "Operations" && activities.length > 0 && (
-                  <div className="nav-activities">
-                    {listed.length > 0 && (
-                      <ul className="activity-list" aria-label="Open activities">
-                        {listed.map((a) => {
-                          const { state, tone } = activityRow(a, now);
-                          const count = a.record_count > 0 ? recordText(a) : "";
-                          const isSelected = a.id === selectedActivityId;
-                          return (
-                            <li key={a.id}>
-                              <button
-                                className={"activity-row" + (isSelected ? " selected" : "")}
-                                aria-current={isSelected || undefined}
-                                title={a.title}
-                                onClick={() => chooseActivity(a.id)}
-                              >
-                                <span className="activity-row-line">
-                                  <ActivityTypeIcon type={a.activity_type} />
-                                  <span className="activity-row-title">{a.title}</span>
-                                </span>
-                                <span className="activity-row-detail">
-                                  <span className={`activity-state-${tone}`}>{state}</span>
-                                  {count && ` · ${count}`}
-                                </span>
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                    <button
-                      className={"nav-activities-all" + (activityListOpen ? " selected" : "")}
-                      aria-current={activityListOpen ? "page" : undefined}
-                      onClick={onOpenActivityList}
-                    >
-                      All activities…
-                    </button>
-                  </div>
+                {t === "Operations" && listed.length > 0 && (
+                  <ul className="activity-list nav-activities" aria-label="Open activities">
+                    {listed.map((a) => {
+                      const { state, tone } = activityRow(a, now);
+                      const count = a.record_count > 0 ? recordText(a) : "";
+                      const isSelected = a.id === selectedActivityId;
+                      return (
+                        <li key={a.id}>
+                          <button
+                            className={"activity-row" + (isSelected ? " selected" : "")}
+                            aria-current={isSelected || undefined}
+                            title={a.title}
+                            onClick={() => chooseActivity(a.id)}
+                          >
+                            <span className="activity-row-line">
+                              <ActivityTypeIcon type={a.activity_type} />
+                              <span className="activity-row-title">{a.title}</span>
+                            </span>
+                            <span className="activity-row-detail">
+                              <span className={`activity-state-${tone}`}>{state}</span>
+                              {count && ` · ${count}`}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </li>
             );

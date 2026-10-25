@@ -31,8 +31,8 @@ Activity types may hide, deemphasize, or badge tabs. The order and meaning of co
 The tabs are listed down the left side rather than across the top: ten
 tabs fit without wrapping, there's room for more, and the content starts at
 the top of the window. Under Operations, the side bar lists the nets open
-now, so they stay in sight from every tab, and **All activities** opens the
-full list (`UX-OPS-001`, `UX-OPS-015`–`017`) in place of the Operations tab.
+now, so they stay in sight from every tab. **All activities**, above the
+tabs, opens the full list (`UX-OPS-001`, `UX-OPS-015`–`017`) in place of the Operations tab.
 
 - **UX-030:** The tabs MUST be listed down a side bar on the left (about
   320px), each with its icon and label (`UX-007`), in the order of
@@ -48,7 +48,8 @@ full list (`UX-OPS-001`, `UX-OPS-015`–`017`) in place of the Operations tab.
   count of records; the focused one MUST be marked. Choosing one MUST focus
   it, staying on Operations, Check-ins, or Spotter Reports, and going to
   Operations from any other tab.
-- **UX-032:** **All activities** MUST show the Activities list in place of
+- **UX-032:** **All activities**, at the top of the side bar and set apart
+  from the tabs (not one of them, so it takes no Ctrl+number), MUST show the Activities list in place of
   the Operations tab, marked in the side bar while it shows; choosing an
   activity there, or going to any tab, MUST leave it.
 

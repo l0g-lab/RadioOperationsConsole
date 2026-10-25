@@ -340,29 +340,21 @@ select:disabled {
   color: var(--accent);
 }
 
+/* All activities, set apart above the tabs. */
+.nav-tabs > li.nav-all-activities {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
 /* Open nets under Operations, indented to its label. */
-.nav-activities {
+.nav-tabs .nav-activities {
   margin: 2px 0 6px 14px;
   font-size: calc(12px * var(--font-scale));
 }
 
 .nav-activities .activity-row {
   padding: 3px 6px;
-}
-
-.nav-activities-all {
-  width: 100%;
-  padding: 3px 6px;
-  border: none;
-  background: none;
-  color: var(--text-dim);
-  text-align: left;
-}
-
-.nav-activities-all.selected {
-  background: var(--bg-input);
-  box-shadow: inset 3px 0 0 var(--accent);
-  color: var(--accent);
 }
 
 /* The full Activities list, in place of the Operations tab. */

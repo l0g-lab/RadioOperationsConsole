@@ -90,7 +90,7 @@ describe("NavRail (UX-030)", () => {
   it("opens the full list, marked in place of Operations while it shows", async () => {
     const { onOpenActivityList } = renderRail("Operations", "a", true);
     expect(screen.getByRole("button", { name: "Operations" })).not.toHaveAttribute("aria-current");
-    const all = screen.getByRole("button", { name: "All activities…" });
+    const all = screen.getByRole("button", { name: "All activities" });
     expect(all).toHaveAttribute("aria-current", "page");
     await userEvent.click(all);
     expect(onOpenActivityList).toHaveBeenCalled();
