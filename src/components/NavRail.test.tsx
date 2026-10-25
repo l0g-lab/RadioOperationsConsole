@@ -38,6 +38,7 @@ function renderRail(current: Tab, selected: string | null, listOpen = false) {
   const onSelect = vi.fn();
   const onSelectActivity = vi.fn();
   const onOpenActivityList = vi.fn();
+  const onNewActivity = vi.fn();
   render(
     <NavRail
       current={current}
@@ -47,9 +48,10 @@ function renderRail(current: Tab, selected: string | null, listOpen = false) {
       onSelectActivity={onSelectActivity}
       activityListOpen={listOpen}
       onOpenActivityList={onOpenActivityList}
+      onNewActivity={onNewActivity}
     />
   );
-  return { onSelect, onSelectActivity, onOpenActivityList };
+  return { onSelect, onSelectActivity, onOpenActivityList, onNewActivity };
 }
 
 describe("NavRail (UX-030)", () => {
@@ -109,5 +111,12 @@ describe("NavRail (UX-030)", () => {
     expect(edge).toHaveAttribute("aria-valuenow", String(RAIL_MAX));
     await userEvent.dblClick(edge);
     expect(edge).toHaveAttribute("aria-valuenow", String(RAIL_DEFAULT));
+  });
+
+  it("starts a new activity from beside All activities", async () => {
+    const { onNewActivity, onOpenActivityList } = renderRail("Weather", null);
+    await userEvent.click(screen.getByRole("button", { name: "New activity" }));
+    expect(onNewActivity).toHaveBeenCalled();
+    expect(onOpenActivityList).not.toHaveBeenCalled();
   });
 });

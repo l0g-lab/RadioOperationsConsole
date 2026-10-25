@@ -60,6 +60,7 @@ interface NavRailProps {
   /** The full Activities list is showing in place of the Operations tab. */
   activityListOpen: boolean;
   onOpenActivityList: () => void;
+  onNewActivity: () => void;
 }
 
 /**
@@ -76,6 +77,7 @@ export default function NavRail({
   onSelectActivity,
   activityListOpen,
   onOpenActivityList,
+  onNewActivity,
 }: NavRailProps) {
   // Ticks each minute, so a net turns amber when its time comes.
   const now = useMinuteClock();
@@ -109,6 +111,9 @@ export default function NavRail({
             >
               <ListChecks className="tab-icon" />
               All activities
+            </button>
+            <button className="nav-new-activity" onClick={onNewActivity} title="New activity" aria-label="New activity">
+              +<span className="nav-new-label"> New</span>
             </button>
           </li>
           {TABS.map((t) => {

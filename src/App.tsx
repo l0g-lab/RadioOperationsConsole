@@ -226,6 +226,7 @@ export default function App() {
           onSelectActivity={setSelectedActivityId}
           activityListOpen={activityListOpen}
           onOpenActivityList={openActivityList}
+          onNewActivity={requestNewActivity}
         />
         <main className="app-content">
           {currentTab === "Operations" && activityListOpen && (

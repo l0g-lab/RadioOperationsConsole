@@ -42,6 +42,9 @@ tabs, opens the full list (`UX-OPS-001`, `UX-OPS-015`–`017`) in place of the O
   MUST also be reachable with Tab and resized with the arrow keys (Home and
   End for narrowest and widest). The width MUST be remembered on this
   computer, as display state like zoom (`UX-014`).
+- **UX-034:** Beside **All activities**, a **+ New** button MUST open the
+  new-activity form on the Operations tab from any tab, shortened to "+"
+  when the side bar is narrow.
 - **UX-031:** Under Operations, the side bar MUST list each net open now
   (not station logs), latest started first, and the focused activity if it
   isn't one of them, each with its type icon, name, and, small, its state and
