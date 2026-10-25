@@ -142,8 +142,7 @@ export default function PlacesPanel({ selectedOperatorId }: { selectedOperatorId
       <div className="operator-list repeater-list">
         {places.length === 0 && editing !== "new" && (
           <p className="checkin-empty-state">
-            No places yet. Save the spots you often operate from — home, a friend's QTH, the club —
-            to pick them in any map instead of finding them again.
+            No places yet.
           </p>
         )}
         {places.map((p) =>

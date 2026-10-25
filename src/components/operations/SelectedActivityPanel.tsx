@@ -177,7 +177,7 @@ export default function SelectedActivityPanel({
       <h3><SquarePen className="heading-icon" />Selected Activity</h3>
       {!focusedActivity && (
         <p className="checkin-empty-state">
-          No activity selected. Pick one in Activities above, or start a new one.
+          No activity selected. Pick one in the side bar or under All activities.
         </p>
       )}
       {focusedActivity && !editingFocused && (

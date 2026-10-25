@@ -26,6 +26,7 @@ import { ics213FromReport, ics213FromReports, type GeneralMessage213Input } from
 import IcsFormDialog from "./IcsFormDialog";
 import { SummaryTextDialog } from "./SummaryDialog";
 import { CsvPreviewDialog, PreviewWindow } from "./PreviewWindow";
+import { Info } from "lucide-react";
 
 /**
  * `unavailable` is the reason there's nothing to do. The button stays clickable,
@@ -53,12 +54,25 @@ function Row({
   notify: (text: string) => void;
   children?: ReactNode;
 }) {
+  // What the export holds, shown on asking (the ⓘ), so the list stays one line each.
+  const [showNote, setShowNote] = useState(false);
   return (
     <div className="export-row">
       <div className="export-row-info">
         <strong>{title}</strong>
         {count && <span className="settings-hint"> {count}</span>}
-        {note && <div className="settings-hint">{note}</div>}
+        {note && (
+          <button
+            className="export-info"
+            aria-label={`About ${title}`}
+            aria-expanded={showNote}
+            title={`About ${title}`}
+            onClick={() => setShowNote((v) => !v)}
+          >
+            <Info aria-hidden />
+          </button>
+        )}
+        {note && showNote && <div className="settings-hint">{note}</div>}
       </div>
       <div className="inline-form">
         {actions.map((a) => (
@@ -81,9 +95,10 @@ function Row({
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
- * Every export for one activity, in one list: the records as CSV, the spotter
- * reports and summary as readable text, the history, and the ICS forms, each
- * viewable before saving. Used by the Operations tab's Exports & forms and by the end-of-net step,
+ * Every export for one activity, in one list, a line each: the records as
+ * CSV, the spotter reports and summary as readable text, the history, and the
+ * ICS forms, each viewable before saving; what each holds behind its ⓘ.
+ * Ones with nothing in them yet aren't listed. Used by the Operations tab's Exports & forms and by the end-of-net step,
  * so they always offer the same things. Files are saved where the operator
  * chooses and nothing needs a network.
  */
@@ -107,8 +122,8 @@ export default function ExportOptions({
   // Every operator, retired too, to name who a net was moved between in its history.
   const [allOperators, setAllOperators] = useState<Operator[]>([]);
   useEffect(() => {
-    Promise.all([api.listOperators().catch(() => []), api.listRetiredOperators().catch(() => [])]).then(
-      ([a, b]) => setAllOperators([...a, ...b])
+    Promise.all([api.listOperators().catch(() => []), api.listRetiredOperators().catch(() => [])]).then(([a, b]) =>
+      setAllOperators([...a, ...b]),
     );
   }, []);
   const operatorById = (id: string) => {
@@ -121,9 +136,7 @@ export default function ExportOptions({
     error: boolean;
     info?: boolean;
   } | null>(null);
-  const [ics, setIcs] = useState<
-    null | { form: "309" } | { form: "213"; initial: GeneralMessage213Input }
-  >(null);
+  const [ics, setIcs] = useState<null | { form: "309" } | { form: "213"; initial: GeneralMessage213Input }>(null);
   const [reportId, setReportId] = useState("");
   // The mode for contacts that have none of their own, guessed from the net's frequency (EXPORT-019).
   const [adifMode, setAdifMode] = useState(() => guessMode(activity.frequency));
@@ -192,9 +205,7 @@ export default function ExportOptions({
   const askMode = needsMode(contacts);
   const adifUnavailable =
     contacts.length === 0
-      ? noCheckins
-        ? "There are no check-ins yet, so there's nothing to export."
-        : "The only check-in is net control's own, so there are no contacts to export."
+      ? "The only check-in is net control's own, so there are no contacts to export."
       : askMode && !adifMode
         ? "Choose the mode the net was on first, for the contacts that don't have one."
         : undefined;
@@ -205,9 +216,9 @@ export default function ExportOptions({
       <section className="export-section">
         <h4 className="export-section-title">Records and reports</h4>
         <p className="settings-hint">
-          The activity's own data, as spreadsheets and readable text. Use Show to see one before saving it.
+          The activity's own data, as spreadsheets and readable text. Use View to see one before saving it.
         </p>
-        {(relay || !noRelayed) && (
+        {!noRelayed && (
           <Row
             notify={notify}
             title={relayTitle}
@@ -219,8 +230,7 @@ export default function ExportOptions({
             }
             actions={[
               {
-                label: "Show CSV",
-                unavailable: noRelayed ? `There are no ${relayWhat} yet, so there's nothing to show.` : undefined,
+                label: "View CSV",
                 title: "See it as a table, exactly as the CSV file will hold it",
                 onClick: () =>
                   setCsvPreview({
@@ -231,55 +241,40 @@ export default function ExportOptions({
                   }),
               },
               {
-                label: "CSV",
-                unavailable: noRelayed ? `There are no ${relayWhat} yet, so there's nothing to export.` : undefined,
+                label: "Save CSV",
                 onClick: () =>
-                  save(
-                    exportFilename(activity, relayTitle, "csv"),
-                    relayMessagesToCsv(relayed),
-                    `the ${relayWhat}`
-                  ),
+                  save(exportFilename(activity, relayTitle, "csv"), relayMessagesToCsv(relayed), `the ${relayWhat}`),
               },
             ]}
           />
         )}
-        {!(relay && noCheckins) && (
-        <Row
-          notify={notify}
-          title="Check-ins"
-          count={plural(checkins.length, "record", "records")}
-          note="Everything the roster shows, with coordinates, traffic, and local and UTC times."
-          actions={[
-            {
-              label: "Show CSV",
-              unavailable: noCheckins
-                ? "There are no check-ins yet, so there's nothing to show."
-                : undefined,
-              title: "See it as a table, exactly as the CSV file will hold it",
-              onClick: () =>
-                setCsvPreview({
-                  heading: `Check-ins — ${activity.title}`,
-                  filename: exportFilename(activity, "Check-ins", "csv"),
-                  csv: checkinsToCsv(checkins),
-                  what: "the check-ins",
-                }),
-            },
-            {
-              label: "CSV",
-              unavailable: noCheckins
-                ? "There are no check-ins yet, so there's nothing to export."
-                : undefined,
-              onClick: () =>
-                save(
-                  exportFilename(activity, "Check-ins", "csv"),
-                  checkinsToCsv(checkins),
-                  "the check-ins"
-                ),
-            },
-          ]}
-        />
+        {!noCheckins && (
+          <Row
+            notify={notify}
+            title="Check-ins"
+            count={plural(checkins.length, "record", "records")}
+            note="Everything the roster shows, with coordinates, traffic, and local and UTC times."
+            actions={[
+              {
+                label: "View CSV",
+                title: "See it as a table, exactly as the CSV file will hold it",
+                onClick: () =>
+                  setCsvPreview({
+                    heading: `Check-ins — ${activity.title}`,
+                    filename: exportFilename(activity, "Check-ins", "csv"),
+                    csv: checkinsToCsv(checkins),
+                    what: "the check-ins",
+                  }),
+              },
+              {
+                label: "Save CSV",
+                onClick: () =>
+                  save(exportFilename(activity, "Check-ins", "csv"), checkinsToCsv(checkins), "the check-ins"),
+              },
+            ]}
+          />
         )}
-        {!relay && (
+        {!relay && !noCheckins && (
           <Row
             notify={notify}
             title="Logbook (ADIF)"
@@ -291,7 +286,7 @@ export default function ExportOptions({
             }
             actions={[
               {
-                label: "Show ADIF",
+                label: "View ADIF",
                 unavailable: adifUnavailable,
                 title: "See exactly what the ADIF file will hold, before saving it",
                 onClick: () =>
@@ -303,7 +298,7 @@ export default function ExportOptions({
                   }),
               },
               {
-                label: "ADIF",
+                label: "Save ADIF",
                 unavailable: adifUnavailable,
                 onClick: () => save(exportFilename(activity, "Log", "adi"), adifText(), "the log"),
               },
@@ -328,116 +323,91 @@ export default function ExportOptions({
             )}
           </Row>
         )}
-        <Row
-          notify={notify}
-          title="Spotter reports"
-          count={plural(reports.length, "report", "reports")}
-          actions={[
-            {
-              label: "Show CSV",
-              unavailable: noReports
-                ? "There are no spotter reports yet, so there's nothing to show."
-                : undefined,
-              title: "See it as a table, exactly as the CSV file will hold it",
-              onClick: () =>
-                setCsvPreview({
-                  heading: `Spotter reports — ${activity.title}`,
-                  filename: exportFilename(activity, "Spotter reports", "csv"),
-                  csv: spotterReportsToCsv(reports),
-                  what: "the reports",
-                }),
-            },
-            {
-              label: "CSV",
-              unavailable: noReports
-                ? "There are no spotter reports yet, so there's nothing to export."
-                : undefined,
-              onClick: () =>
-                save(
-                  exportFilename(activity, "Spotter reports", "csv"),
-                  spotterReportsToCsv(reports),
-                  "the reports"
-                ),
-            },
-            {
-              label: "Show text report",
-              unavailable: noReports
-                ? "There are no spotter reports yet, so there's nothing to show."
-                : undefined,
-              title: "See the readable report before saving or copying it",
-              onClick: () =>
-                setTextPreview({
-                  heading: `Spotter reports — ${activity.title}`,
-                  filename: exportFilename(activity, "Spotter reports", "txt"),
-                  text: spotterReportsToText(activity, reports),
-                  what: "the report",
-                }),
-            },
-            {
-              label: "Text report",
-              unavailable: noReports
-                ? "There are no spotter reports yet, so there's nothing to export."
-                : undefined,
-              title: "Readable, for pasting into an email or message",
-              onClick: () =>
-                save(
-                  exportFilename(activity, "Spotter reports", "txt"),
-                  spotterReportsToText(activity, reports),
-                  "the report"
-                ),
-            },
-          ]}
-        />
-        <Row
-          notify={notify}
-          title="Full history"
-          count={plural(history.length, "event", "events")}
-          note="Every start, close, correction, removal and restore, in words as on the History tab, with who and when."
-          actions={[
-            {
-              label: "Show CSV",
-              unavailable: history.length === 0
-                  ? "Nothing has been recorded for this activity yet."
-                  : undefined,
-              title: "See it as a table, exactly as the CSV file will hold it",
-              onClick: () =>
-                setCsvPreview({
-                  heading: `Full history — ${activity.title}`,
-                  filename: exportFilename(activity, "History", "csv"),
-                  csv: historyToCsv(history, operatorById),
-                  what: "the history",
-                }),
-            },
-            {
-              label: "CSV",
-              unavailable:
-                history.length === 0
-                  ? "Nothing has been recorded for this activity yet."
-                  : undefined,
-              onClick: () =>
-                save(
-                  exportFilename(activity, "History", "csv"),
-                  historyToCsv(history, operatorById),
-                  "the history"
-                ),
-            },
-          ]}
-        />
+        {!noReports && (
+          <Row
+            notify={notify}
+            title="Spotter reports"
+            count={plural(reports.length, "report", "reports")}
+            actions={[
+              {
+                label: "View CSV",
+                title: "See it as a table, exactly as the CSV file will hold it",
+                onClick: () =>
+                  setCsvPreview({
+                    heading: `Spotter reports — ${activity.title}`,
+                    filename: exportFilename(activity, "Spotter reports", "csv"),
+                    csv: spotterReportsToCsv(reports),
+                    what: "the reports",
+                  }),
+              },
+              {
+                label: "Save CSV",
+                onClick: () =>
+                  save(exportFilename(activity, "Spotter reports", "csv"), spotterReportsToCsv(reports), "the reports"),
+              },
+              {
+                label: "View text",
+                title: "See the readable report before saving or copying it",
+                onClick: () =>
+                  setTextPreview({
+                    heading: `Spotter reports — ${activity.title}`,
+                    filename: exportFilename(activity, "Spotter reports", "txt"),
+                    text: spotterReportsToText(activity, reports),
+                    what: "the report",
+                  }),
+              },
+              {
+                label: "Save text",
+                title: "Readable, for pasting into an email or message",
+                onClick: () =>
+                  save(
+                    exportFilename(activity, "Spotter reports", "txt"),
+                    spotterReportsToText(activity, reports),
+                    "the report",
+                  ),
+              },
+            ]}
+          />
+        )}
+        {history.length > 0 && (
+          <Row
+            notify={notify}
+            title="Full history"
+            count={plural(history.length, "event", "events")}
+            note="Every start, close, correction, removal and restore, in words as on the History tab, with who and when."
+            actions={[
+              {
+                label: "View CSV",
+                title: "See it as a table, exactly as the CSV file will hold it",
+                onClick: () =>
+                  setCsvPreview({
+                    heading: `Full history — ${activity.title}`,
+                    filename: exportFilename(activity, "History", "csv"),
+                    csv: historyToCsv(history, operatorById),
+                    what: "the history",
+                  }),
+              },
+              {
+                label: "Save CSV",
+                onClick: () =>
+                  save(exportFilename(activity, "History", "csv"), historyToCsv(history, operatorById), "the history"),
+              },
+            ]}
+          />
+        )}
         <Row
           notify={notify}
           title="Net summary"
           note="Times, counts by the activity's type, and the closing notes."
           actions={[
             {
-              label: "Show summary text",
+              label: "View text",
               title: "See exactly what the text file will hold, before saving it",
               onClick: () => setShowingSummary(true),
             },
             {
-              label: "Text",
-              unavailable: !summary
-                ? "The summary hasn't loaded yet. Try again in a moment."
-                : undefined,
+              label: "Save text",
+              unavailable: !summary ? "The summary hasn't loaded yet. Try again in a moment." : undefined,
               onClick: () =>
                 summary &&
                 save(
@@ -446,7 +416,7 @@ export default function ExportOptions({
                     ...summary,
                     conclusion: (conclusion ?? summary.conclusion).trim(),
                   }),
-                  "the summary"
+                  "the summary",
                 ),
             },
           ]}
@@ -455,29 +425,24 @@ export default function ExportOptions({
 
       <section className="export-section">
         <h4 className="export-section-title">ICS forms</h4>
-        <p className="settings-hint">
-          Standard forms for agencies, each ready to load into Winlink Express or print.
-        </p>
-        <Row
-          notify={notify}
-          title="ICS 213 — General Message"
-          count="from the spotter reports"
-          note="For Winlink Express, or printable."
-          actions={[
-            {
-              label: "All reports…",
-              unavailable: noReports
-                ? "The ICS 213 is built from spotter reports, and this activity has none yet."
-                : undefined,
-              onClick: () =>
-                setIcs({
-                  form: "213",
-                  initial: ics213FromReports(activity, reports, operatorName),
-                }),
-            },
-          ]}
-        >
-          {!noReports && (
+        <p className="settings-hint">Standard forms for agencies, each ready to load into Winlink Express or print.</p>
+        {!noReports && (
+          <Row
+            notify={notify}
+            title="ICS 213 — General Message"
+            count="from the spotter reports"
+            note="For Winlink Express, or printable."
+            actions={[
+              {
+                label: "All reports…",
+                onClick: () =>
+                  setIcs({
+                    form: "213",
+                    initial: ics213FromReports(activity, reports, operatorName),
+                  }),
+              },
+            ]}
+          >
             <>
               <select
                 value={reportId}
@@ -486,9 +451,7 @@ export default function ExportOptions({
               >
                 {reports.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {[r.reported_at.replace("T", " "), r.hazard_type, r.reporter]
-                      .filter(Boolean)
-                      .join(" — ")}
+                    {[r.reported_at.replace("T", " "), r.hazard_type, r.reporter].filter(Boolean).join(" — ")}
                   </option>
                 ))}
               </select>
@@ -505,36 +468,29 @@ export default function ExportOptions({
                 This report…
               </button>
             </>
-          )}
-        </Row>
-        <Row
-          notify={notify}
-          title="ICS 309 — Communications Log"
-          count={relay ? "from the relayed messages" : "from the check-in list"}
-          note="For Winlink Express's Form-309, or printable."
-          actions={[
-            {
-              label: "Open…",
-              unavailable: (relay ? noRelayed : noCheckins)
-                ? relay
-                  ? "There are no relayed messages yet, so there's nothing to export."
-                  : "There are no check-ins yet, so there's nothing to export."
-                : undefined,
-              onClick: () => setIcs({ form: "309" }),
-            },
-          ]}
-        />
+          </Row>
+        )}
+        {!(relay ? noRelayed : noCheckins) && (
+          <Row
+            notify={notify}
+            title="ICS 309 — Communications Log"
+            count={relay ? "from the relayed messages" : "from the check-in list"}
+            note="For Winlink Express's Form-309, or printable."
+            actions={[
+              {
+                label: "Open…",
+                onClick: () => setIcs({ form: "309" }),
+              },
+            ]}
+          />
+        )}
         {icsFormsNote}
       </section>
 
       {message && (
         <p
           className={
-            message.info
-              ? "closeout-warning"
-              : message.error
-                ? "weather-area-error"
-                : "qrz-status qrz-status-found"
+            message.info ? "closeout-warning" : message.error ? "weather-area-error" : "qrz-status qrz-status-found"
           }
           role="status"
         >
@@ -555,11 +511,7 @@ export default function ExportOptions({
       )}
       {csvPreview && <CsvPreviewDialog {...csvPreview} onClose={() => setCsvPreview(null)} />}
       {showingSummary && (
-        <SummaryTextDialog
-          activity={activity}
-          conclusion={conclusion}
-          onClose={() => setShowingSummary(false)}
-        />
+        <SummaryTextDialog activity={activity} conclusion={conclusion} onClose={() => setShowingSummary(false)} />
       )}
       {ics && (
         <IcsFormDialog

@@ -2181,6 +2181,27 @@ details > summary {
   min-width: 0;
 }
 
+/* ⓘ after an export's name: what it holds, on asking. */
+.export-info {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  padding: 2px;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  vertical-align: middle;
+}
+
+.export-info svg {
+  width: 14px;
+  height: 14px;
+}
+
+.export-info[aria-expanded="true"] {
+  color: var(--accent);
+}
+
 .closeout-exports summary {
   cursor: pointer;
   color: var(--text-dim);

@@ -53,7 +53,7 @@ describe("CsvPreviewDialog (EXPORT-018)", () => {
   });
 });
 
-describe("ExportOptions Show CSV", () => {
+describe("ExportOptions", () => {
   const NET = {
     id: "a1",
     title: "Tuesday Net",
@@ -102,7 +102,7 @@ describe("ExportOptions Show CSV", () => {
     const user = userEvent.setup();
     render(<ExportOptions activity={NET} operator={null} />);
     await screen.findByText("1 record");
-    const showButtons = screen.getAllByRole("button", { name: "Show CSV" });
+    const showButtons = screen.getAllByRole("button", { name: "View CSV" });
     await user.click(showButtons[0]);
     const dialog = await screen.findByRole("dialog", { name: "Check-ins — Tuesday Net" });
     expect(within(dialog).getByRole("cell", { name: "KD4ABC" })).toBeInTheDocument();
@@ -119,12 +119,12 @@ describe("ExportOptions Show CSV", () => {
     await screen.findByText("1 contact");
     const mode = screen.getByRole("combobox", { name: "Mode" });
     expect(mode).toHaveValue("");
-    await user.click(screen.getByRole("button", { name: "ADIF" }));
+    await user.click(screen.getByRole("button", { name: "Save ADIF" }));
     expect(screen.getByText(/Choose the mode the net was on first/)).toBeInTheDocument();
     expect(saveTextFile).not.toHaveBeenCalledWith(expect.stringMatching(/\.adi$/), expect.anything());
 
     await user.selectOptions(mode, "FM");
-    await user.click(screen.getByRole("button", { name: "Show ADIF" }));
+    await user.click(screen.getByRole("button", { name: "View ADIF" }));
     const dialog = await screen.findByRole("dialog", { name: "Logbook (ADIF) — Tuesday Net" });
     expect(within(dialog).getByText(/<CALL:6>KD4ABC/).textContent).toContain("<MODE:2>FM");
   });
@@ -167,8 +167,25 @@ describe("ExportOptions Show CSV", () => {
     render(<ExportOptions activity={NET} operator={null} />);
     await screen.findByText("1 report");
 
-    await user.click(screen.getByRole("button", { name: "Show text report" }));
+    const row = screen.getByText("Spotter reports").closest(".export-row") as HTMLElement;
+    await user.click(within(row).getByRole("button", { name: "View text" }));
     const dialog = await screen.findByRole("dialog", { name: "Spotter reports — Tuesday Net" });
     expect(within(dialog).getByText(/Hail/).textContent).toBe(spotterReportsToText(NET, [REPORT]));
+  });
+
+  it("lists only what has something in it, saying what each holds behind its ⓘ", async () => {
+    vi.mocked(api.listCheckins).mockResolvedValue([CHECKIN]);
+    vi.mocked(api.listSpotterReports).mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<ExportOptions activity={NET} operator={null} />);
+    await screen.findByText("1 record");
+    expect(screen.queryByText("Spotter reports")).not.toBeInTheDocument();
+    expect(screen.queryByText("ICS 213 — General Message")).not.toBeInTheDocument();
+    expect(screen.getByText("Net summary")).toBeInTheDocument();
+    expect(screen.queryByText(/Everything the roster shows/)).not.toBeInTheDocument();
+    const info = screen.getByRole("button", { name: "About Check-ins" });
+    await user.click(info);
+    expect(info).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/Everything the roster shows/)).toBeInTheDocument();
   });
 });

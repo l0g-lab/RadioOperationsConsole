@@ -422,7 +422,7 @@ export default function RepeatersPanel({
       <div className="operator-list repeater-list repeater-list-repeaters">
         {repeaters.length === 0 && editing !== "new" && (
           <p className="checkin-empty-state">
-            No repeaters yet. Add the ones your nets use, then pick them when creating an activity.
+            No repeaters yet.
           </p>
         )}
         {repeaters.length > 0 && shown.length === 0 && (

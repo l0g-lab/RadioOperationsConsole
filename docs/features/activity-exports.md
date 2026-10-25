@@ -37,10 +37,15 @@ be in one predictable place, complete, and unambiguous about time.
   and MUST NOT change any record.
 - **EXPORT-005:** Every export MUST run offline and be written where the operator
   chooses (`NETOPS-048`), and MUST report where it was saved or why it failed.
-- **EXPORT-006:** Each export MUST show how many records it covers. When there
-  are none, the export MUST NOT produce an empty file; it MUST look unavailable
-  and, when the operator clicks it, MUST say why nothing was exported (for example
-  "there are no check-ins yet"). A disabled control that gives no reason is not
+- **EXPORT-006:** Each export MUST show how many records it covers, on one
+  line with its name and buttons that say what they do ("View CSV", "Save
+  CSV", "View ADIF", "Save ADIF", "View text", "Save text"). What it holds
+  MUST be behind an ⓘ beside its name, shown on clicking, so the list isn't
+  mostly description. An export with nothing in it (no check-ins, spotter
+  reports, history, or messages yet) MUST NOT be listed, and MUST NOT produce
+  an empty file; one unavailable for another reason (an ADIF with only net
+  control's own check-in, or no mode chosen) MUST look unavailable and, when
+  clicked, MUST say why. A disabled control that gives no reason is not
   enough.
 - **EXPORT-007:** The suggested name for a saved export MUST be readable and
   identify the activity, when it happened, and what the file holds, in the form
@@ -75,9 +80,9 @@ be in one predictable place, complete, and unambiguous about time.
   out like the end-of-net step: on the Operations tab for the selected
   activity, folded to a line of counts that opens with a click. The summary
   is saved from the export list, where the exact text it saves as (`EXPORT-014`) MUST be
-  viewable first ("Show summary text"), with Copy and Save.
+  viewable first ("View text"), with Copy and Save.
 - **EXPORT-018:** Each CSV export (check-ins, spotter reports, full history)
-  MUST be viewable before saving ("Show CSV"): as a table read back from the
+  MUST be viewable before saving ("View CSV"): as a table read back from the
   exact text that would be saved, with its row and column counts, the raw text
   on request, and Copy and Save of that text.
 - **EXPORT-015:** *(Retired.)* There are no JSON exports — not of check-ins,
