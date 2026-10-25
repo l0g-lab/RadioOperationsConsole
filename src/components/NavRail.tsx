@@ -216,7 +216,7 @@ export default function NavRail({
           title="Drag to resize; double-click for the default"
           onPointerDown={(e) => {
             e.preventDefault();
-            e.currentTarget.setPointerCapture(e.pointerId);
+            e.currentTarget.setPointerCapture?.(e.pointerId);
             drag.current = { x: e.clientX, width };
           }}
           onPointerMove={(e) => {
