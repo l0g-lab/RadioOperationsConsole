@@ -277,12 +277,38 @@ select:disabled {
 
 /* The tabs down the left, scrolling on their own, with the nets open now
    under Operations. */
-.nav-rail {
-  width: 320px;
+.nav-rail-wrap {
+  position: relative;
+  display: flex;
   flex-shrink: 0;
-  overflow-y: auto;
   border-right: 1px solid var(--border);
+}
+
+.nav-rail {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
   padding: 10px 8px;
+}
+
+/* The right edge, dragged to resize (UX-033): a few pixels wide over the
+   border, green while hovered, dragged or focused. */
+.nav-rail-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+}
+
+.nav-rail-resizer:hover,
+.nav-rail-resizer:active,
+.nav-rail-resizer:focus-visible {
+  background: var(--accent);
+  outline: none;
 }
 
 .nav-tabs,

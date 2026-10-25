@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Activity, Tab } from "../types";
-import NavRail, { railActivities } from "./NavRail";
+import NavRail, { RAIL_DEFAULT, RAIL_MAX, railActivities } from "./NavRail";
 
 const base: Activity = {
   id: "",
@@ -94,5 +94,20 @@ describe("NavRail (UX-030)", () => {
     expect(all).toHaveAttribute("aria-current", "page");
     await userEvent.click(all);
     expect(onOpenActivityList).toHaveBeenCalled();
+  });
+
+  it("resizes from its edge with the keys, remembers it, and double-click resets it (UX-033)", async () => {
+    localStorage.removeItem("roc-nav-rail-width");
+    renderRail("Weather", null);
+    const edge = screen.getByRole("separator", { name: "Side bar width" });
+    expect(edge).toHaveAttribute("aria-valuenow", String(RAIL_DEFAULT));
+    edge.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(edge).toHaveAttribute("aria-valuenow", String(RAIL_DEFAULT + 20));
+    expect(localStorage.getItem("roc-nav-rail-width")).toBe(String(RAIL_DEFAULT + 20));
+    await userEvent.keyboard("{End}");
+    expect(edge).toHaveAttribute("aria-valuenow", String(RAIL_MAX));
+    await userEvent.dblClick(edge);
+    expect(edge).toHaveAttribute("aria-valuenow", String(RAIL_DEFAULT));
   });
 });
